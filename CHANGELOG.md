@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/glandais/elevation/compare/v1.0.1...v1.0.2) (2025-09-15)
+
+
+### Bug Fixes
+
+* do not create img DOM elements ([7733991](https://github.com/glandais/elevation/commit/773399168bd1a79cb15cfcaf3f82b854ad514427))
+
 ## [1.0.1](https://github.com/glandais/elevation/compare/v1.0.0...v1.0.1) (2025-09-15)
 
 
