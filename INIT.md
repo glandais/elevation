@@ -48,7 +48,7 @@ const provider = new ElevationProvider({
 ### Core Components
 
 1. **ElevationProvider**: Main API class
-2. **TileCache**: In-memory LRU cache with configurable size
+2. **Cache**: In-memory LRU cache with configurable size
 3. **TileFetcher**: HTTP client
 4. **CoordinateConverter**: WGS84 ↔ tile coordinates conversion
 5. **ElevationDecoder**: RGB to elevation conversion with interpolation

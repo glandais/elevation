@@ -54,11 +54,12 @@ export interface ElevationProviderConfig {
     readonly timeout?: number;
 }
 /**
- * Cached tile data
+ * Cached tile data with ImageBitmap for proper memory management
  */
 export interface CachedTile {
     readonly key: string;
     readonly data: ImageData;
+    readonly bitmap: ImageBitmap;
 }
 /**
  * Attribution information for elevation data

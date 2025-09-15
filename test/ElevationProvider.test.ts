@@ -2,19 +2,19 @@ import { ElevationProvider } from '../src/ElevationProvider';
 import { CoordinateConverter } from '../src/CoordinateConverter';
 import { TileFetcher } from '../src/TileFetcher';
 import { ElevationDecoder } from '../src/ElevationDecoder';
-import { TileCache } from '../src/TileCache';
-import type { ElevationProviderConfig } from '../src/types';
+import { Cache } from '../src/Cache';
+import type { ElevationProviderConfig, CachedTile } from '../src/types';
 
 // Mock the dependencies
 jest.mock('../src/CoordinateConverter');
 jest.mock('../src/TileFetcher');
 jest.mock('../src/ElevationDecoder');
-jest.mock('../src/TileCache');
+jest.mock('../src/Cache');
 
 describe('ElevationProvider', () => {
     let provider: ElevationProvider;
     let mockTileFetcher: jest.Mocked<TileFetcher>;
-    let mockTileCache: jest.Mocked<TileCache>;
+    let mockTileCache: jest.Mocked<Cache<CachedTile>>;
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -28,13 +28,13 @@ describe('ElevationProvider', () => {
             get: jest.fn(),
             set: jest.fn(),
             clear: jest.fn(),
-        } as unknown as jest.Mocked<TileCache>;
+        } as unknown as jest.Mocked<Cache<CachedTile>>;
 
         // Mock constructors
         (TileFetcher as jest.MockedClass<typeof TileFetcher>).mockImplementation(
             () => mockTileFetcher
         );
-        (TileCache as jest.MockedClass<typeof TileCache>).mockImplementation(() => mockTileCache);
+        (Cache as jest.MockedClass<typeof Cache>).mockImplementation(() => mockTileCache as any);
 
         // Setup coordinate converter mocks
         (CoordinateConverter.toTileCoordinates as jest.Mock).mockReturnValue({
@@ -58,7 +58,7 @@ describe('ElevationProvider', () => {
             provider = new ElevationProvider();
 
             expect(TileFetcher).toHaveBeenCalledWith(5000);
-            expect(TileCache).toHaveBeenCalledWith(100);
+            expect(Cache).toHaveBeenCalledWith(100, expect.any(Function));
         });
 
         it('should create provider with custom configuration', () => {
@@ -72,7 +72,7 @@ describe('ElevationProvider', () => {
             provider = new ElevationProvider(config);
 
             expect(TileFetcher).toHaveBeenCalledWith(10000);
-            expect(TileCache).toHaveBeenCalledWith(50);
+            expect(Cache).toHaveBeenCalledWith(50, expect.any(Function));
         });
 
         it('should use partial custom configuration with defaults', () => {
@@ -83,7 +83,7 @@ describe('ElevationProvider', () => {
             provider = new ElevationProvider(config);
 
             expect(TileFetcher).toHaveBeenCalledWith(5000); // default timeout
-            expect(TileCache).toHaveBeenCalledWith(100); // default cache size
+            expect(Cache).toHaveBeenCalledWith(100, expect.any(Function)); // default cache size
         });
 
         it('should throw error for invalid zoom level (too high)', () => {
@@ -184,7 +184,12 @@ describe('ElevationProvider', () => {
 
         it('should get elevation from cache if available', async () => {
             const mockImageData = new ImageData(256, 256);
-            mockTileCache.get.mockReturnValue(mockImageData);
+            const mockImageBitmap = { width: 256, height: 256, close: jest.fn() } as any;
+            mockTileCache.get.mockReturnValue({
+                key: '12/1205/1540',
+                data: mockImageData,
+                bitmap: mockImageBitmap,
+            });
 
             const result = await provider.getElevation(40.7128, -74.006);
 
@@ -200,13 +205,21 @@ describe('ElevationProvider', () => {
         it('should fetch tile if not in cache', async () => {
             const mockImageData = new ImageData(256, 256);
             mockTileCache.get.mockReturnValue(null);
-            mockTileFetcher.fetchTile.mockResolvedValue(mockImageData);
+            const mockImageBitmap = { width: 256, height: 256, close: jest.fn() } as any;
+            mockTileFetcher.fetchTile.mockResolvedValue({
+                imageData: mockImageData,
+                imageBitmap: mockImageBitmap,
+            });
 
             const result = await provider.getElevation(40.7128, -74.006);
 
             expect(mockTileCache.get).toHaveBeenCalledWith('12/1205/1540');
             expect(mockTileFetcher.fetchTile).toHaveBeenCalledWith('https://example.com/tile.png');
-            expect(mockTileCache.set).toHaveBeenCalledWith('12/1205/1540', mockImageData);
+            expect(mockTileCache.set).toHaveBeenCalledWith('12/1205/1540', {
+                key: '12/1205/1540',
+                data: mockImageData,
+                bitmap: expect.any(Object),
+            });
             expect(ElevationDecoder.getElevationFromImageData).toHaveBeenCalledWith(mockImageData, {
                 x: 128,
                 y: 128,
@@ -221,7 +234,11 @@ describe('ElevationProvider', () => {
 
             mockTileCache.get.mockReturnValue(null);
             const mockImageData = new ImageData(256, 256);
-            mockTileFetcher.fetchTile.mockResolvedValue(mockImageData);
+            const mockImageBitmap = { width: 256, height: 256, close: jest.fn() } as any;
+            mockTileFetcher.fetchTile.mockResolvedValue({
+                imageData: mockImageData,
+                imageBitmap: mockImageBitmap,
+            });
 
             await provider.getElevation(40.7128, -74.006);
 
@@ -252,7 +269,12 @@ describe('ElevationProvider', () => {
 
         it('should handle elevation decoding errors', async () => {
             const mockImageData = new ImageData(256, 256);
-            mockTileCache.get.mockReturnValue(mockImageData);
+            const mockImageBitmap = { width: 256, height: 256, close: jest.fn() } as any;
+            mockTileCache.get.mockReturnValue({
+                key: '12/1205/1540',
+                data: mockImageData,
+                bitmap: mockImageBitmap,
+            });
             (ElevationDecoder.getElevationFromImageData as jest.Mock).mockImplementation(() => {
                 throw new Error('Invalid pixel position');
             });
@@ -275,7 +297,12 @@ describe('ElevationProvider', () => {
         it('should work with different zoom levels', async () => {
             provider = new ElevationProvider({ zoomLevel: 10 });
             const mockImageData = new ImageData(256, 256);
-            mockTileCache.get.mockReturnValue(mockImageData);
+            const mockImageBitmap = { width: 256, height: 256, close: jest.fn() } as any;
+            mockTileCache.get.mockReturnValue({
+                key: '12/1205/1540',
+                data: mockImageData,
+                bitmap: mockImageBitmap,
+            });
 
             await provider.getElevation(40.7128, -74.006);
 
@@ -293,7 +320,12 @@ describe('ElevationProvider', () => {
 
         it('should get interpolated elevation from cache if available', async () => {
             const mockImageData = new ImageData(256, 256);
-            mockTileCache.get.mockReturnValue(mockImageData);
+            const mockImageBitmap = { width: 256, height: 256, close: jest.fn() } as any;
+            mockTileCache.get.mockReturnValue({
+                key: '12/1205/1540',
+                data: mockImageData,
+                bitmap: mockImageBitmap,
+            });
 
             const result = await provider.getInterpolatedElevation(40.7128, -74.006);
 
@@ -310,13 +342,21 @@ describe('ElevationProvider', () => {
         it('should fetch tile if not in cache', async () => {
             const mockImageData = new ImageData(256, 256);
             mockTileCache.get.mockReturnValue(null);
-            mockTileFetcher.fetchTile.mockResolvedValue(mockImageData);
+            const mockImageBitmap = { width: 256, height: 256, close: jest.fn() } as any;
+            mockTileFetcher.fetchTile.mockResolvedValue({
+                imageData: mockImageData,
+                imageBitmap: mockImageBitmap,
+            });
 
             const result = await provider.getInterpolatedElevation(40.7128, -74.006);
 
             expect(mockTileCache.get).toHaveBeenCalledWith('12/1205/1540');
             expect(mockTileFetcher.fetchTile).toHaveBeenCalledWith('https://example.com/tile.png');
-            expect(mockTileCache.set).toHaveBeenCalledWith('12/1205/1540', mockImageData);
+            expect(mockTileCache.set).toHaveBeenCalledWith('12/1205/1540', {
+                key: '12/1205/1540',
+                data: mockImageData,
+                bitmap: expect.any(Object),
+            });
             expect(ElevationDecoder.getInterpolatedElevation).toHaveBeenCalledWith(
                 mockImageData,
                 128,
@@ -346,7 +386,12 @@ describe('ElevationProvider', () => {
 
         it('should handle interpolation errors', async () => {
             const mockImageData = new ImageData(256, 256);
-            mockTileCache.get.mockReturnValue(mockImageData);
+            const mockImageBitmap = { width: 256, height: 256, close: jest.fn() } as any;
+            mockTileCache.get.mockReturnValue({
+                key: '12/1205/1540',
+                data: mockImageData,
+                bitmap: mockImageBitmap,
+            });
             (ElevationDecoder.getInterpolatedElevation as jest.Mock).mockImplementation(() => {
                 throw new Error('Interpolation failed');
             });
@@ -373,7 +418,11 @@ describe('ElevationProvider', () => {
 
             mockTileCache.get.mockReturnValue(null);
             const mockImageData = new ImageData(256, 256);
-            mockTileFetcher.fetchTile.mockResolvedValue(mockImageData);
+            const mockImageBitmap = { width: 256, height: 256, close: jest.fn() } as any;
+            mockTileFetcher.fetchTile.mockResolvedValue({
+                imageData: mockImageData,
+                imageBitmap: mockImageBitmap,
+            });
 
             await provider.getInterpolatedElevation(40.7128, -74.006);
 
@@ -391,7 +440,12 @@ describe('ElevationProvider', () => {
 
         it('should get elevations for multiple coordinates', async () => {
             const mockImageData = new ImageData(256, 256);
-            mockTileCache.get.mockReturnValue(mockImageData);
+            const mockImageBitmap = { width: 256, height: 256, close: jest.fn() } as any;
+            mockTileCache.get.mockReturnValue({
+                key: '12/1205/1540',
+                data: mockImageData,
+                bitmap: mockImageBitmap,
+            });
 
             const coordinates = [
                 { latitude: 40.7128, longitude: -74.006 },
@@ -419,7 +473,12 @@ describe('ElevationProvider', () => {
 
         it('should handle single coordinate', async () => {
             const mockImageData = new ImageData(256, 256);
-            mockTileCache.get.mockReturnValue(mockImageData);
+            const mockImageBitmap = { width: 256, height: 256, close: jest.fn() } as any;
+            mockTileCache.get.mockReturnValue({
+                key: '12/1205/1540',
+                data: mockImageData,
+                bitmap: mockImageBitmap,
+            });
 
             const results = await provider.getElevations([
                 { latitude: 40.7128, longitude: -74.006 },
@@ -450,7 +509,11 @@ describe('ElevationProvider', () => {
             mockTileFetcher.fetchTile.mockImplementation(() => {
                 fetchCount++;
                 return new Promise(resolve => {
-                    setTimeout(() => resolve(mockImageData), 10);
+                    const mockImageBitmap = { width: 256, height: 256, close: jest.fn() } as any;
+                    setTimeout(
+                        () => resolve({ imageData: mockImageData, imageBitmap: mockImageBitmap }),
+                        10
+                    );
                 });
             });
 
@@ -509,7 +572,13 @@ describe('ElevationProvider', () => {
         it('should prevent modification of internal config', () => {
             provider = new ElevationProvider();
             const config1 = provider.getConfig();
-            config1.zoomLevel = 15;
+            // Try to modify config (should not affect internal config due to readonly)
+            try {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (config1 as any).zoomLevel = 15;
+            } catch {
+                // Expected to fail due to readonly
+            }
 
             const config2 = provider.getConfig();
             expect(config2.zoomLevel).toBe(12); // Should still be the original value
@@ -529,7 +598,12 @@ describe('ElevationProvider', () => {
             const mockImageData = new ImageData(256, 256);
 
             // First call - tile in cache
-            mockTileCache.get.mockReturnValueOnce(mockImageData);
+            const mockImageBitmap = { width: 256, height: 256, close: jest.fn() } as any;
+            mockTileCache.get.mockReturnValueOnce({
+                key: '12/1205/1540',
+                data: mockImageData,
+                bitmap: mockImageBitmap,
+            });
             await provider.getElevation(40.7128, -74.006);
 
             // Clear cache
@@ -537,7 +611,11 @@ describe('ElevationProvider', () => {
 
             // Second call - tile not in cache, needs fetching
             mockTileCache.get.mockReturnValueOnce(null);
-            mockTileFetcher.fetchTile.mockResolvedValue(mockImageData);
+            const mockImageBitmap2 = { width: 256, height: 256, close: jest.fn() } as any;
+            mockTileFetcher.fetchTile.mockResolvedValue({
+                imageData: mockImageData,
+                imageBitmap: mockImageBitmap2,
+            });
             await provider.getElevation(40.7128, -74.006);
 
             expect(mockTileCache.clear).toHaveBeenCalledTimes(1);
@@ -572,9 +650,17 @@ describe('ElevationProvider', () => {
             const mockImageData = new ImageData(256, 256);
             mockTileCache.get
                 .mockReturnValueOnce(null) // First call - not cached
-                .mockReturnValueOnce(mockImageData); // Second call - cached
+                .mockReturnValueOnce({
+                    key: '12/1205/1540',
+                    data: mockImageData,
+                    bitmap: { width: 256, height: 256, close: jest.fn() } as any,
+                }); // Second call - cached
 
-            mockTileFetcher.fetchTile.mockResolvedValue(mockImageData);
+            const mockImageBitmap = { width: 256, height: 256, close: jest.fn() } as any;
+            mockTileFetcher.fetchTile.mockResolvedValue({
+                imageData: mockImageData,
+                imageBitmap: mockImageBitmap,
+            });
 
             // Two coordinates in the same tile
             await provider.getElevation(40.7128, -74.006);
@@ -591,11 +677,20 @@ describe('ElevationProvider', () => {
 
             // First coordinate - not cached
             mockTileCache.get.mockReturnValueOnce(null);
-            mockTileFetcher.fetchTile.mockResolvedValueOnce(mockImageData1);
+            const mockImageBitmap1 = { width: 256, height: 256, close: jest.fn() } as any;
+            mockTileFetcher.fetchTile.mockResolvedValueOnce({
+                imageData: mockImageData1,
+                imageBitmap: mockImageBitmap1,
+            });
 
             // Second coordinate - cached
             (CoordinateConverter.getTileKey as jest.Mock).mockReturnValueOnce('12/1206/1540');
-            mockTileCache.get.mockReturnValueOnce(mockImageData2);
+            const mockImageBitmap2 = { width: 256, height: 256, close: jest.fn() } as any;
+            mockTileCache.get.mockReturnValueOnce({
+                key: '12/1206/1540',
+                data: mockImageData2,
+                bitmap: mockImageBitmap2,
+            });
 
             const coordinates = [
                 { latitude: 40.7128, longitude: -74.006 },

@@ -1,29 +1,29 @@
-import { TileCache } from '../src/TileCache';
+import { Cache } from '../src/Cache';
 
-describe('TileCache', () => {
-    let cache: TileCache;
+describe('Cache', () => {
+    let cache: Cache<ImageData>;
     let mockImageData: ImageData;
 
     beforeEach(() => {
-        cache = new TileCache(3); // Small cache for easier testing
+        cache = new Cache<ImageData>(3); // Small cache for easier testing
         // Create mock ImageData
         mockImageData = new ImageData(256, 256);
     });
 
     describe('constructor', () => {
         it('should create cache with default max size', () => {
-            const defaultCache = new TileCache();
-            expect(defaultCache).toBeInstanceOf(TileCache);
+            const defaultCache = new Cache<ImageData>();
+            expect(defaultCache).toBeInstanceOf(Cache);
         });
 
         it('should create cache with specified max size', () => {
-            const customCache = new TileCache(50);
-            expect(customCache).toBeInstanceOf(TileCache);
+            const customCache = new Cache<ImageData>(50);
+            expect(customCache).toBeInstanceOf(Cache);
         });
 
         it('should throw error for invalid max size', () => {
-            expect(() => new TileCache(0)).toThrow('Cache size must be greater than 0');
-            expect(() => new TileCache(-1)).toThrow('Cache size must be greater than 0');
+            expect(() => new Cache<ImageData>(0)).toThrow('Cache size must be greater than 0');
+            expect(() => new Cache<ImageData>(-1)).toThrow('Cache size must be greater than 0');
         });
     });
 
@@ -352,7 +352,7 @@ describe('TileCache', () => {
 
     describe('edge cases and boundary conditions', () => {
         it('should handle cache with size 1', () => {
-            const smallCache = new TileCache(1);
+            const smallCache = new Cache<ImageData>(1);
 
             smallCache.set('key1', mockImageData);
             expect(smallCache.has('key1')).toBe(true);
@@ -410,7 +410,7 @@ describe('TileCache', () => {
 
         it('should handle eviction on empty cache (edge case coverage)', () => {
             // This tests the early return in evictLeastRecentlyUsed when this.tail is null
-            const emptyCache = new TileCache(1);
+            const emptyCache = new Cache<ImageData>(1);
 
             // Clear to ensure empty state with null head/tail
             emptyCache.clear();

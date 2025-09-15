@@ -1,5 +1,52 @@
+interface CanvasPool {
+    available: HTMLCanvasElement[];
+    idleSize: number;
+    idleTimeout: number;
+    idleTimer: ReturnType<typeof setTimeout> | null;
+    acquire(): HTMLCanvasElement;
+    release(canvas: HTMLCanvasElement): void;
+    _resetIdleTimer(): void;
+    _trim(): void;
+}
+
+const _canvasPool: CanvasPool = {
+    available: [],
+    idleSize: 5,
+    idleTimeout: 30000, // 30 seconds
+    idleTimer: null,
+
+    acquire(): HTMLCanvasElement {
+        let canvas = this.available.pop();
+        if (!canvas) {
+            canvas = document.createElement('canvas');
+        }
+        this._resetIdleTimer();
+        return canvas;
+    },
+
+    release(canvas: HTMLCanvasElement): void {
+        if (canvas) {
+            this.available.push(canvas);
+            this._resetIdleTimer();
+        }
+    },
+
+    _resetIdleTimer(): void {
+        if (this.idleTimer) {
+            clearTimeout(this.idleTimer);
+        }
+        this.idleTimer = setTimeout(() => this._trim(), this.idleTimeout);
+    },
+
+    _trim(): void {
+        while (this.available.length > this.idleSize) {
+            this.available.pop();
+        }
+    },
+};
+
 /**
- * HTTP client for fetching terrain RGB tiles
+ * HTTP client for fetching terrain RGB tiles with memory-efficient ImageBitmap
  */
 export class TileFetcher {
     private readonly timeout: number;
@@ -9,9 +56,11 @@ export class TileFetcher {
     }
 
     /**
-     * Fetch a tile image and return ImageData
+     * Fetch a tile image and return both ImageData and ImageBitmap for memory management
      */
-    public async fetchTile(url: string): Promise<ImageData> {
+    public async fetchTile(
+        url: string
+    ): Promise<{ imageData: ImageData; imageBitmap: ImageBitmap }> {
         try {
             const response = await this.fetchWithTimeout(url);
 
@@ -20,7 +69,7 @@ export class TileFetcher {
             }
 
             const blob = await response.blob();
-            return await this.blobToImageData(blob);
+            return await this.blobToImageDataAndBitmap(blob);
         } catch (error) {
             if (error instanceof Error) {
                 throw new Error(`Failed to fetch tile from ${url}: ${error.message}`);
@@ -39,10 +88,6 @@ export class TileFetcher {
         try {
             const response = await fetch(url, {
                 signal: controller.signal,
-                headers: {
-                    Accept: 'image/png,image/jpeg,image/*',
-                    'Cache-Control': 'max-age=86400', // 24 hours
-                },
             });
             return response;
         } finally {
@@ -51,42 +96,40 @@ export class TileFetcher {
     }
 
     /**
-     * Convert blob to ImageData using Canvas API
+     * Convert blob to ImageData and ImageBitmap using createImageBitmap
+     * This approach avoids memory leaks from Image objects and blob URLs
      */
-    private async blobToImageData(blob: Blob): Promise<ImageData> {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
+    private async blobToImageDataAndBitmap(
+        blob: Blob
+    ): Promise<{ imageData: ImageData; imageBitmap: ImageBitmap }> {
+        let canvas: HTMLCanvasElement | null = null;
+        let ctx: CanvasRenderingContext2D | null = null;
+        try {
+            canvas = _canvasPool.acquire();
+            ctx = canvas.getContext('2d', { willReadFrequently: true });
+            if (!ctx) {
+                throw new Error('Failed to get 2D canvas context');
+            }
+            // Create ImageBitmap directly from blob - more efficient and better memory management
+            const imageBitmap = await createImageBitmap(blob);
 
-            img.onload = (): void => {
-                try {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
+            // Resize canvas to match image dimensions
+            canvas.width = imageBitmap.width;
+            canvas.height = imageBitmap.height;
 
-                    if (!ctx) {
-                        reject(new Error('Failed to get 2D canvas context'));
-                        return;
-                    }
+            // Draw ImageBitmap to canvas and extract ImageData
+            ctx.drawImage(imageBitmap, 0, 0);
+            const imageData = ctx.getImageData(0, 0, imageBitmap.width, imageBitmap.height);
 
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    ctx.drawImage(img, 0, 0);
-
-                    const imageData = ctx.getImageData(0, 0, img.width, img.height);
-                    resolve(imageData);
-                } catch (error) {
-                    reject(
-                        new Error(
-                            `Failed to process image: ${error instanceof Error ? error.message : 'Unknown error'}`
-                        )
-                    );
-                }
-            };
-
-            img.onerror = (): void => {
-                reject(new Error('Failed to load image'));
-            };
-
-            img.src = URL.createObjectURL(blob);
-        });
+            return { imageData, imageBitmap };
+        } catch (error) {
+            throw new Error(
+                `Failed to process image: ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
+        } finally {
+            if (canvas) {
+                _canvasPool.release(canvas);
+            }
+        }
     }
 }

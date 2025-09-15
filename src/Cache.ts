@@ -1,52 +1,49 @@
-import type { CachedTile } from './types';
-
 /**
- * LRU (Least Recently Used) cache for terrain tiles with performance optimizations
+ * LRU (Least Recently Used) cache with performance optimizations and cleanup support
  */
-export class TileCache {
+export class Cache<T> {
     private readonly maxSize: number;
-    private readonly cache: Map<string, CachedTile>;
+    private readonly cache: Map<string, T>;
+    private readonly cleanupFn?: (value: T) => void;
     // Using LinkedList-like structure for true O(1) LRU operations
     private readonly lruOrder: Map<string, { prev: string | null; next: string | null }>;
     private head: string | null = null;
     private tail: string | null = null;
 
-    constructor(maxSize: number = 100) {
+    constructor(maxSize: number = 100, cleanupFn?: (value: T) => void) {
         if (maxSize <= 0) {
             throw new Error('Cache size must be greater than 0');
         }
 
         this.maxSize = maxSize;
+        this.cleanupFn = cleanupFn;
         this.cache = new Map();
         this.lruOrder = new Map();
     }
 
     /**
-     * Get tile from cache
+     * Get item from cache
      */
-    public get(key: string): ImageData | null {
-        const cachedTile = this.cache.get(key);
+    public get(key: string): T | null {
+        const cachedItem = this.cache.get(key);
 
-        if (!cachedTile) {
+        if (!cachedItem) {
             return null;
         }
 
         // Move to front (most recently used)
         this.moveToFront(key);
 
-        return cachedTile.data;
+        return cachedItem;
     }
 
     /**
-     * Store tile in cache
+     * Store item in cache
      */
-    public set(key: string, imageData: ImageData): void {
+    public set(key: string, value: T): void {
         // If key already exists, update it
         if (this.cache.has(key)) {
-            this.cache.set(key, {
-                key,
-                data: imageData,
-            });
+            this.cache.set(key, value);
             this.moveToFront(key);
             return;
         }
@@ -57,38 +54,48 @@ export class TileCache {
         }
 
         // Add new item
-        this.cache.set(key, {
-            key,
-            data: imageData,
-        });
+        this.cache.set(key, value);
         this.addToFront(key);
     }
 
     /**
-     * Check if tile exists in cache
+     * Check if item exists in cache
      */
     public has(key: string): boolean {
         return this.cache.has(key);
     }
 
     /**
-     * Remove tile from cache
+     * Remove item from cache
      */
     public delete(key: string): boolean {
         if (!this.cache.has(key)) {
             return false;
         }
 
+        const value = this.cache.get(key);
         this.cache.delete(key);
         this.removeFromLRU(key);
+
+        // Call cleanup function if provided
+        if (value && this.cleanupFn) {
+            this.cleanupFn(value);
+        }
 
         return true;
     }
 
     /**
-     * Clear all cached tiles
+     * Clear all cached items
      */
     public clear(): void {
+        // Call cleanup function for all cached items
+        if (this.cleanupFn) {
+            for (const value of this.cache.values()) {
+                this.cleanupFn(value);
+            }
+        }
+
         this.cache.clear();
         this.lruOrder.clear();
         this.head = null;
@@ -96,7 +103,7 @@ export class TileCache {
     }
 
     /**
-     * Get all cached tile keys
+     * Get all cached keys
      */
     public getKeys(): string[] {
         return Array.from(this.cache.keys());

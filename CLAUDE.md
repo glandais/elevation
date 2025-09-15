@@ -39,7 +39,7 @@ npm run semantic-release  # Automated release (CI/CD only)
 The library follows a modular architecture with clear separation of concerns:
 
 - **ElevationProvider** (`src/ElevationProvider.ts`): Main API class that coordinates all operations
-- **TileCache** (`src/cache/TileCache.ts`): LRU cache implementation for tile data
+- **Cache** (`src/cache/Cache.ts`): LRU cache implementation for tile data
 - **TileFetcher** (`src/fetcher/TileFetcher.ts`): Handles HTTP requests to fetch terrain tiles
 - **CoordinateConverter** (`src/converter/CoordinateConverter.ts`): Converts between WGS84 and Web Mercator tile coordinates
 - **ElevationDecoder** (`src/decoder/ElevationDecoder.ts`): Decodes RGB pixels to elevation values using Terrarium encoding
@@ -48,7 +48,7 @@ The library follows a modular architecture with clear separation of concerns:
 
 1. User requests elevation for latitude/longitude
 2. CoordinateConverter transforms WGS84 to tile coordinates (z/x/y)
-3. TileCache checks for cached tile data
+3. Cache checks for cached tile data
 4. If not cached, TileFetcher retrieves PNG tile from AWS S3
 5. ElevationDecoder extracts elevation from RGB pixel values
 6. Optional bilinear interpolation for smoother results

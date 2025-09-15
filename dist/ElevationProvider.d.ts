@@ -5,7 +5,7 @@ import { ElevationProviderConfig, Attribution } from './types';
 export declare class ElevationProvider {
     private readonly config;
     private readonly tileFetcher;
-    private readonly tileCache;
+    private readonly cache;
     constructor(config?: ElevationProviderConfig);
     /**
      * Get elevation at specific coordinates

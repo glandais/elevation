@@ -1,8 +1,8 @@
 import { CoordinateConverter } from './CoordinateConverter';
 import { TileFetcher } from './TileFetcher';
 import { ElevationDecoder } from './ElevationDecoder';
-import { TileCache } from './TileCache';
-import type { Coordinates, ElevationProviderConfig, Attribution } from './types';
+import { Cache } from './Cache';
+import type { Coordinates, ElevationProviderConfig, Attribution, CachedTile } from './types';
 
 /**
  * Main API class for retrieving elevation data from geographic coordinates
@@ -10,7 +10,7 @@ import type { Coordinates, ElevationProviderConfig, Attribution } from './types'
 export class ElevationProvider {
     private readonly config: Required<ElevationProviderConfig>;
     private readonly tileFetcher: TileFetcher;
-    private readonly tileCache: TileCache;
+    private readonly cache: Cache<CachedTile>;
 
     constructor(config: ElevationProviderConfig = {}) {
         this.config = {
@@ -24,7 +24,12 @@ export class ElevationProvider {
 
         this.validateConfig();
         this.tileFetcher = new TileFetcher(this.config.timeout);
-        this.tileCache = new TileCache(this.config.cacheSize);
+
+        // Create cache with cleanup function to close ImageBitmaps
+        const cleanupFunction = (cachedTile: CachedTile) => {
+            cachedTile.bitmap.close();
+        };
+        this.cache = new Cache<CachedTile>(this.config.cacheSize, cleanupFunction);
     }
 
     /**
@@ -39,17 +44,22 @@ export class ElevationProvider {
             const tileKey = CoordinateConverter.getTileKey(tileCoords);
 
             // Try to get tile from cache
-            let imageData = this.tileCache.get(tileKey);
+            const cachedTile = this.cache.get(tileKey);
+            let imageData: ImageData;
 
             // If not in cache, fetch it
-            if (!imageData) {
+            if (!cachedTile) {
                 const tileUrl = CoordinateConverter.getTileUrl(
                     tileCoords,
                     this.config.tileUrlTemplate
                 );
 
-                imageData = await this.tileFetcher.fetchTile(tileUrl);
-                this.tileCache.set(tileKey, imageData);
+                const { imageData: fetchedImageData, imageBitmap } =
+                    await this.tileFetcher.fetchTile(tileUrl);
+                imageData = fetchedImageData;
+                this.cache.set(tileKey, { key: tileKey, data: imageData, bitmap: imageBitmap });
+            } else {
+                imageData = cachedTile.data;
             }
 
             // Get pixel position within tile
@@ -79,17 +89,22 @@ export class ElevationProvider {
             const tileKey = CoordinateConverter.getTileKey(tileCoords);
 
             // Try to get tile from cache
-            let imageData = this.tileCache.get(tileKey);
+            const cachedTile = this.cache.get(tileKey);
+            let imageData: ImageData;
 
             // If not in cache, fetch it
-            if (!imageData) {
+            if (!cachedTile) {
                 const tileUrl = CoordinateConverter.getTileUrl(
                     tileCoords,
                     this.config.tileUrlTemplate
                 );
 
-                imageData = await this.tileFetcher.fetchTile(tileUrl);
-                this.tileCache.set(tileKey, imageData);
+                const { imageData: fetchedImageData, imageBitmap } =
+                    await this.tileFetcher.fetchTile(tileUrl);
+                imageData = fetchedImageData;
+                this.cache.set(tileKey, { key: tileKey, data: imageData, bitmap: imageBitmap });
+            } else {
+                imageData = cachedTile.data;
             }
 
             // Get exact pixel position (with decimal values for interpolation)
@@ -135,7 +150,7 @@ export class ElevationProvider {
      * Clear tile cache
      */
     public clearCache(): void {
-        this.tileCache.clear();
+        this.cache.clear();
     }
 
     /**

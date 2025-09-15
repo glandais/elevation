@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Elevation Library Demo</title>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 20px;
+                font-family: Arial, sans-serif;
+            }
+
+            .container {
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+
+            h1 {
+                text-align: center;
+                color: #333;
+                margin-bottom: 10px;
+            }
+
+            .info {
+                text-align: center;
+                margin-bottom: 20px;
+                color: #666;
+                font-size: 14px;
+            }
+
+            #map {
+                height: 500px;
+                width: 100%;
+                border: 2px solid #ddd;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+
+            .elevation-info {
+                background: #f5f5f5;
+                padding: 15px;
+                border-radius: 8px;
+                border: 1px solid #ddd;
+            }
+
+            .elevation-display {
+                font-size: 18px;
+                font-weight: bold;
+                color: #2c5aa0;
+                margin-bottom: 10px;
+            }
+
+            .coordinates {
+                color: #666;
+                font-size: 14px;
+            }
+
+            .loading {
+                color: #ff9800;
+                font-style: italic;
+            }
+
+            .error {
+                color: #f44336;
+            }
+
+            .success {
+                color: #4caf50;
+            }
+
+            .info a {
+                color: #2c5aa0;
+                text-decoration: none;
+                font-weight: 500;
+            }
+
+            .info a:hover {
+                text-decoration: underline;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>@glandais/elevation Demo</h1>
+            <p class="info">
+                Click anywhere on the map to get elevation data for that location
+                <br />
+                <a href="https://github.com/glandais/elevation" target="_blank" rel="noopener">
+                    View on GitHub
+                </a>
+            </p>
+
+            <div id="map"></div>
+
+            <div class="elevation-info">
+                <div id="elevation-display" class="elevation-display">
+                    Click on the map to get elevation data
+                </div>
+                <div id="coordinates" class="coordinates">Coordinates will appear here</div>
+            </div>
+        </div>
+
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script src="dist/index.min.js"></script>
+        <script>
+            // Initialize the map
+            const map = L.map('map').setView([45.5017, -73.5673], 10); // Montreal, Canada
+
+            // Add OpenStreetMap tile layer
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+            }).addTo(map);
+
+            // Initialize elevation provider
+            const elevationProvider = new window.Elevation.ElevationProvider();
+
+            // Elements for displaying results
+            const elevationDisplay = document.getElementById('elevation-display');
+            const coordinatesDisplay = document.getElementById('coordinates');
+
+            // Current marker
+            let currentMarker = null;
+
+            // Function to format elevation
+            function formatElevation(elevation) {
+                if (elevation === null || elevation === undefined) {
+                    return 'No data available';
+                }
+                return `${Math.round(elevation)} meters`;
+            }
+
+            // Function to format coordinates
+            function formatCoordinates(lat, lng) {
+                return `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`;
+            }
+
+            // Handle map clicks
+            map.on('click', async function (e) {
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+
+                // Remove previous marker
+                if (currentMarker) {
+                    map.removeLayer(currentMarker);
+                }
+
+                // Add new marker
+                currentMarker = L.marker([lat, lng])
+                    .addTo(map)
+                    .bindPopup('Getting elevation...', { autoClose: false })
+                    .openPopup();
+
+                // Update display
+                coordinatesDisplay.textContent = formatCoordinates(lat, lng);
+                elevationDisplay.textContent = 'Loading elevation data...';
+                elevationDisplay.className = 'elevation-display loading';
+
+                try {
+                    // Get elevation data
+                    const elevation = await elevationProvider.getElevation(lat, lng);
+
+                    // Update display with results
+                    elevationDisplay.textContent = `Elevation: ${formatElevation(elevation)}`;
+                    elevationDisplay.className = 'elevation-display success';
+
+                    // Update marker popup
+                    currentMarker.setPopupContent(`
+                    <strong>Elevation: ${formatElevation(elevation)}</strong><br>
+                    ${formatCoordinates(lat, lng)}
+                `);
+                } catch (error) {
+                    console.error('Error getting elevation:', error);
+
+                    // Update display with error
+                    elevationDisplay.textContent = `Error: ${error.message}`;
+                    elevationDisplay.className = 'elevation-display error';
+
+                    // Update marker popup
+                    currentMarker.setPopupContent(`
+                    <strong>Error getting elevation</strong><br>
+                    ${formatCoordinates(lat, lng)}
+                `);
+                }
+            });
+
+            // Add some initial information
+            console.log('Elevation Library Demo loaded');
+            console.log('ElevationProvider available:', typeof elevationProvider);
+        </script>
+    </body>
+</html>

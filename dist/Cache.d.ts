@@ -1,35 +1,36 @@
 /**
- * LRU (Least Recently Used) cache for terrain tiles with performance optimizations
+ * LRU (Least Recently Used) cache with performance optimizations and cleanup support
  */
-export declare class TileCache {
+export declare class Cache<T> {
     private readonly maxSize;
     private readonly cache;
+    private readonly cleanupFn?;
     private readonly lruOrder;
     private head;
     private tail;
-    constructor(maxSize?: number);
+    constructor(maxSize?: number, cleanupFn?: (value: T) => void);
     /**
-     * Get tile from cache
+     * Get item from cache
      */
-    get(key: string): ImageData | null;
+    get(key: string): T | null;
     /**
-     * Store tile in cache
+     * Store item in cache
      */
-    set(key: string, imageData: ImageData): void;
+    set(key: string, value: T): void;
     /**
-     * Check if tile exists in cache
+     * Check if item exists in cache
      */
     has(key: string): boolean;
     /**
-     * Remove tile from cache
+     * Remove item from cache
      */
     delete(key: string): boolean;
     /**
-     * Clear all cached tiles
+     * Clear all cached items
      */
     clear(): void;
     /**
-     * Get all cached tile keys
+     * Get all cached keys
      */
     getKeys(): string[];
     /**
@@ -53,4 +54,4 @@ export declare class TileCache {
      */
     private removeFromLRU;
 }
-//# sourceMappingURL=TileCache.d.ts.map
+//# sourceMappingURL=Cache.d.ts.map

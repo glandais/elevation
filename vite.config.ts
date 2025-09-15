@@ -18,7 +18,18 @@ export default defineConfig({
             entry: resolve(__dirname, 'src/index.ts'),
             name: 'Elevation',
             formats: ['es', 'umd', 'iife'],
-            fileName: 'index',
+            fileName: format => {
+                switch (format) {
+                    case 'es':
+                        return 'index.esm.js';
+                    case 'umd':
+                        return 'index.umd.js';
+                    case 'iife':
+                        return 'index.min.js';
+                    default:
+                        return `index.${format}.js`;
+                }
+            },
         },
         sourcemap: true,
     },
