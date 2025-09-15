@@ -8,7 +8,9 @@
 
 A TypeScript library for retrieving elevation data from geographic coordinates using terrain RGB tiles.
 
-📦 **[npm package](https://www.npmjs.com/package/@glandais/elevation)** | 🌐 **[Live Demo](https://glandais.github.io/elevation/)**
+- 🚀 **[GitHub](https://github.com/glandais/elevation)**
+- 📦 **[npm package](https://www.npmjs.com/package/@glandais/elevation)**
+- 🌐 **[Live Demo](https://glandais.github.io/elevation/)**
 
 ## Features
 
@@ -67,20 +69,6 @@ const coordinates = [
 
 const elevations = await provider.getElevations(coordinates);
 console.log('Elevations:', elevations); // [elevation1, elevation2, elevation3]
-```
-
-### Preloading for Performance
-
-```typescript
-// Preload tiles for a bounding box
-const southWest = { latitude: 47.0, longitude: -2.0 };
-const northEast = { latitude: 47.5, longitude: -1.0 };
-
-await provider.preloadTiles(southWest, northEast);
-console.log('Tiles preloaded for region');
-
-// Subsequent requests in this area will be much faster
-const elevation = await provider.getElevation(47.2, -1.5); // Uses cached tile
 ```
 
 ### Cache Management
@@ -148,26 +136,6 @@ const elevations = await provider.getElevations([
 ]);
 ```
 
-##### `preloadTiles(southWest: Coordinates, northEast: Coordinates): Promise<void>`
-
-Preload tiles for a bounding box.
-
-```typescript
-await provider.preloadTiles(
-    { latitude: 47.0, longitude: -2.0 },
-    { latitude: 47.5, longitude: -1.0 }
-);
-```
-
-##### `getCacheStats(): CacheStats`
-
-Get cache usage statistics.
-
-```typescript
-const stats = provider.getCacheStats();
-console.log(`Cache: ${stats.size}/${stats.maxSize} tiles`);
-```
-
 ##### `clearCache(): void`
 
 Clear the tile cache.
@@ -197,24 +165,9 @@ console.log(attribution.text);
 //  Data processing by Mapzen/Tilezen."
 ```
 
-##### `isEnvironmentSupported(): boolean`
-
-Check if the current environment supports the elevation provider.
-
-```typescript
-if (ElevationProvider.isEnvironmentSupported()) {
-    const provider = new ElevationProvider();
-}
-```
-
 ### Types
 
 ```typescript
-interface Coordinates {
-    readonly latitude: number;
-    readonly longitude: number;
-}
-
 interface ElevationProviderConfig {
     readonly zoomLevel?: number;
     readonly cacheSize?: number;
@@ -260,8 +213,6 @@ Each tile uses approximately 262KB of memory (256×256×4 bytes). With the defau
 
 ### Network Requests
 
-- Tiles are cached with `Cache-Control: max-age=86400` (24 hours)
-- Use `preloadTiles()` for areas with known usage patterns
 - Consider reducing `zoomLevel` for applications with lower precision requirements
 
 ### Optimization Tips
@@ -277,13 +228,6 @@ const elevations = await provider.getElevations([
     { latitude: 47.2, longitude: -1.5 },
     { latitude: 47.3, longitude: -1.6 },
 ]);
-
-// Best: Preload + batch
-await provider.preloadTiles(
-    { latitude: 47.0, longitude: -2.0 },
-    { latitude: 47.5, longitude: -1.0 }
-);
-const elevations = await provider.getElevations(coordinates);
 ```
 
 ## Error Handling
@@ -386,7 +330,7 @@ npm run test:coverage
 2. Create a feature branch: `git checkout -b feature/amazing-feature`
 3. Make your changes and add tests
 4. Ensure tests pass: `npm test`
-5. Commit your changes: `git commit -m 'Add amazing feature'`
+5. Commit your changes: `git commit -m 'feat: add amazing feature'`
 6. Push to the branch: `git push origin feature/amazing-feature`
 7. Open a Pull Request
 
