@@ -154,30 +154,56 @@ export class ElevationProvider {
         return { tile: { z, x: tileX, y: tileY }, x, y };
     }
 
-    /**
-     * Batch get elevations for multiple coordinates
-     */
-    public async getInterpolatedElevations(
-        coordinates: Array<{ latitude: number; longitude: number }>
-    ): Promise<number[]> {
-        const promises = coordinates.map(coord =>
-            this.getInterpolatedElevation(coord.latitude, coord.longitude)
-        );
-
-        return Promise.all(promises);
+    public async getInterpolatedElevations(coordinates: Iterator<Coordinates>): Promise<number[]> {
+        const f = (coord: Coordinates) =>
+            this.getInterpolatedElevation(coord.latitude, coord.longitude);
+        return this.computeElevations(coordinates, f);
     }
 
-    /**
-     * Batch get elevations for multiple coordinates
-     */
-    public async getElevations(
-        coordinates: Array<{ latitude: number; longitude: number }>
+    public async getInterpolatedElevationsFromArray(
+        coordinates: Array<Coordinates>
     ): Promise<number[]> {
-        const promises = coordinates.map(coord =>
-            this.getElevation(coord.latitude, coord.longitude)
-        );
+        return this.getInterpolatedElevations(coordinates.values());
+    }
 
-        return Promise.all(promises);
+    public async getElevationsFrom(coordinates: Iterator<Coordinates>): Promise<number[]> {
+        const f = (coord: Coordinates) => this.getElevation(coord.latitude, coord.longitude);
+        return this.computeElevations(coordinates, f);
+    }
+
+    public async getElevationsFromArray(coordinates: Array<Coordinates>): Promise<number[]> {
+        return this.getElevationsFrom(coordinates.values());
+    }
+
+    private async computeElevations(
+        coordinates: Iterator<Coordinates>,
+        f: (coord: Coordinates) => Promise<number>
+    ): Promise<number[]> {
+        const batchSize = 100;
+        const allResults: number[] = [];
+        let batch: Promise<number>[] = [];
+
+        let result = coordinates.next();
+        while (!result.done) {
+            batch.push(f(result.value));
+
+            // Process batch when it reaches the batch size
+            if (batch.length >= batchSize) {
+                const batchResults = await Promise.all(batch);
+                allResults.push(...batchResults);
+                batch = [];
+            }
+
+            result = coordinates.next();
+        }
+
+        // Process any remaining items in the last batch
+        if (batch.length > 0) {
+            const batchResults = await Promise.all(batch);
+            allResults.push(...batchResults);
+        }
+
+        return allResults;
     }
 
     /**

@@ -234,7 +234,7 @@ describe('ElevationProvider', () => {
                     { latitude: -1, longitude: -1 },
                 ];
 
-                const elevations = await provider.getElevations(coordinates);
+                const elevations = await provider.getElevationsFromArray(coordinates);
 
                 expect(elevations).toHaveLength(3);
                 elevations.forEach(elevation => {
@@ -244,13 +244,13 @@ describe('ElevationProvider', () => {
             });
 
             it('should handle empty array', async () => {
-                const elevations = await provider.getElevations([]);
+                const elevations = await provider.getElevationsFromArray([]);
                 expect(elevations).toEqual([]);
             });
 
             it('should handle single coordinate', async () => {
                 const coordinates = [{ latitude: 0, longitude: 0 }];
-                const elevations = await provider.getElevations(coordinates);
+                const elevations = await provider.getElevationsFromArray(coordinates);
 
                 expect(elevations).toHaveLength(1);
                 expect(typeof elevations[0]).toBe('number');
@@ -262,7 +262,7 @@ describe('ElevationProvider', () => {
                     { latitude: 90, longitude: 0 }, // Invalid
                 ];
 
-                await expect(provider.getElevations(coordinates)).rejects.toThrow();
+                await expect(provider.getElevationsFromArray(coordinates)).rejects.toThrow();
             });
         });
 
@@ -273,7 +273,7 @@ describe('ElevationProvider', () => {
                     { latitude: 1, longitude: 1 },
                 ];
 
-                const elevations = await provider.getInterpolatedElevations(coordinates);
+                const elevations = await provider.getInterpolatedElevationsFromArray(coordinates);
 
                 expect(elevations).toHaveLength(2);
                 elevations.forEach(elevation => {
@@ -283,7 +283,7 @@ describe('ElevationProvider', () => {
             });
 
             it('should handle empty array', async () => {
-                const elevations = await provider.getInterpolatedElevations([]);
+                const elevations = await provider.getInterpolatedElevationsFromArray([]);
                 expect(elevations).toEqual([]);
             });
         });

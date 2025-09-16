@@ -1,4 +1,4 @@
-const g = class g {
+const m = class m {
   static toPixel(t, e) {
     if (!this.isValidLatitude(t.latitude))
       throw new Error(
@@ -8,19 +8,19 @@ const g = class g {
       throw new Error(`Invalid longitude: ${t.longitude}. Must be between -180 and 180`);
     if (!this.isValidZoomLevel(e))
       throw new Error(`Invalid zoom level: ${e}. Must be between 0 and 15`);
-    const i = this.degToRad(t.latitude), a = Math.pow(2, e), r = (t.longitude + 180) / 360 * a, n = (1 - Math.log(Math.tan(i) + 1 / Math.cos(i)) / Math.PI) / 2 * a;
-    let l = Math.floor(r), o = Math.floor(n);
+    const i = this.degToRad(t.latitude), a = Math.pow(2, e), s = (t.longitude + 180) / 360 * a, n = (1 - Math.log(Math.tan(i) + 1 / Math.cos(i)) / Math.PI) / 2 * a;
+    let r = Math.floor(s), l = Math.floor(n);
     const c = a - 1;
-    l = Math.max(0, Math.min(c, l)), o = Math.max(0, Math.min(c, o));
-    const d = Math.floor((r - l) * this.TILE_SIZE), m = Math.floor((n - o) * this.TILE_SIZE);
+    r = Math.max(0, Math.min(c, r)), l = Math.max(0, Math.min(c, l));
+    const d = Math.floor((s - r) * this.TILE_SIZE), g = Math.floor((n - l) * this.TILE_SIZE);
     return {
       tile: {
         z: e,
-        x: l,
-        y: o
+        x: r,
+        y: l
       },
       x: Math.max(0, Math.min(this.TILE_SIZE - 1, d)),
-      y: Math.max(0, Math.min(this.TILE_SIZE - 1, m))
+      y: Math.max(0, Math.min(this.TILE_SIZE - 1, g))
     };
   }
   static degToRad(t) {
@@ -36,8 +36,8 @@ const g = class g {
     return Number.isInteger(t) && t >= 0 && t <= 15;
   }
 };
-g.TILE_SIZE = 256;
-let u = g;
+m.TILE_SIZE = 256;
+let u = m;
 const w = {
   available: [],
   idleSize: 5,
@@ -45,11 +45,11 @@ const w = {
   // 30 seconds
   idleTimer: null,
   acquire() {
-    let s = this.available.pop();
-    return s || (s = document.createElement("canvas")), this._resetIdleTimer(), s;
+    let o = this.available.pop();
+    return o || (o = document.createElement("canvas")), this._resetIdleTimer(), o;
   },
-  release(s) {
-    s && (this.available.push(s), this._resetIdleTimer());
+  release(o) {
+    o && (this.available.push(o), this._resetIdleTimer());
   },
   _resetIdleTimer() {
     this.idleTimer && clearTimeout(this.idleTimer), this.idleTimer = setTimeout(() => this._trim(), this.idleTimeout);
@@ -147,27 +147,48 @@ class x {
   }
 }
 class I {
-  constructor() {
-    this.locks = /* @__PURE__ */ new Map();
+  constructor(t) {
+    this.locks = /* @__PURE__ */ new Map(), this.loadingCount = 0, this.waitQueue = [], this.maxConcurrent = t;
   }
   async acquire(t, e) {
     if (this.locks.has(t))
       return this.locks.get(t);
+    if (await this.acquireLoadingSlot(), this.locks.has(t))
+      return this.releaseLoadingSlot(), this.locks.get(t);
     const i = (async () => {
       try {
         return await e();
       } finally {
-        this.locks.delete(t);
+        this.locks.delete(t), this.releaseLoadingSlot();
       }
     })();
     return this.locks.set(t, i), i;
   }
+  async acquireLoadingSlot() {
+    if (this.loadingCount < this.maxConcurrent) {
+      this.loadingCount++;
+      return;
+    }
+    return new Promise((t) => {
+      this.waitQueue.push(t);
+    });
+  }
+  releaseLoadingSlot() {
+    if (this.waitQueue.length > 0) {
+      const t = this.waitQueue.shift();
+      t && t();
+    } else
+      this.loadingCount--;
+  }
+  getLoadingCount() {
+    return this.locks.size;
+  }
 }
 class T {
   constructor(t = 100, e, i, a) {
-    if (this.head = null, this.tail = null, this.lock = new I(), t <= 0)
+    if (this.head = null, this.tail = null, t <= 0)
       throw new Error("Cache size must be greater than 0");
-    this.maxSize = t, this.keyMapper = e, this.valueBuilder = i, this.cleanupFn = a, this.cache = /* @__PURE__ */ new Map(), this.lruOrder = /* @__PURE__ */ new Map();
+    this.maxSize = t, this.keyMapper = e, this.valueBuilder = i, this.cleanupFn = a, this.cache = /* @__PURE__ */ new Map(), this.lruOrder = /* @__PURE__ */ new Map(), this.lock = new I(t);
   }
   /**
    * Get item from cache
@@ -178,8 +199,8 @@ class T {
       const a = this.cache.get(e);
       if (a)
         return this.moveToFront(e), a;
-      const r = await this.valueBuilder(t);
-      return this.set(e, r), r;
+      const s = await this.valueBuilder(t);
+      return this.set(e, s), s;
     });
   }
   /**
@@ -324,43 +345,55 @@ const h = class h {
     return await this.getInterpolatedElevationPixel(a);
   }
   async getInterpolatedElevationPixel(t) {
-    const e = Math.floor(t.x), i = Math.floor(t.y), a = e + 1, r = i + 1, n = t.x - e, l = t.y - i, o = await this.getElevationPixel(
+    const e = Math.floor(t.x), i = Math.floor(t.y), a = e + 1, s = i + 1, n = t.x - e, r = t.y - i, l = await this.getElevationPixel(
       this.normalizePixel({ tile: t.tile, x: e, y: i })
     ), c = await this.getElevationPixel(
       this.normalizePixel({ tile: t.tile, x: a, y: i })
     ), d = await this.getElevationPixel(
-      this.normalizePixel({ tile: t.tile, x: e, y: r })
-    ), m = await this.getElevationPixel(
-      this.normalizePixel({ tile: t.tile, x: a, y: r })
-    ), f = o * (1 - n) + c * n, E = d * (1 - n) + m * n;
-    return f * (1 - l) + E * l;
+      this.normalizePixel({ tile: t.tile, x: e, y: s })
+    ), g = await this.getElevationPixel(
+      this.normalizePixel({ tile: t.tile, x: a, y: s })
+    ), f = l * (1 - n) + c * n, E = d * (1 - n) + g * n;
+    return f * (1 - r) + E * r;
   }
   normalizePixel(t) {
     let { x: e, y: i } = t;
     const a = t.tile;
-    let r = a.x, n = a.y;
-    const l = a.z;
-    e < 0 && (e += h.TILE_SIZE, r -= 1), e >= h.TILE_SIZE && (e -= h.TILE_SIZE, r += 1), i < 0 && (i += h.TILE_SIZE, n -= 1), i >= h.TILE_SIZE && (i -= h.TILE_SIZE, n += 1);
-    const o = Math.pow(2, l) - 1;
-    return r = Math.max(0, Math.min(o, r)), n = Math.max(0, Math.min(o, n)), { tile: { z: l, x: r, y: n }, x: e, y: i };
+    let s = a.x, n = a.y;
+    const r = a.z;
+    e < 0 && (e += h.TILE_SIZE, s -= 1), e >= h.TILE_SIZE && (e -= h.TILE_SIZE, s += 1), i < 0 && (i += h.TILE_SIZE, n -= 1), i >= h.TILE_SIZE && (i -= h.TILE_SIZE, n += 1);
+    const l = Math.pow(2, r) - 1;
+    return s = Math.max(0, Math.min(l, s)), n = Math.max(0, Math.min(l, n)), { tile: { z: r, x: s, y: n }, x: e, y: i };
   }
-  /**
-   * Batch get elevations for multiple coordinates
-   */
   async getInterpolatedElevations(t) {
-    const e = t.map(
-      (i) => this.getInterpolatedElevation(i.latitude, i.longitude)
-    );
-    return Promise.all(e);
+    const e = (i) => this.getInterpolatedElevation(i.latitude, i.longitude);
+    return this.computeElevations(t, e);
   }
-  /**
-   * Batch get elevations for multiple coordinates
-   */
-  async getElevations(t) {
-    const e = t.map(
-      (i) => this.getElevation(i.latitude, i.longitude)
-    );
-    return Promise.all(e);
+  async getInterpolatedElevationsFromArray(t) {
+    return this.getInterpolatedElevations(t.values());
+  }
+  async getElevationsFrom(t) {
+    const e = (i) => this.getElevation(i.latitude, i.longitude);
+    return this.computeElevations(t, e);
+  }
+  async getElevationsFromArray(t) {
+    return this.getElevationsFrom(t.values());
+  }
+  async computeElevations(t, e) {
+    const a = [];
+    let s = [], n = t.next();
+    for (; !n.done; ) {
+      if (s.push(e(n.value)), s.length >= 100) {
+        const r = await Promise.all(s);
+        a.push(...r), s = [];
+      }
+      n = t.next();
+    }
+    if (s.length > 0) {
+      const r = await Promise.all(s);
+      a.push(...r);
+    }
+    return a;
   }
   /**
    * Get current configuration

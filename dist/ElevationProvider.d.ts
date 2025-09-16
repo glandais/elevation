@@ -1,4 +1,4 @@
-import { ElevationProviderConfig, Attribution } from './types';
+import { Coordinates, ElevationProviderConfig, Attribution } from './types';
 /**
  * Main API class for retrieving elevation data from geographic coordinates
  */
@@ -21,20 +21,11 @@ export declare class ElevationProvider {
     getInterpolatedElevation(latitude: number, longitude: number): Promise<number>;
     private getInterpolatedElevationPixel;
     private normalizePixel;
-    /**
-     * Batch get elevations for multiple coordinates
-     */
-    getInterpolatedElevations(coordinates: Array<{
-        latitude: number;
-        longitude: number;
-    }>): Promise<number[]>;
-    /**
-     * Batch get elevations for multiple coordinates
-     */
-    getElevations(coordinates: Array<{
-        latitude: number;
-        longitude: number;
-    }>): Promise<number[]>;
+    getInterpolatedElevations(coordinates: Iterator<Coordinates>): Promise<number[]>;
+    getInterpolatedElevationsFromArray(coordinates: Array<Coordinates>): Promise<number[]>;
+    getElevationsFrom(coordinates: Iterator<Coordinates>): Promise<number[]>;
+    getElevationsFromArray(coordinates: Array<Coordinates>): Promise<number[]>;
+    private computeElevations;
     /**
      * Get current configuration
      */

@@ -1,21 +1,67 @@
 class ReentrantLock<T> {
     private readonly locks = new Map<string, Promise<T>>();
+    private readonly maxConcurrent: number;
+    private loadingCount: number = 0;
+    private readonly waitQueue: Array<() => void> = [];
+
+    constructor(maxConcurrent: number) {
+        this.maxConcurrent = maxConcurrent;
+    }
 
     public async acquire(key: string, fn: () => Promise<T>): Promise<T> {
+        // First check if we already have this key being loaded (deduplication)
         if (this.locks.has(key)) {
             return this.locks.get(key)!;
         }
 
+        // Wait for a loading slot for this new unique operation
+        await this.acquireLoadingSlot();
+
+        // Double-check after acquiring slot (race condition protection)
+        if (this.locks.has(key)) {
+            this.releaseLoadingSlot();
+            return this.locks.get(key)!;
+        }
+
+        // Create the promise with proper cleanup
         const promise = (async () => {
             try {
                 return await fn();
             } finally {
                 this.locks.delete(key);
+                this.releaseLoadingSlot();
             }
         })();
 
         this.locks.set(key, promise);
         return promise;
+    }
+
+    private async acquireLoadingSlot(): Promise<void> {
+        if (this.loadingCount < this.maxConcurrent) {
+            this.loadingCount++;
+            return;
+        }
+
+        // Wait until a slot becomes available
+        return new Promise<void>((resolve: () => void) => {
+            this.waitQueue.push(resolve);
+        });
+    }
+
+    private releaseLoadingSlot(): void {
+        if (this.waitQueue.length > 0) {
+            const next = this.waitQueue.shift();
+            if (next) {
+                next();
+            }
+        } else {
+            this.loadingCount--;
+        }
+    }
+
+    public getLoadingCount(): number {
+        return this.locks.size;
     }
 }
 
@@ -32,7 +78,7 @@ export class Cache<K, T> {
     private readonly lruOrder: Map<string, { prev: string | null; next: string | null }>;
     private head: string | null = null;
     private tail: string | null = null;
-    private readonly lock = new ReentrantLock<T>();
+    private readonly lock: ReentrantLock<T>;
 
     constructor(
         maxSize: number = 100,
@@ -50,6 +96,7 @@ export class Cache<K, T> {
         this.cleanupFn = cleanupFn;
         this.cache = new Map();
         this.lruOrder = new Map();
+        this.lock = new ReentrantLock<T>(maxSize);
     }
 
     /**
