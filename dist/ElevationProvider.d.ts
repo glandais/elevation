@@ -1,4 +1,4 @@
-import { Coordinates, CoordinatesElevation, ElevationProviderConfig, Attribution, FilterOptions } from './types';
+import { Coordinates, CoordinatesElevation, ElevationProviderConfig, Attribution, GetElevationOptions, GetElevationsFromOptions, GetElevationsBetweenOptions, GetElevationsAlongOptions } from './types';
 /**
  * Main API class for retrieving elevation data from geographic coordinates
  */
@@ -20,31 +20,28 @@ export declare class ElevationProvider {
      * Get elevation at specific coordinates
      * @param latitude - Latitude in decimal degrees
      * @param longitude - Longitude in decimal degrees
-     * @param interpolation - Use bilinear interpolation for smoother results (default: true)
+     * @param options - Optional parameters
      */
-    getElevation(latitude: number, longitude: number, interpolation?: boolean): Promise<number>;
+    getElevation(latitude: number, longitude: number, options?: GetElevationOptions): Promise<number>;
     /**
      * Get elevations for multiple coordinates from an interable
      * @param coordinates - Iteratable of coordinates
-     * @param interpolation - Use bilinear interpolation for smoother results (default: true)
+     * @param options - Optional parameters
      */
-    getElevationsFrom(coordinates: Iterable<Coordinates>, interpolation?: boolean): Promise<number[]>;
+    getElevationsFrom(coordinates: Iterable<Coordinates>, options?: GetElevationsFromOptions): Promise<number[]>;
     /**
      * Get elevations between two coordinates at regular intervals
      * @param coordinate1 - Start coordinate
      * @param coordinate2 - End coordinate
-     * @param step - Distance between elevation points in meters
-     * @param interpolation - Use bilinear interpolation for smoother results (default: true)
+     * @param options - Optional parameters
      */
-    getElevationsBetween(coordinate1: Coordinates, coordinate2: Coordinates, step: number, interpolation?: boolean): Promise<CoordinatesElevation[]>;
+    getElevationsBetween(coordinate1: Coordinates, coordinate2: Coordinates, options?: GetElevationsBetweenOptions): Promise<CoordinatesElevation[]>;
     /**
      * Get elevations along a path defined by multiple coordinates
      * @param path - Array of coordinates defining the path
-     * @param step - Distance between elevation points in meters
-     * @param interpolation - Use bilinear interpolation for smoother results (default: true)
-     * @param filterOptions - Optional Douglas-Peucker filtering options
+     * @param options - Optional parameters
      */
-    getElevationsAlong(path: Coordinates[], step: number, interpolation?: boolean, filterOptions?: FilterOptions): Promise<CoordinatesElevation[]>;
+    getElevationsAlong(path: Coordinates[], options?: GetElevationsAlongOptions): Promise<CoordinatesElevation[]>;
     /**
      * Clear tile cache
      */

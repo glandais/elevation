@@ -70,12 +70,12 @@ test.describe('ElevationProvider Browser Tests', () => {
             try {
                 const elevationProvider: ElevationProvider =
                     new window.Elevation.ElevationProvider();
-                const elevation = await elevationProvider.getElevation(47.2, -1.5, false);
-                const interpolatedElevation = await elevationProvider.getElevation(
-                    47.2,
-                    -1.5,
-                    true
-                );
+                const elevation = await elevationProvider.getElevation(47.2, -1.5, {
+                    interpolation: false,
+                });
+                const interpolatedElevation = await elevationProvider.getElevation(47.2, -1.5, {
+                    interpolation: true,
+                });
                 return {
                     success: true,
                     elevation,
@@ -154,7 +154,9 @@ test.describe('ElevationProvider Browser Tests', () => {
 
                 console.log(`Created array with ${array.length} coordinates`);
 
-                const elevations = await elevationProvider.getElevationsFrom(array, true);
+                const elevations = await elevationProvider.getElevationsFrom(array, {
+                    interpolation: true,
+                });
                 return {
                     success: true,
                     elevations,
@@ -193,8 +195,7 @@ test.describe('ElevationProvider Browser Tests', () => {
                 const elevations = await elevationProvider.getElevationsBetween(
                     coord1,
                     coord2,
-                    50, // 50m step
-                    true // interpolation
+                    { step: 50, interpolation: true } // 50m step with interpolation
                 );
 
                 return {
@@ -246,8 +247,7 @@ test.describe('ElevationProvider Browser Tests', () => {
 
                 const elevations = await elevationProvider.getElevationsAlong(
                     path,
-                    50, // 50m step
-                    true // interpolation
+                    { step: 50, interpolation: true } // 50m step with interpolation
                 );
 
                 return {
@@ -302,7 +302,10 @@ test.describe('ElevationProvider Browser Tests', () => {
                 const coord1 = { latitude: 47.0, longitude: -1.0 }; // France
                 const coord2 = { latitude: 40.7, longitude: -74.0 }; // New York
 
-                await elevationProvider.getElevationsBetween(coord1, coord2, 50, true);
+                await elevationProvider.getElevationsBetween(coord1, coord2, {
+                    step: 50,
+                    interpolation: true,
+                });
 
                 return {
                     success: false,
@@ -342,24 +345,24 @@ test.describe('ElevationProvider Browser Tests', () => {
                 // Get elevations without filtering
                 const unfiltered = await elevationProvider.getElevationsAlong(
                     mountainPath,
-                    25, // 25m steps
-                    true
+                    { step: 25, interpolation: true } // 25m steps
                 );
 
                 // Get elevations with light filtering
-                const lightFiltered = await elevationProvider.getElevationsAlong(
-                    mountainPath,
-                    25,
-                    true,
-                    { enabled: true, tolerance: 5, zExaggeration: 3 }
-                );
+                const lightFiltered = await elevationProvider.getElevationsAlong(mountainPath, {
+                    step: 25,
+                    interpolation: true,
+                    filterOptions: { enabled: true, tolerance: 5, zExaggeration: 3 },
+                });
 
                 // Get elevations with aggressive filtering
                 const aggressiveFiltered = await elevationProvider.getElevationsAlong(
                     mountainPath,
-                    25,
-                    true,
-                    { enabled: true, tolerance: 25, zExaggeration: 3 }
+                    {
+                        step: 25,
+                        interpolation: true,
+                        filterOptions: { enabled: true, tolerance: 25, zExaggeration: 3 },
+                    }
                 );
 
                 return {
@@ -490,19 +493,25 @@ test.describe('ElevationProvider Browser Tests', () => {
                 ];
 
                 // Get unfiltered elevations first
-                const unfiltered = await elevationProvider.getElevationsAlong(testPath, 20, true);
+                const unfiltered = await elevationProvider.getElevationsAlong(testPath, {
+                    step: 20,
+                    interpolation: true,
+                });
 
                 // Use DouglasPeucker to estimate tolerance
                 const estimatedTolerance =
                     window.Elevation.DouglasPeucker.estimateTolerance(unfiltered);
 
                 // Apply filtering with estimated tolerance
-                const smartFiltered = await elevationProvider.getElevationsAlong(
-                    testPath,
-                    20,
-                    true,
-                    { enabled: true, tolerance: estimatedTolerance, zExaggeration: 3 }
-                );
+                const smartFiltered = await elevationProvider.getElevationsAlong(testPath, {
+                    step: 20,
+                    interpolation: true,
+                    filterOptions: {
+                        enabled: true,
+                        tolerance: estimatedTolerance,
+                        zExaggeration: 3,
+                    },
+                });
 
                 // Calculate reduction percentage
                 const reductionPercentage = window.Elevation.DouglasPeucker.calculateReduction(

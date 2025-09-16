@@ -113,3 +113,64 @@ export interface Vector3D {
     readonly y: number;
     readonly z: number;
 }
+
+/**
+ * Options for getElevation method
+ */
+export interface GetElevationOptions {
+    /**
+     * Use bilinear interpolation for smoother results
+     * Default: true
+     */
+    readonly interpolation?: boolean;
+}
+
+/**
+ * Options for getElevationsFrom method
+ */
+export interface GetElevationsFromOptions {
+    /**
+     * Use bilinear interpolation for smoother results
+     * Default: true
+     */
+    readonly interpolation?: boolean;
+}
+
+/**
+ * Options for getElevationsBetween method
+ */
+export interface GetElevationsBetweenOptions {
+    /**
+     * Distance between elevation points in meters
+     * Default: 10
+     */
+    readonly step?: number;
+
+    /**
+     * Use bilinear interpolation for smoother results
+     * Default: true
+     */
+    readonly interpolation?: boolean;
+}
+
+/**
+ * Options for getElevationsAlong method
+ */
+export interface GetElevationsAlongOptions {
+    /**
+     * Distance between elevation points in meters
+     * Default: 10
+     */
+    readonly step?: number;
+
+    /**
+     * Use bilinear interpolation for smoother results
+     * Default: true
+     */
+    readonly interpolation?: boolean;
+
+    /**
+     * Optional Douglas-Peucker filtering options
+     */
+    readonly filterOptions?: FilterOptions;
+}

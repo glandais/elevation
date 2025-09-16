@@ -659,9 +659,7 @@
                     // Apply filtering to original data
                     const filtered = await elevationProvider.getElevationsAlong(
                         pathPoints,
-                        25, // 25m step
-                        true, // interpolation
-                        filterOptions
+                        { step: 25, interpolation: true, filterOptions }
                     );
 
                     filteredElevationProfile = filtered;
@@ -947,8 +945,7 @@
                     if (pathPoints.length >= 2) {
                         const elevationProfile = await elevationProvider.getElevationsAlong(
                             pathPoints,
-                            25, // 25m step
-                            true // interpolation
+                            { step: 25, interpolation: true }
                         );
 
                         // Store original profile for filtering

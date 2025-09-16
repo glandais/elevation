@@ -5,7 +5,10 @@ import type {
     CoordinatesElevation,
     ElevationProviderConfig,
     Attribution,
-    FilterOptions,
+    GetElevationOptions,
+    GetElevationsFromOptions,
+    GetElevationsBetweenOptions,
+    GetElevationsAlongOptions,
 } from './types';
 
 /**
@@ -66,13 +69,14 @@ export class ElevationProvider {
      * Get elevation at specific coordinates
      * @param latitude - Latitude in decimal degrees
      * @param longitude - Longitude in decimal degrees
-     * @param interpolation - Use bilinear interpolation for smoother results (default: true)
+     * @param options - Optional parameters
      */
     public async getElevation(
         latitude: number,
         longitude: number,
-        interpolation: boolean = true
+        options?: GetElevationOptions
     ): Promise<number> {
+        const interpolation = options?.interpolation ?? true;
         const coords: Coordinates = { latitude, longitude };
         return await this.calculator.getElevation(coords, this.config.zoomLevel, interpolation);
     }
@@ -84,12 +88,13 @@ export class ElevationProvider {
     /**
      * Get elevations for multiple coordinates from an interable
      * @param coordinates - Iteratable of coordinates
-     * @param interpolation - Use bilinear interpolation for smoother results (default: true)
+     * @param options - Optional parameters
      */
     public async getElevationsFrom(
         coordinates: Iterable<Coordinates>,
-        interpolation: boolean = true
+        options?: GetElevationsFromOptions
     ): Promise<number[]> {
+        const interpolation = options?.interpolation ?? true;
         return this.batchCalculator.getElevationsFrom(
             coordinates,
             this.config.zoomLevel,
@@ -101,15 +106,15 @@ export class ElevationProvider {
      * Get elevations between two coordinates at regular intervals
      * @param coordinate1 - Start coordinate
      * @param coordinate2 - End coordinate
-     * @param step - Distance between elevation points in meters
-     * @param interpolation - Use bilinear interpolation for smoother results (default: true)
+     * @param options - Optional parameters
      */
     public async getElevationsBetween(
         coordinate1: Coordinates,
         coordinate2: Coordinates,
-        step: number,
-        interpolation: boolean = true
+        options?: GetElevationsBetweenOptions
     ): Promise<CoordinatesElevation[]> {
+        const step = options?.step ?? 10;
+        const interpolation = options?.interpolation ?? true;
         return this.batchCalculator.getElevationsBetween(
             coordinate1,
             coordinate2,
@@ -122,16 +127,15 @@ export class ElevationProvider {
     /**
      * Get elevations along a path defined by multiple coordinates
      * @param path - Array of coordinates defining the path
-     * @param step - Distance between elevation points in meters
-     * @param interpolation - Use bilinear interpolation for smoother results (default: true)
-     * @param filterOptions - Optional Douglas-Peucker filtering options
+     * @param options - Optional parameters
      */
     public async getElevationsAlong(
         path: Coordinates[],
-        step: number,
-        interpolation: boolean = true,
-        filterOptions?: FilterOptions
+        options?: GetElevationsAlongOptions
     ): Promise<CoordinatesElevation[]> {
+        const step = options?.step ?? 10;
+        const interpolation = options?.interpolation ?? true;
+        const filterOptions = options?.filterOptions;
         return this.batchCalculator.getElevationsAlong(
             path,
             this.config.zoomLevel,
