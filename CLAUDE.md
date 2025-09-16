@@ -52,6 +52,9 @@ The library follows a modular architecture with clear separation of concerns:
 4. If not cached, TileFetcher retrieves PNG tile from AWS S3
 5. ElevationDecoder extracts elevation from RGB pixel values
 6. Optional bilinear interpolation for smoother results
+7. For elevation profiling: BatchCalculator generates coordinate sequences
+8. Optional distance-based smoothing using ElevationSmoother
+9. Optional Douglas-Peucker filtering for profile simplification
 
 ### Key Technical Details
 
@@ -84,15 +87,133 @@ https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png
 3. **Coordinate Limits**: Latitude must be between -85.0511 and 85.0511 (Web Mercator bounds)
 4. **Memory Usage**: Each tile uses ~262KB (256×256×4 bytes)
 
-## Testing Approach
+## Testing Strategy
 
-Tests use Jest with jsdom environment. Key test areas:
+The project employs a comprehensive dual-testing approach to ensure both unit-level correctness and real-world browser compatibility.
 
-- Coordinate conversion accuracy
-- Cache behavior and LRU eviction
-- Network error handling
-- Bilinear interpolation correctness
-- Edge cases (boundary coordinates, invalid inputs)
+### Testing Infrastructure
+
+#### 1. Jest Unit Tests (Primary Testing Layer)
+
+- **Framework**: Jest with TypeScript support (`ts-jest`)
+- **Environment**: jsdom for browser API simulation
+- **Setup**: Custom global mocks for ImageData and Canvas APIs (`test/setup.ts`)
+- **Structure**: 17 test files mirroring `src/` directory structure
+- **Coverage**: 80% minimum threshold, targeting ~100% coverage
+
+```bash
+npm test              # Run Jest unit tests
+npm run test:watch    # Run tests in watch mode
+npm run test:coverage # Generate coverage report
+```
+
+#### 2. Playwright Browser Tests (Integration Layer)
+
+- **Framework**: Playwright for real browser testing
+- **Browsers**: Chromium (default), Firefox and Safari available
+- **Server**: Local development server (`serve . -l 3000`)
+- **Purpose**: End-to-end validation of browser compatibility
+
+```bash
+npm run test:browser  # Run Playwright tests
+```
+
+### Testing Patterns and Best Practices
+
+#### Jest Unit Testing Approach
+
+- **Comprehensive Mocking**: All external dependencies mocked using `jest.mock()`
+- **Dependency Injection**: Mock instances injected into constructors
+- **Private Method Testing**: TypeScript interfaces used when testing private methods is necessary
+- **Edge Case Coverage**: Boundary conditions, error scenarios, invalid inputs systematically tested
+
+**Example Mocking Pattern**:
+
+```typescript
+// Mock dependencies
+jest.mock('../../src/tile/TileManager');
+jest.mock('../../src/calculator/ElevationCalculator');
+
+const MockedTileManager = TileManager as jest.MockedClass<typeof TileManager>;
+const mockElevationCalculator = new MockedElevationCalculator(mockTileManager);
+
+// Test with mocked dependencies
+batchCalculator = new BatchCalculator(mockElevationCalculator);
+```
+
+#### Browser Testing Approach
+
+- **Global Library Testing**: Validates `window.Elevation` namespace accessibility
+- **Real Browser APIs**: Tests actual ImageData, Canvas, and fetch implementations
+- **Cross-browser Validation**: Ensures compatibility across modern browsers
+
+### Specific Testing Areas
+
+#### Core API Testing
+
+- **ElevationProvider Methods**: All public methods with options interfaces
+- **Batch Operations**: getElevationsFrom, getElevationsBetween, getElevationsAlong
+- **Configuration Validation**: Constructor options and validation logic
+- **Cache Management**: clearCache functionality
+
+#### Algorithm Testing
+
+- **Distance Calculations**: Haversine, Euclidean 3D, point-to-segment distance
+- **Elevation Smoothing**: Distance-based smoothing with triangular kernel
+- **Profile Filtering**: Douglas-Peucker algorithm accuracy and 3D ECEF conversion
+- **Coordinate Generation**: Path interpolation and step-based coordinate sequences
+
+#### Mathematical Utilities
+
+- **Vector3D Operations**: Distance, dot product, cross product, normalization
+- **ECEF Conversion**: Geographic to Earth-Centered coordinates with elevation exaggeration
+- **Coordinate Systems**: WGS84 to Web Mercator tile coordinate conversion
+
+#### Infrastructure Testing
+
+- **Cache Behavior**: LRU eviction, memory management, performance
+- **Tile Fetching**: HTTP request handling, timeout management, error recovery
+- **Canvas Pool**: Resource management and cleanup
+
+#### Error Handling and Edge Cases
+
+- **Input Validation**: Invalid coordinates, zoom levels, parameters
+- **Boundary Conditions**: Coordinate limits, empty datasets, single points
+- **Network Failures**: Timeout handling, retry logic, graceful degradation
+- **Memory Management**: Large dataset handling, cache overflow scenarios
+
+### Test Organization
+
+#### Directory Structure
+
+```
+test/
+├── setup.ts                          # Global test setup and mocks
+├── calculator/                       # Calculator module tests
+│   ├── BatchCalculator.test.ts
+│   ├── ElevationCalculator.test.ts
+│   └── ElevationDecoder.test.ts
+├── utils/                            # Utility class tests
+│   ├── Distance.test.ts
+│   ├── ElevationSmoother.test.ts
+│   └── Constants.test.ts
+├── tile/                             # Tile management tests
+│   ├── cache/Cache.test.ts
+│   └── fetcher/TileFetcher.test.ts
+├── browser/                          # Browser integration tests
+│   └── elevation-provider-browser.test.ts
+├── ElevationProvider.test.ts         # Main API tests
+├── filtering.test.ts                 # 3D filtering algorithm tests
+└── index.test.ts                     # Public exports tests
+```
+
+#### Coverage Configuration
+
+- **Statements**: 80% minimum (targeting 100%)
+- **Branches**: 80% minimum (targeting 100%)
+- **Functions**: 80% minimum (targeting 100%)
+- **Lines**: 80% minimum (targeting 100%)
+- **Files**: All `src/**/*.ts` except test and declaration files
 
 ## Feature Completion Requirements
 

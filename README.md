@@ -22,6 +22,9 @@ A TypeScript library for retrieving elevation data from geographic coordinates u
 - 📦 **Multiple build formats** (ES modules, UMD, IIFE)
 - 🧪 **Thoroughly tested** with >95% code coverage
 - 🌍 **Bilinear interpolation** for smoother elevation values
+- 📈 **Elevation profiling** between coordinates and along multi-point paths
+- 🎛️ **Distance-based smoothing** with configurable window sizes
+- 🔬 **Douglas-Peucker filtering** for elevation profile simplification
 
 ## Quick Start
 
@@ -39,13 +42,13 @@ import { ElevationProvider } from '@glandais/elevation';
 // Create elevation provider with default settings
 const elevationProvider = new ElevationProvider();
 
-// Get elevation at specific coordinates
+// Get elevation at specific coordinates (with interpolation enabled by default)
 const elevation = await elevationProvider.getElevation(47.2, -1.5);
 console.log(`Elevation: ${elevation}m`);
 
-// Get smoother elevation with bilinear interpolation
-const interpolatedElevation = await elevationProvider.getInterpolatedElevation(47.2, -1.5);
-console.log(`Interpolated elevation: ${interpolatedElevation}m`);
+// Get elevation without interpolation
+const rawElevation = await elevationProvider.getElevation(47.2, -1.5, { interpolation: false });
+console.log(`Raw elevation: ${rawElevation}m`);
 ```
 
 ### Advanced Configuration
@@ -67,19 +70,74 @@ const coordinates = [
     { latitude: 51.5, longitude: -0.1 },
 ];
 
-const elevations = await provider.getElevations(coordinates);
+const elevations = await provider.getElevationsFrom(coordinates);
 console.log('Elevations:', elevations); // [elevation1, elevation2, elevation3]
 ```
 
 ### Cache Management
 
 ```typescript
-// Get cache statistics
-const stats = provider.getCacheStats();
-console.log(`Cache: ${stats.size}/${stats.maxSize} tiles, ${stats.memoryUsage} bytes`);
-
-// Clear cache
+// Clear cache when needed
 provider.clearCache();
+```
+
+### Elevation Profiling
+
+The library provides advanced elevation profiling capabilities for analyzing terrain along paths.
+
+#### Simple Elevation Profile
+
+```typescript
+// Get elevation profile between two points
+const profile = await provider.getElevationsBetween(
+    { latitude: 47.2, longitude: -1.5 }, // Start point
+    { latitude: 47.25, longitude: -1.45 }, // End point
+    { step: 25 } // 25 meters between points
+);
+
+console.log(`Profile contains ${profile.length} elevation points`);
+profile.forEach((point, index) => {
+    console.log(`Point ${index}: ${point.latitude}, ${point.longitude} - ${point.elevation}m`);
+});
+```
+
+#### Multi-Point Path Profile
+
+```typescript
+// Define a hiking trail with multiple waypoints
+const hikingTrail = [
+    { latitude: 47.2, longitude: -1.5 }, // Trailhead
+    { latitude: 47.22, longitude: -1.48 }, // First viewpoint
+    { latitude: 47.24, longitude: -1.46 }, // Ridge
+    { latitude: 47.26, longitude: -1.44 }, // Summit
+];
+
+// Get detailed elevation profile with smoothing
+const trailProfile = await provider.getElevationsAlong(hikingTrail, {
+    step: 10, // 10 meters between points
+    smoothingOptions: {
+        enabled: true,
+        windowSize: 30, // 30-meter smoothing window
+    },
+    filterOptions: {
+        enabled: true,
+        tolerance: 3, // 3-meter tolerance for filtering
+        zExaggeration: 2, // Emphasize elevation changes
+    },
+});
+
+// Analyze the trail
+const elevations = trailProfile.map(p => p.elevation);
+const minElevation = Math.min(...elevations);
+const maxElevation = Math.max(...elevations);
+const totalClimb = elevations.reduce((climb, elev, i) => {
+    return i > 0 && elev > elevations[i - 1] ? climb + (elev - elevations[i - 1]) : climb;
+}, 0);
+
+console.log(`Trail analysis:`);
+console.log(`- Distance: ${trailProfile.length * 10}m`);
+console.log(`- Elevation range: ${minElevation}m to ${maxElevation}m`);
+console.log(`- Total climb: ${totalClimb.toFixed(1)}m`);
 ```
 
 ## API Reference
@@ -109,31 +167,65 @@ new ElevationProvider(config?: ElevationProviderConfig)
 
 #### Methods
 
-##### `getElevation(latitude: number, longitude: number): Promise<number>`
+##### `getElevation(latitude: number, longitude: number, options?: GetElevationOptions): Promise<number>`
 
 Get elevation at specific coordinates.
 
 ```typescript
+// With default interpolation (enabled)
 const elevation = await provider.getElevation(47.2, -1.5);
+
+// Without interpolation
+const rawElevation = await provider.getElevation(47.2, -1.5, { interpolation: false });
 ```
 
-##### `getInterpolatedElevation(latitude: number, longitude: number): Promise<number>`
+##### `getElevationsFrom(coordinates: Iterable<Coordinates>, options?: GetElevationsFromOptions): Promise<number[]>`
 
-Get interpolated elevation for smoother results.
-
-```typescript
-const elevation = await provider.getInterpolatedElevation(47.2, -1.5);
-```
-
-##### `getElevations(coordinates: Coordinates[]): Promise<number[]>`
-
-Batch get elevations for multiple coordinates.
+Batch get elevations for multiple coordinates from an iterable.
 
 ```typescript
-const elevations = await provider.getElevations([
+const elevations = await provider.getElevationsFrom([
     { latitude: 47.2, longitude: -1.5 },
     { latitude: 48.8, longitude: 2.3 },
 ]);
+
+// Without interpolation
+const rawElevations = await provider.getElevationsFrom(coordinates, { interpolation: false });
+```
+
+##### `getElevationsBetween(coordinate1: Coordinates, coordinate2: Coordinates, options?: GetElevationsBetweenOptions): Promise<CoordinatesElevation[]>`
+
+Get elevation profile between two coordinates at regular intervals.
+
+```typescript
+const profile = await provider.getElevationsBetween(
+    { latitude: 47.2, longitude: -1.5 },
+    { latitude: 47.3, longitude: -1.4 },
+    { step: 25 } // 25 meters between points
+);
+console.log(`Profile has ${profile.length} points`);
+```
+
+##### `getElevationsAlong(path: Coordinates[], options?: GetElevationsAlongOptions): Promise<CoordinatesElevation[]>`
+
+Get elevation profile along a multi-point path with optional smoothing and filtering.
+
+```typescript
+const path = [
+    { latitude: 47.2, longitude: -1.5 },
+    { latitude: 47.25, longitude: -1.45 },
+    { latitude: 47.3, longitude: -1.4 },
+];
+
+// Basic elevation profile
+const profile = await provider.getElevationsAlong(path, { step: 10 });
+
+// With smoothing and filtering
+const smoothedProfile = await provider.getElevationsAlong(path, {
+    step: 10,
+    smoothingOptions: { enabled: true, windowSize: 50 },
+    filterOptions: { enabled: true, tolerance: 5, zExaggeration: 3 },
+});
 ```
 
 ##### `clearCache(): void`
@@ -167,6 +259,8 @@ console.log(attribution.text);
 
 ### Types
 
+#### Core Interfaces
+
 ```typescript
 interface ElevationProviderConfig {
     readonly zoomLevel?: number;
@@ -175,9 +269,53 @@ interface ElevationProviderConfig {
     readonly tileUrlTemplate?: string;
 }
 
+interface Coordinates {
+    readonly latitude: number;
+    readonly longitude: number;
+}
+
+interface CoordinatesElevation extends Coordinates {
+    readonly elevation: number;
+}
+
 interface Attribution {
     readonly text: string;
     readonly url?: string;
+}
+```
+
+#### Options Interfaces
+
+```typescript
+interface GetElevationOptions {
+    readonly interpolation?: boolean; // Default: true
+}
+
+interface GetElevationsFromOptions {
+    readonly interpolation?: boolean; // Default: true
+}
+
+interface GetElevationsBetweenOptions {
+    readonly step?: number; // Distance between points in meters (default: 10)
+    readonly interpolation?: boolean; // Default: true
+}
+
+interface GetElevationsAlongOptions {
+    readonly step?: number; // Distance between points in meters (default: 10)
+    readonly interpolation?: boolean; // Default: true
+    readonly smoothingOptions?: SmoothingOptions;
+    readonly filterOptions?: FilterOptions;
+}
+
+interface SmoothingOptions {
+    readonly enabled?: boolean; // Default: false
+    readonly windowSize?: number; // Smoothing window in meters (default: 50)
+}
+
+interface FilterOptions {
+    readonly enabled?: boolean; // Default: false
+    readonly tolerance?: number; // Max distance from simplified line in meters (default: 10)
+    readonly zExaggeration?: number; // Elevation exaggeration factor (default: 3)
 }
 ```
 
@@ -224,10 +362,17 @@ const elevation1 = await provider.getElevation(47.2, -1.5);
 const elevation2 = await provider.getElevation(47.3, -1.6);
 
 // Better: Batch requests
-const elevations = await provider.getElevations([
+const elevations = await provider.getElevationsFrom([
     { latitude: 47.2, longitude: -1.5 },
     { latitude: 47.3, longitude: -1.6 },
 ]);
+
+// Best: Use elevation profiling for paths
+const profile = await provider.getElevationsBetween(
+    { latitude: 47.2, longitude: -1.5 },
+    { latitude: 47.3, longitude: -1.6 },
+    { step: 50 }
+);
 ```
 
 ## Error Handling
