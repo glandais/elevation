@@ -1,3 +1,10 @@
+## [2.0.1](https://github.com/glandais/elevation/compare/v2.0.0...v2.0.1) (2025-09-16)
+
+
+### Bug Fixes
+
+* npm ([40768ae](https://github.com/glandais/elevation/commit/40768ae5ba566568453db427f9c9a14bd7eeb705))
+
 # [2.0.0](https://github.com/glandais/elevation/compare/v1.0.3...v2.0.0) (2025-09-16)
 
 
