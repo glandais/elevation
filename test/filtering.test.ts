@@ -1,5 +1,6 @@
 import { Vector3D } from '../src/utils/Vector3D';
-import { EcefConverter, EARTH_CONSTANTS } from '../src/utils/EcefConverter';
+import { EcefConverter } from '../src/utils/EcefConverter';
+import { EARTH_CONSTANTS } from '../src/utils/Constants';
 import { DouglasPeucker } from '../src/utils/DouglasPeucker';
 import { CoordinatesElevation } from '../src/types';
 

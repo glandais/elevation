@@ -135,12 +135,14 @@ export class ElevationProvider {
     ): Promise<CoordinatesElevation[]> {
         const step = options?.step ?? 10;
         const interpolation = options?.interpolation ?? true;
+        const smoothingOptions = options?.smoothingOptions;
         const filterOptions = options?.filterOptions;
         return this.batchCalculator.getElevationsAlong(
             path,
             this.config.zoomLevel,
             step,
             interpolation,
+            smoothingOptions,
             filterOptions
         );
     }

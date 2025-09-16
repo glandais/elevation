@@ -799,6 +799,7 @@ describe('ElevationProvider', () => {
                 12, // default zoomLevel
                 25, // custom step
                 false, // custom interpolation
+                undefined, // smoothingOptions
                 { enabled: true, tolerance: 15 } // custom filterOptions
             );
         });
@@ -818,6 +819,7 @@ describe('ElevationProvider', () => {
                 12, // default zoomLevel
                 10, // default step
                 false, // custom interpolation
+                undefined, // smoothingOptions
                 undefined // no filterOptions
             );
         });

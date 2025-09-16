@@ -1,10 +1,12 @@
-import { Coordinates, CoordinatesElevation, FilterOptions } from '../types';
+import { Coordinates, CoordinatesElevation, FilterOptions, SmoothingOptions } from '../types';
 import { ElevationCalculator } from './ElevationCalculator';
 import { DouglasPeucker } from '../utils/DouglasPeucker';
+import { ElevationSmoother } from '../utils/ElevationSmoother';
+import { Distance } from '../utils/Distance';
+import { ALGORITHM_CONSTANTS } from '../utils/Constants';
 
 export class BatchCalculator {
     private readonly elevationCalculator: ElevationCalculator;
-    private static readonly MIN_SEGMENT_DISTANCE = 1; // meters
 
     constructor(elevationCalculator: ElevationCalculator) {
         this.elevationCalculator = elevationCalculator;
@@ -51,27 +53,6 @@ export class BatchCalculator {
     }
 
     /**
-     * Calculate distance between two coordinates using Haversine formula
-     * @param coord1 - First coordinate
-     * @param coord2 - Second coordinate
-     * @returns Distance in meters
-     */
-    private distance(coord1: Coordinates, coord2: Coordinates): number {
-        const R = 6371000; // Earth radius in meters
-        const lat1Rad = (coord1.latitude * Math.PI) / 180;
-        const lat2Rad = (coord2.latitude * Math.PI) / 180;
-        const deltaLat = ((coord2.latitude - coord1.latitude) * Math.PI) / 180;
-        const deltaLon = ((coord2.longitude - coord1.longitude) * Math.PI) / 180;
-
-        const a =
-            Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
-            Math.cos(lat1Rad) * Math.cos(lat2Rad) * Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-        return R * c;
-    }
-
-    /**
      * Generate coordinates between two points at regular intervals
      * @param coordinate1 - Start coordinate
      * @param coordinate2 - End coordinate
@@ -82,7 +63,7 @@ export class BatchCalculator {
         coordinate2: Coordinates,
         step: number
     ): Generator<Coordinates, void, unknown> {
-        const distance = this.distance(coordinate1, coordinate2);
+        const distance = Distance.haversine(coordinate1, coordinate2);
 
         // Always yield the start point
         yield coordinate1;
@@ -128,7 +109,7 @@ export class BatchCalculator {
         interpolation: boolean = true
     ): Promise<CoordinatesElevation[]> {
         // Validate inputs
-        const distance = this.distance(coordinate1, coordinate2);
+        const distance = Distance.haversine(coordinate1, coordinate2);
         if (distance >= 10000) {
             throw new Error(`Points are too far from each other: ${distance.toFixed(0)} meters`);
         }
@@ -168,10 +149,10 @@ export class BatchCalculator {
         yield path[0];
 
         for (let i = 0; i < path.length - 1; i++) {
-            const segmentDistance = this.distance(path[i], path[i + 1]);
+            const segmentDistance = Distance.haversine(path[i], path[i + 1]);
 
             // Skip very short segments (< 1 meter)
-            if (segmentDistance < BatchCalculator.MIN_SEGMENT_DISTANCE) {
+            if (segmentDistance < ALGORITHM_CONSTANTS.MIN_SEGMENT_DISTANCE) {
                 continue;
             }
 
@@ -194,6 +175,7 @@ export class BatchCalculator {
      * @param zoomLevel - Tile zoom level (0-15)
      * @param step - Distance between elevation points in meters
      * @param interpolation - Use bilinear interpolation for smoother results (default: true)
+     * @param smoothingOptions - Optional distance-based smoothing options
      * @param filterOptions - Optional filtering options using Douglas-Peucker algorithm
      */
     public async getElevationsAlong(
@@ -201,6 +183,7 @@ export class BatchCalculator {
         zoomLevel: number,
         step: number,
         interpolation: boolean = true,
+        smoothingOptions?: SmoothingOptions,
         filterOptions?: FilterOptions
     ): Promise<CoordinatesElevation[]> {
         // Validate inputs
@@ -218,10 +201,19 @@ export class BatchCalculator {
         const elevations = await this.getElevationsFrom(coordinates, zoomLevel, interpolation);
 
         // Combine coordinates with elevations
-        const coordinatesWithElevation = coordinates.map((coord, index) => ({
+        let coordinatesWithElevation = coordinates.map((coord, index) => ({
             ...coord,
             elevation: elevations[index],
         }));
+
+        // Apply smoothing if explicitly enabled
+        if (smoothingOptions?.enabled === true && coordinatesWithElevation.length >= 3) {
+            const windowSize = smoothingOptions.windowSize ?? 50;
+            coordinatesWithElevation = ElevationSmoother.smooth(
+                coordinatesWithElevation,
+                windowSize
+            );
+        }
 
         // Apply filtering if explicitly enabled
         if (filterOptions?.enabled === true && coordinatesWithElevation.length > 2) {

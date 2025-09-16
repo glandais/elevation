@@ -1,8 +1,7 @@
-import { Coordinates, CoordinatesElevation, FilterOptions } from '../types';
+import { Coordinates, CoordinatesElevation, FilterOptions, SmoothingOptions } from '../types';
 import { ElevationCalculator } from './ElevationCalculator';
 export declare class BatchCalculator {
     private readonly elevationCalculator;
-    private static readonly MIN_SEGMENT_DISTANCE;
     constructor(elevationCalculator: ElevationCalculator);
     /**
      * Get elevations for multiple coordinates from an iterable
@@ -11,13 +10,6 @@ export declare class BatchCalculator {
      * @param interpolation - Use bilinear interpolation for smoother results (default: true)
      */
     getElevationsFrom(coordinates: Iterable<Coordinates>, zoomLevel: number, interpolation?: boolean): Promise<number[]>;
-    /**
-     * Calculate distance between two coordinates using Haversine formula
-     * @param coord1 - First coordinate
-     * @param coord2 - Second coordinate
-     * @returns Distance in meters
-     */
-    private distance;
     /**
      * Generate coordinates between two points at regular intervals
      * @param coordinate1 - Start coordinate
@@ -46,8 +38,9 @@ export declare class BatchCalculator {
      * @param zoomLevel - Tile zoom level (0-15)
      * @param step - Distance between elevation points in meters
      * @param interpolation - Use bilinear interpolation for smoother results (default: true)
+     * @param smoothingOptions - Optional distance-based smoothing options
      * @param filterOptions - Optional filtering options using Douglas-Peucker algorithm
      */
-    getElevationsAlong(path: Coordinates[], zoomLevel: number, step: number, interpolation?: boolean, filterOptions?: FilterOptions): Promise<CoordinatesElevation[]>;
+    getElevationsAlong(path: Coordinates[], zoomLevel: number, step: number, interpolation?: boolean, smoothingOptions?: SmoothingOptions, filterOptions?: FilterOptions): Promise<CoordinatesElevation[]>;
 }
 //# sourceMappingURL=BatchCalculator.d.ts.map

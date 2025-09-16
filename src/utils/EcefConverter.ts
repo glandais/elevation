@@ -1,15 +1,6 @@
 import { CoordinatesElevation } from '../types';
 import { Vector3D } from './Vector3D';
-
-/**
- * Earth constants for WGS84 ellipsoid
- */
-export const EARTH_CONSTANTS = {
-    /** Semi-major axis in meters */
-    SEMI_MAJOR_AXIS: 6378137.0,
-    /** First eccentricity squared */
-    FIRST_ECCENTRICITY_SQUARED: 0.00669437999014,
-} as const;
+import { EARTH_CONSTANTS } from './Constants';
 
 /**
  * ECEF (Earth-Centered, Earth-Fixed) coordinate converter

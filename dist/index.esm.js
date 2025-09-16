@@ -1,4 +1,4 @@
-class I {
+class b {
   constructor() {
     this.available = [], this.idleSize = 5, this.idleTimeout = 3e4, this.idleTimer = null;
   }
@@ -29,12 +29,12 @@ class I {
       this.available.pop();
   }
 }
-class b {
+class S {
   // ========================================================================
   // CONSTRUCTOR
   // ========================================================================
   constructor(t, e = 5e3) {
-    this.tileUrlTemplate = t, this.timeout = e, this.canvasPool = new I();
+    this.tileUrlTemplate = t, this.timeout = e, this.canvasPool = new b();
   }
   // ========================================================================
   // PUBLIC API
@@ -169,7 +169,7 @@ class F {
       this.loadingCount--;
   }
 }
-class S {
+class z {
   // ========================================================================
   // CONSTRUCTOR & VALIDATION
   // ========================================================================
@@ -307,13 +307,13 @@ class S {
     }
   }
 }
-class z {
+class R {
   constructor(t, e, i) {
-    this.tileFetcher = new b(t, e);
+    this.tileFetcher = new S(t, e);
     const n = (s) => {
       s.bitmap.close();
     };
-    this.cache = new S(
+    this.cache = new z(
       i,
       (s) => `${s.z}/${s.x}/${s.y}`,
       (s) => this.tileFetcher.loadTile(s),
@@ -404,14 +404,14 @@ const u = class u {
       y: i.y
     }, s = Math.floor(n.x), a = Math.floor(n.y), r = s + 1, o = a + 1, l = n.x - s, c = n.y - a, h = await this.getElevationFromPixel(
       this.normalizePixel({ tile: n.tile, x: s, y: a })
-    ), f = await this.getElevationFromPixel(
-      this.normalizePixel({ tile: n.tile, x: r, y: a })
     ), g = await this.getElevationFromPixel(
+      this.normalizePixel({ tile: n.tile, x: r, y: a })
+    ), v = await this.getElevationFromPixel(
       this.normalizePixel({ tile: n.tile, x: s, y: o })
-    ), M = await this.getElevationFromPixel(
+    ), x = await this.getElevationFromPixel(
       this.normalizePixel({ tile: n.tile, x: r, y: o })
-    ), T = h * (1 - l) + f * l, p = g * (1 - l) + M * l;
-    return T * (1 - c) + p * c;
+    ), I = h * (1 - l) + g * l, p = v * (1 - l) + x * l;
+    return I * (1 - c) + p * c;
   }
   // ========================================================================
   // PRIVATE - HELPER METHODS
@@ -494,8 +494,8 @@ const u = class u {
   }
 };
 u.TILE_SIZE = 256;
-let x = u;
-class m {
+let M = u;
+class f {
   constructor(t, e, i) {
     this.x = t, this.y = e, this.z = i;
   }
@@ -510,19 +510,19 @@ class m {
    * Subtract two vectors
    */
   subtract(t) {
-    return new m(this.x - t.x, this.y - t.y, this.z - t.z);
+    return new f(this.x - t.x, this.y - t.y, this.z - t.z);
   }
   /**
    * Add two vectors
    */
   add(t) {
-    return new m(this.x + t.x, this.y + t.y, this.z + t.z);
+    return new f(this.x + t.x, this.y + t.y, this.z + t.z);
   }
   /**
    * Multiply vector by scalar
    */
   multiply(t) {
-    return new m(this.x * t, this.y * t, this.z * t);
+    return new f(this.x * t, this.y * t, this.z * t);
   }
   /**
    * Calculate dot product with another vector
@@ -534,7 +534,7 @@ class m {
    * Calculate cross product with another vector
    */
   cross(t) {
-    return new m(
+    return new f(
       this.y * t.z - this.z * t.y,
       this.z * t.x - this.x * t.z,
       this.x * t.y - this.y * t.x
@@ -551,7 +551,7 @@ class m {
    */
   normalize() {
     const t = this.magnitude();
-    return t === 0 ? new m(0, 0, 0) : this.multiply(1 / t);
+    return t === 0 ? new f(0, 0, 0) : this.multiply(1 / t);
   }
   /**
    * Calculate perpendicular distance from this point to a line segment defined by two points
@@ -566,13 +566,23 @@ class m {
     return this.distanceTo(o);
   }
 }
-const v = {
-  /** Semi-major axis in meters */
+const w = {
+  /** Semi-major axis in meters (WGS84 ellipsoid) */
   SEMI_MAJOR_AXIS: 6378137,
-  /** First eccentricity squared */
+  /** Mean radius in meters (used for distance calculations) */
+  MEAN_RADIUS: 6371e3,
+  /** First eccentricity squared (WGS84 ellipsoid) */
   FIRST_ECCENTRICITY_SQUARED: 0.00669437999014
+}, E = {
+  /** Degrees to radians conversion factor */
+  DEG_TO_RAD: Math.PI / 180
+}, y = {
+  /** Minimum points needed for smoothing operations */
+  MIN_SMOOTHING_POINTS: 3,
+  /** Minimum segment distance in meters for path processing */
+  MIN_SEGMENT_DISTANCE: 1
 };
-class E {
+class T {
   /**
    * Convert WGS84 coordinates to ECEF coordinates with optional elevation exaggeration
    * @param coordinates - Geographic coordinates with elevation
@@ -580,8 +590,8 @@ class E {
    * @returns ECEF coordinates as Vector3D
    */
   static toEcef(t, e = 3) {
-    const i = t.latitude * Math.PI / 180, n = t.longitude * Math.PI / 180, s = e * t.elevation, a = Math.sin(i), r = v.SEMI_MAJOR_AXIS / Math.sqrt(1 - v.FIRST_ECCENTRICITY_SQUARED * a * a), o = Math.cos(i), l = Math.cos(n), c = Math.sin(n), h = (r + s) * o * l, f = (r + s) * o * c, g = (r * (1 - v.FIRST_ECCENTRICITY_SQUARED) + s) * a;
-    return new m(h, f, g);
+    const i = t.latitude * Math.PI / 180, n = t.longitude * Math.PI / 180, s = e * t.elevation, a = Math.sin(i), r = w.SEMI_MAJOR_AXIS / Math.sqrt(1 - w.FIRST_ECCENTRICITY_SQUARED * a * a), o = Math.cos(i), l = Math.cos(n), c = Math.sin(n), h = (r + s) * o * l, g = (r + s) * o * c, v = (r * (1 - w.FIRST_ECCENTRICITY_SQUARED) + s) * a;
+    return new f(h, g, v);
   }
   /**
    * Convert multiple coordinates to ECEF vectors
@@ -593,7 +603,7 @@ class E {
     return t.map((i) => this.toEcef(i, e));
   }
 }
-class R {
+class P {
   /**
    * Simplify a path using the Douglas-Peucker algorithm in 3D space
    * @param points - Array of coordinates with elevation
@@ -626,10 +636,10 @@ class R {
    */
   static simplifyRecursive(t, e, i, n, s) {
     let a = 0, r = -1;
-    const o = [], l = E.toEcef(t[e], s), c = E.toEcef(t[i], s);
+    const o = [], l = T.toEcef(t[e], s), c = T.toEcef(t[i], s);
     for (let h = e + 1; h < i; h++) {
-      const g = E.toEcef(t[h], s).distanceToSegment(l, c);
-      g > a && (a = g, r = h);
+      const v = T.toEcef(t[h], s).distanceToSegment(l, c);
+      v > a && (a = v, r = h);
     }
     if (a > n && r !== -1) {
       if (r - e > 1) {
@@ -685,8 +695,115 @@ class R {
     return Math.round(o);
   }
 }
-const w = class w {
-  // meters
+class m {
+  /**
+   * Calculate great circle distance between two geographic coordinates using Haversine formula
+   * @param coord1 - First coordinate
+   * @param coord2 - Second coordinate
+   * @returns Distance in meters
+   */
+  static haversine(t, e) {
+    const i = t.latitude * E.DEG_TO_RAD, n = e.latitude * E.DEG_TO_RAD, s = (e.latitude - t.latitude) * E.DEG_TO_RAD, a = (e.longitude - t.longitude) * E.DEG_TO_RAD, r = Math.sin(s / 2) * Math.sin(s / 2) + Math.cos(i) * Math.cos(n) * Math.sin(a / 2) * Math.sin(a / 2), o = 2 * Math.atan2(Math.sqrt(r), Math.sqrt(1 - r));
+    return w.MEAN_RADIUS * o;
+  }
+  /**
+   * Calculate Euclidean distance between two 3D points
+   * @param point1 - First 3D point
+   * @param point2 - Second 3D point
+   * @returns Distance in meters
+   */
+  static euclidean3D(t, e) {
+    const i = t.x - e.x, n = t.y - e.y, s = t.z - e.z;
+    return Math.sqrt(i * i + n * n + s * s);
+  }
+  /**
+   * Calculate perpendicular distance from a point to a line segment in 3D space
+   * @param point - Point to measure from
+   * @param segmentStart - Start point of line segment
+   * @param segmentEnd - End point of line segment
+   * @returns Perpendicular distance in meters
+   */
+  static pointToSegment3D(t, e, i) {
+    const n = i.subtract(e), s = t.subtract(e), a = n.dot(n);
+    if (a === 0)
+      return m.euclidean3D(t, e);
+    const r = Math.max(0, Math.min(1, s.dot(n) / a)), o = e.add(n.multiply(r));
+    return m.euclidean3D(t, o);
+  }
+  /**
+   * Calculate cumulative distances along a path of coordinates
+   * @param points - Array of coordinates
+   * @returns Array of cumulative distances in meters
+   */
+  static cumulativeDistances(t) {
+    const e = [0];
+    for (let i = 1; i < t.length; i++) {
+      const n = m.haversine(t[i - 1], t[i]);
+      e.push(e[i - 1] + n);
+    }
+    return e;
+  }
+  /**
+   * Calculate total distance along a path of coordinates
+   * @param points - Array of coordinates
+   * @returns Total distance in meters
+   */
+  static totalPathDistance(t) {
+    if (t.length < 2)
+      return 0;
+    let e = 0;
+    for (let i = 1; i < t.length; i++)
+      e += m.haversine(t[i - 1], t[i]);
+    return e;
+  }
+}
+class C {
+  /**
+   * Apply distance-based smoothing to elevation data
+   * @param points - Array of coordinates with elevation
+   * @param windowSize - Smoothing window in meters (default: 50)
+   * @returns Smoothed elevation data
+   */
+  static smooth(t, e = 50) {
+    if (t.length < y.MIN_SMOOTHING_POINTS)
+      return t;
+    if (e <= 0)
+      throw new Error(`Invalid window size: ${e}. Must be positive`);
+    const i = m.cumulativeDistances(t), n = [];
+    for (let s = 0; s < t.length; s++) {
+      const a = this.computeSmoothedValue(s, t, i, e);
+      n.push({
+        ...t[s],
+        elevation: a
+      });
+    }
+    return n;
+  }
+  /**
+   * Compute smoothed elevation value for a single point
+   * @param index - Index of point to smooth
+   * @param points - All points
+   * @param distances - Cumulative distances
+   * @param windowSize - Smoothing window in meters
+   * @returns Smoothed elevation value
+   */
+  static computeSmoothedValue(t, e, i, n) {
+    const s = i[t];
+    let a = t;
+    for (; a > 0 && s - i[a - 1] <= n; )
+      a--;
+    let r = t;
+    for (; r < e.length - 1 && i[r + 1] - s <= n; )
+      r++;
+    let o = 0, l = 0;
+    for (let c = a; c <= r; c++) {
+      const g = 1 - Math.abs(i[c] - s) / n;
+      o += g, l += e[c].elevation * g;
+    }
+    return o > 0 ? l / o : e[t].elevation;
+  }
+}
+class A {
   constructor(t) {
     this.elevationCalculator = t;
   }
@@ -717,23 +834,13 @@ const w = class w {
     return s;
   }
   /**
-   * Calculate distance between two coordinates using Haversine formula
-   * @param coord1 - First coordinate
-   * @param coord2 - Second coordinate
-   * @returns Distance in meters
-   */
-  distance(t, e) {
-    const n = t.latitude * Math.PI / 180, s = e.latitude * Math.PI / 180, a = (e.latitude - t.latitude) * Math.PI / 180, r = (e.longitude - t.longitude) * Math.PI / 180, o = Math.sin(a / 2) * Math.sin(a / 2) + Math.cos(n) * Math.cos(s) * Math.sin(r / 2) * Math.sin(r / 2);
-    return 6371e3 * (2 * Math.atan2(Math.sqrt(o), Math.sqrt(1 - o)));
-  }
-  /**
    * Generate coordinates between two points at regular intervals
    * @param coordinate1 - Start coordinate
    * @param coordinate2 - End coordinate
    * @param step - Distance between points in meters
    */
   *generateCoordinatesBetween(t, e, i) {
-    const n = this.distance(t, e);
+    const n = m.haversine(t, e);
     if (yield t, n <= i) {
       yield e;
       return;
@@ -757,7 +864,7 @@ const w = class w {
    * @param interpolation - Use bilinear interpolation for smoother results (default: true)
    */
   async getElevationsBetween(t, e, i, n, s = !0) {
-    const a = this.distance(t, e);
+    const a = m.haversine(t, e);
     if (a >= 1e4)
       throw new Error(`Points are too far from each other: ${a.toFixed(0)} meters`);
     if (n <= 1)
@@ -779,7 +886,7 @@ const w = class w {
     if (!(t.length < 2)) {
       yield t[0];
       for (let i = 0; i < t.length - 1; i++) {
-        if (this.distance(t[i], t[i + 1]) < w.MIN_SEGMENT_DISTANCE)
+        if (m.haversine(t[i], t[i + 1]) < y.MIN_SEGMENT_DISTANCE)
           continue;
         let s = !0;
         for (const a of this.generateCoordinatesBetween(t[i], t[i + 1], e)) {
@@ -798,27 +905,34 @@ const w = class w {
    * @param zoomLevel - Tile zoom level (0-15)
    * @param step - Distance between elevation points in meters
    * @param interpolation - Use bilinear interpolation for smoother results (default: true)
+   * @param smoothingOptions - Optional distance-based smoothing options
    * @param filterOptions - Optional filtering options using Douglas-Peucker algorithm
    */
-  async getElevationsAlong(t, e, i, n = !0, s) {
+  async getElevationsAlong(t, e, i, n = !0, s, a) {
     if (t.length < 2)
       throw new Error("Path must contain at least 2 coordinates");
     if (i <= 1)
       throw new Error(`Step is too small: ${i} meters`);
-    const a = Array.from(this.generateCoordinatesAlong(t, i)), r = await this.getElevationsFrom(a, e, n), o = a.map((l, c) => ({
-      ...l,
-      elevation: r[c]
+    const r = Array.from(this.generateCoordinatesAlong(t, i)), o = await this.getElevationsFrom(r, e, n);
+    let l = r.map((c, h) => ({
+      ...c,
+      elevation: o[h]
     }));
-    if (s?.enabled === !0 && o.length > 2) {
-      const l = s?.tolerance ?? 10, c = s?.zExaggeration ?? 3;
-      return R.simplify(o, l, c);
+    if (s?.enabled === !0 && l.length >= 3) {
+      const c = s.windowSize ?? 50;
+      l = C.smooth(
+        l,
+        c
+      );
     }
-    return o;
+    if (a?.enabled === !0 && l.length > 2) {
+      const c = a?.tolerance ?? 10, h = a?.zExaggeration ?? 3;
+      return P.simplify(l, c, h);
+    }
+    return l;
   }
-};
-w.MIN_SEGMENT_DISTANCE = 1;
-let y = w;
-class P {
+}
+class D {
   // ============================================================================
   // CONSTRUCTOR & CONFIGURATION
   // ============================================================================
@@ -828,11 +942,11 @@ class P {
       cacheSize: t.cacheSize ?? 100,
       tileUrlTemplate: t.tileUrlTemplate ?? "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
       timeout: t.timeout ?? 5e3
-    }, this.validateConfig(), this.tileManager = new z(
+    }, this.validateConfig(), this.tileManager = new R(
       this.config.tileUrlTemplate,
       this.config.timeout,
       this.config.cacheSize
-    ), this.calculator = new x(this.tileManager), this.batchCalculator = new y(this.calculator);
+    ), this.calculator = new M(this.tileManager), this.batchCalculator = new A(this.calculator);
   }
   /**
    * Get current configuration
@@ -900,13 +1014,14 @@ class P {
    * @param options - Optional parameters
    */
   async getElevationsAlong(t, e) {
-    const i = e?.step ?? 10, n = e?.interpolation ?? !0, s = e?.filterOptions;
+    const i = e?.step ?? 10, n = e?.interpolation ?? !0, s = e?.smoothingOptions, a = e?.filterOptions;
     return this.batchCalculator.getElevationsAlong(
       t,
       this.config.zoomLevel,
       i,
       n,
-      s
+      s,
+      a
     );
   }
   // ============================================================================
@@ -934,9 +1049,10 @@ class P {
   }
 }
 export {
-  R as DouglasPeucker,
-  E as EcefConverter,
-  P as ElevationProvider,
-  m as Vector3D
+  P as DouglasPeucker,
+  T as EcefConverter,
+  D as ElevationProvider,
+  C as ElevationSmoother,
+  f as Vector3D
 };
 //# sourceMappingURL=index.esm.js.map

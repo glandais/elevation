@@ -3,6 +3,7 @@ import { ElevationProvider } from 'src';
 import type { DouglasPeucker } from 'src/utils/DouglasPeucker';
 import type { EcefConverter } from 'src/utils/EcefConverter';
 import type { Vector3D } from 'src/utils/Vector3D';
+import type { ElevationSmoother } from 'src/utils/ElevationSmoother';
 
 // Extend Window interface for browser tests
 declare global {
@@ -12,6 +13,7 @@ declare global {
             DouglasPeucker: typeof DouglasPeucker;
             EcefConverter: typeof EcefConverter;
             Vector3D: typeof Vector3D;
+            ElevationSmoother: typeof ElevationSmoother;
         };
     }
 }
@@ -477,6 +479,245 @@ test.describe('ElevationProvider Browser Tests', () => {
 
         console.log('Filtering utilities availability verified:', result);
         console.log('Debug info:', result.debugInfo);
+    });
+
+    test('should apply elevation smoothing along a path', async ({ page }) => {
+        const result = await page.evaluate(async () => {
+            try {
+                const elevationProvider: ElevationProvider =
+                    new window.Elevation.ElevationProvider();
+
+                // Create a noisy path
+                const noisyPath = [
+                    { latitude: 47.0, longitude: -1.0 },
+                    { latitude: 47.005, longitude: -0.995 },
+                    { latitude: 47.01, longitude: -0.99 },
+                    { latitude: 47.015, longitude: -0.985 },
+                    { latitude: 47.02, longitude: -0.98 },
+                ];
+
+                // Get elevations without smoothing
+                const unsmoothed = await elevationProvider.getElevationsAlong(noisyPath, {
+                    step: 50,
+                    interpolation: true,
+                    smoothingOptions: { enabled: false },
+                });
+
+                // Get elevations with small smoothing window
+                const lightSmoothed = await elevationProvider.getElevationsAlong(noisyPath, {
+                    step: 50,
+                    interpolation: true,
+                    smoothingOptions: {
+                        enabled: true,
+                        windowSize: 30,
+                    },
+                });
+
+                // Get elevations with large smoothing window
+                const heavySmoothed = await elevationProvider.getElevationsAlong(noisyPath, {
+                    step: 50,
+                    interpolation: true,
+                    smoothingOptions: {
+                        enabled: true,
+                        windowSize: 100,
+                    },
+                });
+
+                // Calculate variance for each set
+                function calculateVariance(values: number[]): number {
+                    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+                    const squareDiffs = values.map(value => Math.pow(value - mean, 2));
+                    return squareDiffs.reduce((a, b) => a + b, 0) / values.length;
+                }
+
+                const unsmoothedVariance = calculateVariance(unsmoothed.map(p => p.elevation));
+                const lightVariance = calculateVariance(lightSmoothed.map(p => p.elevation));
+                const heavyVariance = calculateVariance(heavySmoothed.map(p => p.elevation));
+
+                return {
+                    success: true,
+                    pointCount: unsmoothed.length,
+                    unsmoothedVariance,
+                    lightVariance,
+                    heavyVariance,
+                    elevationRange: {
+                        unsmoothed: {
+                            min: Math.min(...unsmoothed.map(p => p.elevation)),
+                            max: Math.max(...unsmoothed.map(p => p.elevation)),
+                        },
+                        heavySmoothed: {
+                            min: Math.min(...heavySmoothed.map(p => p.elevation)),
+                            max: Math.max(...heavySmoothed.map(p => p.elevation)),
+                        },
+                    },
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    error: error instanceof Error ? error.message : String(error),
+                };
+            }
+        });
+
+        expect(result.success).toBe(true);
+        expect(result.pointCount).toBeGreaterThan(0);
+
+        // Heavier smoothing should reduce variance more
+        expect(result.lightVariance).toBeLessThanOrEqual(result.unsmoothedVariance!);
+        expect(result.heavyVariance).toBeLessThanOrEqual(result.lightVariance!);
+
+        // Smoothing should reduce the elevation range
+        const unsmoothedRange =
+            result.elevationRange?.unsmoothed?.max! - result.elevationRange?.unsmoothed?.min!;
+        const smoothedRange =
+            result.elevationRange?.heavySmoothed?.max! - result.elevationRange?.heavySmoothed?.min!;
+        expect(smoothedRange).toBeLessThanOrEqual(unsmoothedRange);
+
+        console.log('Elevation smoothing executed successfully:', {
+            points: result.pointCount,
+            variance: {
+                unsmoothed: result.unsmoothedVariance?.toFixed(2),
+                light: result.lightVariance?.toFixed(2),
+                heavy: result.heavyVariance?.toFixed(2),
+            },
+            ranges: result.elevationRange,
+        });
+    });
+
+    test('should combine smoothing and filtering for optimal results', async ({ page }) => {
+        const result = await page.evaluate(async () => {
+            try {
+                const elevationProvider: ElevationProvider =
+                    new window.Elevation.ElevationProvider();
+
+                // Create a detailed path
+                const detailedPath = [
+                    { latitude: 47.0, longitude: -1.0 },
+                    { latitude: 47.01, longitude: -0.99 },
+                    { latitude: 47.02, longitude: -0.98 },
+                    { latitude: 47.03, longitude: -0.97 },
+                ];
+
+                // 1. Raw elevation data
+                const raw = await elevationProvider.getElevationsAlong(detailedPath, {
+                    step: 25,
+                    interpolation: true,
+                });
+
+                // 2. Smoothed only
+                const smoothedOnly = await elevationProvider.getElevationsAlong(detailedPath, {
+                    step: 25,
+                    interpolation: true,
+                    smoothingOptions: {
+                        enabled: true,
+                        windowSize: 75,
+                    },
+                });
+
+                // 3. Filtered only
+                const filteredOnly = await elevationProvider.getElevationsAlong(detailedPath, {
+                    step: 25,
+                    interpolation: true,
+                    filterOptions: {
+                        enabled: true,
+                        tolerance: 10,
+                    },
+                });
+
+                // 4. Smoothed then filtered (optimal)
+                const smoothedAndFiltered = await elevationProvider.getElevationsAlong(
+                    detailedPath,
+                    {
+                        step: 25,
+                        interpolation: true,
+                        smoothingOptions: {
+                            enabled: true,
+                            windowSize: 75,
+                        },
+                        filterOptions: {
+                            enabled: true,
+                            tolerance: 10,
+                        },
+                    }
+                );
+
+                return {
+                    success: true,
+                    rawCount: raw.length,
+                    smoothedOnlyCount: smoothedOnly.length,
+                    filteredOnlyCount: filteredOnly.length,
+                    combinedCount: smoothedAndFiltered.length,
+                    samples: {
+                        raw: raw.slice(0, 3),
+                        combined: smoothedAndFiltered.slice(0, 3),
+                    },
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    error: error instanceof Error ? error.message : String(error),
+                };
+            }
+        });
+
+        expect(result.success).toBe(true);
+        expect(result.rawCount).toBeGreaterThan(0);
+        expect(result.smoothedOnlyCount).toBe(result.rawCount); // Smoothing doesn't reduce points
+        expect(result.filteredOnlyCount).toBeLessThanOrEqual(result.rawCount!); // Filtering reduces points
+        expect(result.combinedCount).toBeLessThanOrEqual(result.smoothedOnlyCount!); // Final filtering after smoothing
+
+        console.log('Combined smoothing and filtering executed successfully:', {
+            raw: result.rawCount,
+            smoothedOnly: result.smoothedOnlyCount,
+            filteredOnly: result.filteredOnlyCount,
+            combined: result.combinedCount,
+        });
+    });
+
+    test('should verify ElevationSmoother utility is available', async ({ page }) => {
+        const result = await page.evaluate(() => {
+            try {
+                // Check that ElevationSmoother is exported
+                const hasElevationSmoother =
+                    typeof window.Elevation.ElevationSmoother !== 'undefined';
+                const hasSmooth = typeof window.Elevation.ElevationSmoother?.smooth === 'function';
+
+                // Test that we can use the smoother directly
+                let smootherWorks = false;
+                try {
+                    const testPoints = [
+                        { latitude: 47.0, longitude: -1.0, elevation: 100 },
+                        { latitude: 47.001, longitude: -1.0, elevation: 200 },
+                        { latitude: 47.002, longitude: -1.0, elevation: 150 },
+                    ];
+
+                    const smoothed = window.Elevation.ElevationSmoother.smooth(testPoints, 50);
+                    smootherWorks =
+                        Array.isArray(smoothed) && smoothed.length === testPoints.length;
+                } catch {
+                    smootherWorks = false;
+                }
+
+                return {
+                    success: true,
+                    hasElevationSmoother,
+                    hasSmooth,
+                    smootherWorks,
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    error: error instanceof Error ? error.message : String(error),
+                };
+            }
+        });
+
+        expect(result.success).toBe(true);
+        expect(result.hasElevationSmoother).toBe(true);
+        expect(result.hasSmooth).toBe(true);
+        expect(result.smootherWorks).toBe(true);
+
+        console.log('ElevationSmoother utility availability verified:', result);
     });
 
     test('should use smart tolerance estimation in browser', async ({ page }) => {

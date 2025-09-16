@@ -106,6 +106,24 @@ export interface FilterOptions {
 }
 
 /**
+ * Options for distance-based elevation smoothing
+ */
+export interface SmoothingOptions {
+    /**
+     * Smoothing window size in meters
+     * Points within this distance will be weighted and averaged
+     * Default: 50 meters
+     */
+    readonly windowSize?: number;
+
+    /**
+     * Whether smoothing is enabled
+     * Default: false
+     */
+    readonly enabled?: boolean;
+}
+
+/**
  * 3D vector in ECEF (Earth-Centered, Earth-Fixed) coordinates
  */
 export interface Vector3D {
@@ -168,6 +186,11 @@ export interface GetElevationsAlongOptions {
      * Default: true
      */
     readonly interpolation?: boolean;
+
+    /**
+     * Optional distance-based smoothing options
+     */
+    readonly smoothingOptions?: SmoothingOptions;
 
     /**
      * Optional Douglas-Peucker filtering options

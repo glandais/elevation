@@ -93,3 +93,77 @@ Tests use Jest with jsdom environment. Key test areas:
 - Network error handling
 - Bilinear interpolation correctness
 - Edge cases (boundary coordinates, invalid inputs)
+
+## Feature Completion Requirements
+
+**IMPORTANT: A feature is NOT considered complete until ALL of the following criteria are met:**
+
+### Mandatory Completion Checklist
+
+1. ✅ **Tests Updated**: All new functionality must have corresponding test cases
+2. ✅ **Coverage Target**: Must achieve ~100% test coverage (minimum 98%)
+3. ✅ **Quality Check**: `npm run check` must pass without any errors or warnings
+4. ✅ **TypeScript**: No TypeScript errors (`npm run typecheck`)
+5. ✅ **Linting**: No ESLint errors or warnings (`npm run lint`)
+6. ✅ **Formatting**: Code properly formatted (`npm run format`)
+7. ✅ **Build Success**: Distribution files build successfully (`npm run build`)
+8. ✅ **Browser Tests**: Browser tests pass (`npm run test:browser`)
+
+### Verification Command
+
+Always run this command before considering any feature complete:
+
+```bash
+npm run check  # Must pass with 100% coverage and no errors/warnings
+```
+
+### Coverage Requirements
+
+- **Statements**: ~100%
+- **Branches**: ~100%
+- **Functions**: ~100%
+- **Lines**: ~100%
+
+Any feature implementation or refactoring that doesn't meet these criteria is incomplete and must be fixed before committing.
+
+## Git Commit Guidelines
+
+This project uses conventional commits with commitlint enforcement. Commit messages must follow these rules:
+
+### Format
+
+```
+<type>: <subject>
+
+<body>
+
+<footer>
+```
+
+### Rules
+
+1. **Type** must be one of: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+2. **Subject** line must be under 100 characters
+3. **Body** lines must be under 100 characters each (break long lines)
+4. **Use present tense** ("add feature" not "added feature")
+5. **Use imperative mood** ("move cursor to..." not "moves cursor to...")
+
+### Example
+
+```
+refactor: wrap optional parameters in TypeScript Options interfaces
+
+Refactor ElevationProvider API to use modern TypeScript patterns:
+- Create options interfaces for all public methods
+- Replace boolean and step parameters with options objects
+- Maintain backward compatibility with default values
+```
+
+### Pre-commit Hooks
+
+The project has pre-commit hooks that automatically:
+
+- Run ESLint with auto-fix
+- Run Prettier formatting
+- Build the distribution files
+- Validate commit message format

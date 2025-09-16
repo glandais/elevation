@@ -1,6 +1,7 @@
 import { BatchCalculator } from '../../src/calculator/BatchCalculator';
 import { ElevationCalculator } from '../../src/calculator/ElevationCalculator';
 import { TileManager } from '../../src/tile/TileManager';
+import { Distance } from '../../src/utils/Distance';
 import type { Coordinates } from '../../src/types';
 
 // Mock dependencies
@@ -14,7 +15,6 @@ const MockedElevationCalculator = ElevationCalculator as jest.MockedClass<
 
 // Type for accessing private methods in tests
 interface BatchCalculatorTestable {
-    distance(coord1: Coordinates, coord2: Coordinates): number;
     generateCoordinatesBetween(
         coordinate1: Coordinates,
         coordinate2: Coordinates,
@@ -238,11 +238,7 @@ describe('BatchCalculator', () => {
             const coord1 = { latitude: 48.8566, longitude: 2.3522 }; // Paris
             const coord2 = { latitude: 48.8606, longitude: 2.3376 }; // Near Paris
 
-            // Access private method via any cast for testing
-            const distance = (batchCalculator as unknown as BatchCalculatorTestable).distance(
-                coord1,
-                coord2
-            );
+            const distance = Distance.haversine(coord1, coord2);
 
             // Distance should be approximately 1.2km
             expect(distance).toBeGreaterThan(1000);
@@ -253,10 +249,7 @@ describe('BatchCalculator', () => {
             const coord1 = { latitude: 48.8566, longitude: 2.3522 }; // Paris
             const coord2 = { latitude: 51.5074, longitude: -0.1278 }; // London
 
-            const distance = (batchCalculator as unknown as BatchCalculatorTestable).distance(
-                coord1,
-                coord2
-            );
+            const distance = Distance.haversine(coord1, coord2);
 
             // Distance should be approximately 344km
             expect(distance).toBeGreaterThan(340000);
@@ -266,10 +259,7 @@ describe('BatchCalculator', () => {
         it('should return 0 for same coordinates', () => {
             const coord = { latitude: 48.8566, longitude: 2.3522 };
 
-            const distance = (batchCalculator as unknown as BatchCalculatorTestable).distance(
-                coord,
-                coord
-            );
+            const distance = Distance.haversine(coord, coord);
 
             expect(distance).toBe(0);
         });
@@ -278,10 +268,7 @@ describe('BatchCalculator', () => {
             const coord1 = { latitude: 0, longitude: 0 };
             const coord2 = { latitude: 0, longitude: 1 };
 
-            const distance = (batchCalculator as unknown as BatchCalculatorTestable).distance(
-                coord1,
-                coord2
-            );
+            const distance = Distance.haversine(coord1, coord2);
 
             // 1 degree of longitude at equator is approximately 111km
             expect(distance).toBeGreaterThan(110000);
@@ -725,6 +712,7 @@ describe('BatchCalculator', () => {
                     12, // zoomLevel
                     100, // smaller step to generate more elevation points
                     true, // interpolation
+                    undefined, // smoothingOptions
                     { enabled: true } // filterOptions with defaults - will use tolerance=10, zExaggeration=3
                 );
 
@@ -745,6 +733,7 @@ describe('BatchCalculator', () => {
                     12, // zoomLevel
                     25, // step
                     true, // interpolation
+                    undefined, // smoothingOptions
                     { enabled: false } // filterOptions disabled
                 );
 
@@ -764,6 +753,7 @@ describe('BatchCalculator', () => {
                     12, // zoomLevel
                     1000, // large step to ensure <=2 points
                     true, // interpolation
+                    undefined, // smoothingOptions
                     { enabled: true, tolerance: 10, zExaggeration: 3 } // filtering enabled
                 );
 
@@ -785,6 +775,7 @@ describe('BatchCalculator', () => {
                     12, // zoomLevel
                     100, // step
                     true, // interpolation
+                    undefined, // smoothingOptions
                     { enabled: true, tolerance: 15, zExaggeration: 2 } // explicit values
                 );
 
@@ -805,6 +796,7 @@ describe('BatchCalculator', () => {
                     12, // zoomLevel
                     100, // step
                     true, // interpolation
+                    undefined, // smoothingOptions
                     { enabled: true, zExaggeration: 2 } // tolerance undefined, will use default 10
                 );
 
@@ -825,6 +817,7 @@ describe('BatchCalculator', () => {
                     12, // zoomLevel
                     100, // step
                     true, // interpolation
+                    undefined, // smoothingOptions
                     { enabled: true, tolerance: 15 } // zExaggeration undefined, will use default 3
                 );
 
@@ -832,6 +825,100 @@ describe('BatchCalculator', () => {
                 expect(result).toBeDefined();
                 expect(Array.isArray(result)).toBe(true);
             });
+        });
+    });
+
+    describe('smoothing functionality', () => {
+        beforeEach(() => {
+            mockElevationCalculator.getElevation.mockResolvedValue(100);
+        });
+
+        it('should apply smoothing when enabled with default window size', async () => {
+            const path = [
+                { latitude: 45.0, longitude: 0.0 },
+                { latitude: 45.0001, longitude: 0.0 },
+                { latitude: 45.0002, longitude: 0.0 },
+                { latitude: 45.0003, longitude: 0.0 },
+            ];
+
+            const result = await batchCalculator.getElevationsAlong(
+                path,
+                12, // zoomLevel
+                100, // step
+                true, // interpolation
+                { enabled: true }, // smoothingOptions - no windowSize, should use default 50
+                undefined // filterOptions
+            );
+
+            expect(mockElevationCalculator.getElevation).toHaveBeenCalled();
+            expect(result).toBeDefined();
+            expect(Array.isArray(result)).toBe(true);
+            expect(result.length).toBeGreaterThan(0);
+        });
+
+        it('should apply smoothing with custom window size', async () => {
+            const path = [
+                { latitude: 45.0, longitude: 0.0 },
+                { latitude: 45.0001, longitude: 0.0 },
+                { latitude: 45.0002, longitude: 0.0 },
+                { latitude: 45.0003, longitude: 0.0 },
+            ];
+
+            const result = await batchCalculator.getElevationsAlong(
+                path,
+                12, // zoomLevel
+                100, // step
+                true, // interpolation
+                { enabled: true, windowSize: 75 }, // smoothingOptions with custom windowSize
+                undefined // filterOptions
+            );
+
+            expect(mockElevationCalculator.getElevation).toHaveBeenCalled();
+            expect(result).toBeDefined();
+            expect(Array.isArray(result)).toBe(true);
+            expect(result.length).toBeGreaterThan(0);
+        });
+
+        it('should not apply smoothing when disabled', async () => {
+            const path = [
+                { latitude: 45.0, longitude: 0.0 },
+                { latitude: 45.0001, longitude: 0.0 },
+                { latitude: 45.0002, longitude: 0.0 },
+            ];
+
+            const result = await batchCalculator.getElevationsAlong(
+                path,
+                12, // zoomLevel
+                100, // step
+                true, // interpolation
+                { enabled: false, windowSize: 50 }, // smoothingOptions disabled
+                undefined // filterOptions
+            );
+
+            expect(mockElevationCalculator.getElevation).toHaveBeenCalled();
+            expect(result).toBeDefined();
+            expect(Array.isArray(result)).toBe(true);
+        });
+
+        it('should not apply smoothing when less than 3 points', async () => {
+            const path = [
+                { latitude: 45.0, longitude: 0.0 },
+                { latitude: 45.0001, longitude: 0.0 },
+            ];
+
+            const result = await batchCalculator.getElevationsAlong(
+                path,
+                12, // zoomLevel
+                100, // step
+                true, // interpolation
+                { enabled: true, windowSize: 50 }, // smoothingOptions enabled
+                undefined // filterOptions
+            );
+
+            expect(mockElevationCalculator.getElevation).toHaveBeenCalled();
+            expect(result).toBeDefined();
+            expect(Array.isArray(result)).toBe(true);
+            // With only 2 points, smoothing shouldn't be applied regardless of enabled setting
         });
     });
 });
