@@ -1,3 +1,10 @@
+## [1.0.3](https://github.com/glandais/elevation/compare/v1.0.2...v1.0.3) (2025-09-16)
+
+
+### Bug Fixes
+
+* interpolation across tiles ([c697d75](https://github.com/glandais/elevation/commit/c697d75db55e9370d8ef0fa917ae534b4b0a3dce))
+
 ## [1.0.2](https://github.com/glandais/elevation/compare/v1.0.1...v1.0.2) (2025-09-15)
 
 
