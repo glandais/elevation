@@ -106,7 +106,7 @@ class S {
     }
   }
 }
-class F {
+class z {
   // ========================================================================
   // CONSTRUCTOR
   // ========================================================================
@@ -169,14 +169,14 @@ class F {
       this.loadingCount--;
   }
 }
-class z {
+class F {
   // ========================================================================
   // CONSTRUCTOR & VALIDATION
   // ========================================================================
   constructor(t, e, i, n) {
     if (this.head = null, this.tail = null, t <= 0)
       throw new Error("Cache size must be greater than 0");
-    this.maxSize = t, this.keyMapper = e, this.valueBuilder = i, this.cleanupFn = n, this.cache = /* @__PURE__ */ new Map(), this.lruOrder = /* @__PURE__ */ new Map(), this.lock = new F(t);
+    this.maxSize = t, this.keyMapper = e, this.valueBuilder = i, this.cleanupFn = n, this.cache = /* @__PURE__ */ new Map(), this.lruOrder = /* @__PURE__ */ new Map(), this.lock = new z(t);
   }
   // ========================================================================
   // PUBLIC API - CACHE OPERATIONS
@@ -313,7 +313,7 @@ class R {
     const n = (s) => {
       s.bitmap.close();
     };
-    this.cache = new z(
+    this.cache = new F(
       i,
       (s) => `${s.z}/${s.x}/${s.y}`,
       (s) => this.tileFetcher.loadTile(s),
@@ -408,9 +408,9 @@ const u = class u {
       this.normalizePixel({ tile: n.tile, x: r, y: a })
     ), v = await this.getElevationFromPixel(
       this.normalizePixel({ tile: n.tile, x: s, y: o })
-    ), x = await this.getElevationFromPixel(
+    ), y = await this.getElevationFromPixel(
       this.normalizePixel({ tile: n.tile, x: r, y: o })
-    ), I = h * (1 - l) + g * l, p = v * (1 - l) + x * l;
+    ), I = h * (1 - l) + g * l, p = v * (1 - l) + y * l;
     return I * (1 - c) + p * c;
   }
   // ========================================================================
@@ -576,7 +576,7 @@ const w = {
 }, E = {
   /** Degrees to radians conversion factor */
   DEG_TO_RAD: Math.PI / 180
-}, y = {
+}, x = {
   /** Minimum points needed for smoothing operations */
   MIN_SMOOTHING_POINTS: 3,
   /** Minimum segment distance in meters for path processing */
@@ -765,7 +765,7 @@ class C {
    * @returns Smoothed elevation data
    */
   static smooth(t, e = 50) {
-    if (t.length < y.MIN_SMOOTHING_POINTS)
+    if (t.length < x.MIN_SMOOTHING_POINTS)
       return t;
     if (e <= 0)
       throw new Error(`Invalid window size: ${e}. Must be positive`);
@@ -856,28 +856,6 @@ class A {
     yield e;
   }
   /**
-   * Get elevations between two coordinates at regular intervals
-   * @param coordinate1 - Start coordinate
-   * @param coordinate2 - End coordinate
-   * @param zoomLevel - Tile zoom level (0-15)
-   * @param step - Distance between elevation points in meters
-   * @param interpolation - Use bilinear interpolation for smoother results (default: true)
-   */
-  async getElevationsBetween(t, e, i, n, s = !0) {
-    const a = m.haversine(t, e);
-    if (a >= 1e4)
-      throw new Error(`Points are too far from each other: ${a.toFixed(0)} meters`);
-    if (n <= 1)
-      throw new Error(`Step is too small: ${n} meters`);
-    const r = Array.from(
-      this.generateCoordinatesBetween(t, e, n)
-    ), o = await this.getElevationsFrom(r, i, s);
-    return r.map((l, c) => ({
-      ...l,
-      elevation: o[c]
-    }));
-  }
-  /**
    * Generate coordinates along a path with multiple waypoints
    * @param path - Array of coordinates defining the path
    * @param step - Distance between points in meters
@@ -886,7 +864,7 @@ class A {
     if (!(t.length < 2)) {
       yield t[0];
       for (let i = 0; i < t.length - 1; i++) {
-        if (m.haversine(t[i], t[i + 1]) < y.MIN_SEGMENT_DISTANCE)
+        if (m.haversine(t[i], t[i + 1]) < x.MIN_SEGMENT_DISTANCE)
           continue;
         let s = !0;
         for (const a of this.generateCoordinatesBetween(t[i], t[i + 1], e)) {
@@ -990,22 +968,6 @@ class D {
       t,
       this.config.zoomLevel,
       i
-    );
-  }
-  /**
-   * Get elevations between two coordinates at regular intervals
-   * @param coordinate1 - Start coordinate
-   * @param coordinate2 - End coordinate
-   * @param options - Optional parameters
-   */
-  async getElevationsBetween(t, e, i) {
-    const n = i?.step ?? 10, s = i?.interpolation ?? !0;
-    return this.batchCalculator.getElevationsBetween(
-      t,
-      e,
-      this.config.zoomLevel,
-      n,
-      s
     );
   }
   /**

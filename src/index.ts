@@ -17,6 +17,5 @@ export type {
     SmoothingOptions,
     GetElevationOptions,
     GetElevationsFromOptions,
-    GetElevationsBetweenOptions,
     GetElevationsAlongOptions,
 } from './types';

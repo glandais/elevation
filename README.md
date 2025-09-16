@@ -88,12 +88,14 @@ The library provides advanced elevation profiling capabilities for analyzing ter
 #### Simple Elevation Profile
 
 ```typescript
-// Get elevation profile between two points
-const profile = await provider.getElevationsBetween(
-    { latitude: 47.2, longitude: -1.5 }, // Start point
-    { latitude: 47.25, longitude: -1.45 }, // End point
-    { step: 25 } // 25 meters between points
-);
+// Get elevation profile between two points using getElevationsAlong
+const profile = await provider.getElevationsAlong(
+    [
+        { latitude: 47.2, longitude: -1.5 }, // Start point
+        { latitude: 47.25, longitude: -1.45 }, // End point
+    ],
+    { step: 25 }
+); // 25 meters between points
 
 console.log(`Profile contains ${profile.length} elevation points`);
 profile.forEach((point, index) => {
@@ -193,19 +195,6 @@ const elevations = await provider.getElevationsFrom([
 const rawElevations = await provider.getElevationsFrom(coordinates, { interpolation: false });
 ```
 
-##### `getElevationsBetween(coordinate1: Coordinates, coordinate2: Coordinates, options?: GetElevationsBetweenOptions): Promise<CoordinatesElevation[]>`
-
-Get elevation profile between two coordinates at regular intervals.
-
-```typescript
-const profile = await provider.getElevationsBetween(
-    { latitude: 47.2, longitude: -1.5 },
-    { latitude: 47.3, longitude: -1.4 },
-    { step: 25 } // 25 meters between points
-);
-console.log(`Profile has ${profile.length} points`);
-```
-
 ##### `getElevationsAlong(path: Coordinates[], options?: GetElevationsAlongOptions): Promise<CoordinatesElevation[]>`
 
 Get elevation profile along a multi-point path with optional smoothing and filtering.
@@ -295,11 +284,6 @@ interface GetElevationsFromOptions {
     readonly interpolation?: boolean; // Default: true
 }
 
-interface GetElevationsBetweenOptions {
-    readonly step?: number; // Distance between points in meters (default: 10)
-    readonly interpolation?: boolean; // Default: true
-}
-
 interface GetElevationsAlongOptions {
     readonly step?: number; // Distance between points in meters (default: 10)
     readonly interpolation?: boolean; // Default: true
@@ -368,9 +352,11 @@ const elevations = await provider.getElevationsFrom([
 ]);
 
 // Best: Use elevation profiling for paths
-const profile = await provider.getElevationsBetween(
-    { latitude: 47.2, longitude: -1.5 },
-    { latitude: 47.3, longitude: -1.6 },
+const profile = await provider.getElevationsAlong(
+    [
+        { latitude: 47.2, longitude: -1.5 },
+        { latitude: 47.3, longitude: -1.6 },
+    ],
     { step: 50 }
 );
 ```

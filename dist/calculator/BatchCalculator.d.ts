@@ -18,15 +18,6 @@ export declare class BatchCalculator {
      */
     private generateCoordinatesBetween;
     /**
-     * Get elevations between two coordinates at regular intervals
-     * @param coordinate1 - Start coordinate
-     * @param coordinate2 - End coordinate
-     * @param zoomLevel - Tile zoom level (0-15)
-     * @param step - Distance between elevation points in meters
-     * @param interpolation - Use bilinear interpolation for smoother results (default: true)
-     */
-    getElevationsBetween(coordinate1: Coordinates, coordinate2: Coordinates, zoomLevel: number, step: number, interpolation?: boolean): Promise<CoordinatesElevation[]>;
-    /**
      * Generate coordinates along a path with multiple waypoints
      * @param path - Array of coordinates defining the path
      * @param step - Distance between points in meters

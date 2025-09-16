@@ -137,21 +137,6 @@ export interface GetElevationsFromOptions {
     readonly interpolation?: boolean;
 }
 /**
- * Options for getElevationsBetween method
- */
-export interface GetElevationsBetweenOptions {
-    /**
-     * Distance between elevation points in meters
-     * Default: 10
-     */
-    readonly step?: number;
-    /**
-     * Use bilinear interpolation for smoother results
-     * Default: true
-     */
-    readonly interpolation?: boolean;
-}
-/**
  * Options for getElevationsAlong method
  */
 export interface GetElevationsAlongOptions {

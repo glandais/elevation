@@ -7,7 +7,6 @@ import type {
     Attribution,
     GetElevationOptions,
     GetElevationsFromOptions,
-    GetElevationsBetweenOptions,
     GetElevationsAlongOptions,
 } from './types';
 
@@ -98,28 +97,6 @@ export class ElevationProvider {
         return this.batchCalculator.getElevationsFrom(
             coordinates,
             this.config.zoomLevel,
-            interpolation
-        );
-    }
-
-    /**
-     * Get elevations between two coordinates at regular intervals
-     * @param coordinate1 - Start coordinate
-     * @param coordinate2 - End coordinate
-     * @param options - Optional parameters
-     */
-    public async getElevationsBetween(
-        coordinate1: Coordinates,
-        coordinate2: Coordinates,
-        options?: GetElevationsBetweenOptions
-    ): Promise<CoordinatesElevation[]> {
-        const step = options?.step ?? 10;
-        const interpolation = options?.interpolation ?? true;
-        return this.batchCalculator.getElevationsBetween(
-            coordinate1,
-            coordinate2,
-            this.config.zoomLevel,
-            step,
             interpolation
         );
     }

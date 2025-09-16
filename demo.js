@@ -577,7 +577,6 @@ map.on('click', function (e) {
 setMode('point');
 console.log('Elevation Library Demo loaded');
 console.log('ElevationProvider available:', typeof elevationProvider);
-console.log('New methods available:', {
-    getElevationsBetween: typeof elevationProvider.getElevationsBetween,
+console.log('Available methods:', {
     getElevationsAlong: typeof elevationProvider.getElevationsAlong,
 });

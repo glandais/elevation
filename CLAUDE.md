@@ -152,7 +152,7 @@ batchCalculator = new BatchCalculator(mockElevationCalculator);
 #### Core API Testing
 
 - **ElevationProvider Methods**: All public methods with options interfaces
-- **Batch Operations**: getElevationsFrom, getElevationsBetween, getElevationsAlong
+- **Batch Operations**: getElevationsFrom, getElevationsAlong
 - **Configuration Validation**: Constructor options and validation logic
 - **Cache Management**: clearCache functionality
 
