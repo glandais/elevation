@@ -1,21 +1,52 @@
+class ReentrantLock<T> {
+    private readonly locks = new Map<string, Promise<T>>();
+
+    public async acquire(key: string, fn: () => Promise<T>): Promise<T> {
+        if (this.locks.has(key)) {
+            return this.locks.get(key)!;
+        }
+
+        const promise = (async () => {
+            try {
+                return await fn();
+            } finally {
+                this.locks.delete(key);
+            }
+        })();
+
+        this.locks.set(key, promise);
+        return promise;
+    }
+}
+
 /**
  * LRU (Least Recently Used) cache with performance optimizations and cleanup support
  */
-export class Cache<T> {
+export class Cache<K, T> {
     private readonly maxSize: number;
     private readonly cache: Map<string, T>;
+    private readonly keyMapper: (key: K) => string;
+    private readonly valueBuilder: (key: K) => Promise<T>;
     private readonly cleanupFn?: (value: T) => void;
     // Using LinkedList-like structure for true O(1) LRU operations
     private readonly lruOrder: Map<string, { prev: string | null; next: string | null }>;
     private head: string | null = null;
     private tail: string | null = null;
+    private readonly lock = new ReentrantLock<T>();
 
-    constructor(maxSize: number = 100, cleanupFn?: (value: T) => void) {
+    constructor(
+        maxSize: number = 100,
+        keyMapper: (key: K) => string,
+        valueBuilder: (key: K) => Promise<T>,
+        cleanupFn?: (value: T) => void
+    ) {
         if (maxSize <= 0) {
             throw new Error('Cache size must be greater than 0');
         }
 
         this.maxSize = maxSize;
+        this.keyMapper = keyMapper;
+        this.valueBuilder = valueBuilder;
         this.cleanupFn = cleanupFn;
         this.cache = new Map();
         this.lruOrder = new Map();
@@ -24,30 +55,32 @@ export class Cache<T> {
     /**
      * Get item from cache
      */
-    public get(key: string): T | null {
+    public async get(k: K): Promise<T> {
+        const key = this.keyMapper(k);
         const cachedItem = this.cache.get(key);
 
-        if (!cachedItem) {
-            return null;
+        if (cachedItem) {
+            this.moveToFront(key);
+            return cachedItem;
         }
 
-        // Move to front (most recently used)
-        this.moveToFront(key);
+        return this.lock.acquire(key, async () => {
+            const existing = this.cache.get(key);
+            if (existing) {
+                this.moveToFront(key);
+                return existing;
+            }
 
-        return cachedItem;
+            const newItem = await this.valueBuilder(k);
+            this.set(key, newItem);
+            return newItem;
+        });
     }
 
     /**
      * Store item in cache
      */
-    public set(key: string, value: T): void {
-        // If key already exists, update it
-        if (this.cache.has(key)) {
-            this.cache.set(key, value);
-            this.moveToFront(key);
-            return;
-        }
-
+    private set(key: string, value: T): void {
         // If cache is full, remove least recently used item
         if (this.cache.size >= this.maxSize) {
             this.evictLeastRecentlyUsed();
@@ -61,14 +94,15 @@ export class Cache<T> {
     /**
      * Check if item exists in cache
      */
-    public has(key: string): boolean {
+    public has(k: K): boolean {
+        const key = this.keyMapper(k);
         return this.cache.has(key);
     }
 
     /**
      * Remove item from cache
      */
-    public delete(key: string): boolean {
+    private delete(key: string): boolean {
         if (!this.cache.has(key)) {
             return false;
         }

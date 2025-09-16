@@ -1,481 +1,300 @@
 import { Cache } from '../src/Cache';
 
 describe('Cache', () => {
-    let cache: Cache<ImageData>;
-    let mockImageData: ImageData;
+    let cache: Cache<string, string>;
+    const mockKeyMapper = (key: string) => key;
+    const mockValueBuilder = jest.fn((key: string) => Promise.resolve(`value-${key}`));
+    const mockCleanupFn = jest.fn();
 
     beforeEach(() => {
-        cache = new Cache<ImageData>(3); // Small cache for easier testing
-        // Create mock ImageData
-        mockImageData = new ImageData(256, 256);
+        jest.clearAllMocks();
+        cache = new Cache<string, string>(3, mockKeyMapper, mockValueBuilder, mockCleanupFn);
     });
 
     describe('constructor', () => {
-        it('should create cache with default max size', () => {
-            const defaultCache = new Cache<ImageData>();
-            expect(defaultCache).toBeInstanceOf(Cache);
+        it('should create cache with default maxSize', () => {
+            const defaultCache = new Cache<string, string>(100, mockKeyMapper, mockValueBuilder);
+            expect(defaultCache).toBeDefined();
         });
 
-        it('should create cache with specified max size', () => {
-            const customCache = new Cache<ImageData>(50);
-            expect(customCache).toBeInstanceOf(Cache);
+        it('should throw error for invalid maxSize', () => {
+            expect(() => {
+                new Cache<string, string>(0, mockKeyMapper, mockValueBuilder);
+            }).toThrow('Cache size must be greater than 0');
+
+            expect(() => {
+                new Cache<string, string>(-1, mockKeyMapper, mockValueBuilder);
+            }).toThrow('Cache size must be greater than 0');
         });
 
-        it('should throw error for invalid max size', () => {
-            expect(() => new Cache<ImageData>(0)).toThrow('Cache size must be greater than 0');
-            expect(() => new Cache<ImageData>(-1)).toThrow('Cache size must be greater than 0');
+        it('should create cache without cleanup function', () => {
+            const cacheWithoutCleanup = new Cache<string, string>(
+                3,
+                mockKeyMapper,
+                mockValueBuilder
+            );
+            expect(cacheWithoutCleanup).toBeDefined();
         });
     });
 
     describe('get method', () => {
-        it('should return null for non-existent key', () => {
-            const result = cache.get('non-existent');
-            expect(result).toBeNull();
+        it('should build and cache new values', async () => {
+            const result = await cache.get('key1');
+            expect(result).toBe('value-key1');
+            expect(mockValueBuilder).toHaveBeenCalledWith('key1');
+            expect(mockValueBuilder).toHaveBeenCalledTimes(1);
         });
 
-        it('should return ImageData for existing key', () => {
-            cache.set('test-key', mockImageData);
-            const result = cache.get('test-key');
-            expect(result).toBe(mockImageData);
+        it('should return cached value without rebuilding', async () => {
+            await cache.get('key1');
+            const result = await cache.get('key1');
+            expect(result).toBe('value-key1');
+            expect(mockValueBuilder).toHaveBeenCalledTimes(1);
         });
 
-        it('should move accessed item to front (most recently used)', () => {
-            // Fill cache
-            cache.set('key1', mockImageData);
-            cache.set('key2', mockImageData);
-            cache.set('key3', mockImageData);
+        it('should handle concurrent requests for same key', async () => {
+            const promises = [cache.get('key1'), cache.get('key1'), cache.get('key1')];
+            const results = await Promise.all(promises);
 
-            // Access key1 to move it to front
-            cache.get('key1');
-
-            // Add new item to trigger eviction
-            cache.set('key4', mockImageData);
-
-            // key1 should still exist (was moved to front)
-            // key2 should be evicted (was least recently used)
-            expect(cache.has('key1')).toBe(true);
-            expect(cache.has('key2')).toBe(false);
-            expect(cache.has('key3')).toBe(true);
-            expect(cache.has('key4')).toBe(true);
-        });
-    });
-
-    describe('set method', () => {
-        it('should add new item to cache', () => {
-            cache.set('test-key', mockImageData);
-            expect(cache.has('test-key')).toBe(true);
-            expect(cache.get('test-key')).toBe(mockImageData);
+            expect(results).toEqual(['value-key1', 'value-key1', 'value-key1']);
+            expect(mockValueBuilder).toHaveBeenCalledTimes(1);
         });
 
-        it('should update existing item', () => {
-            const newImageData = new ImageData(128, 128);
-            cache.set('test-key', mockImageData);
-            cache.set('test-key', newImageData);
+        it('should handle race condition where item appears during lock acquisition', async () => {
+            // Create a cache with a slow value builder to test race conditions
+            const slowBuilder = jest.fn().mockImplementation(async (key: string) => {
+                // Simulate slow build
+                await new Promise(resolve => setTimeout(resolve, 10));
+                return `value-${key}`;
+            });
 
-            expect(cache.get('test-key')).toBe(newImageData);
+            const raceCache = new Cache<string, string>(
+                3,
+                mockKeyMapper,
+                slowBuilder,
+                mockCleanupFn
+            );
+
+            // Start first request
+            const promise1 = raceCache.get('race-key');
+
+            // Start second request for same key while first is building
+            const promise2 = raceCache.get('race-key');
+
+            const [result1, result2] = await Promise.all([promise1, promise2]);
+
+            expect(result1).toBe('value-race-key');
+            expect(result2).toBe('value-race-key');
+            // Should only call builder once due to lock
+            expect(slowBuilder).toHaveBeenCalledTimes(1);
         });
 
-        it('should update existing item and move to front', () => {
-            // Fill cache
-            cache.set('key1', mockImageData);
-            cache.set('key2', mockImageData);
-            cache.set('key3', mockImageData);
+        it('should build different values for different keys', async () => {
+            const result1 = await cache.get('key1');
+            const result2 = await cache.get('key2');
 
-            // Update key1 to move it to front
-            const newImageData = new ImageData(128, 128);
-            cache.set('key1', newImageData);
-
-            // Add new item to trigger eviction
-            cache.set('key4', mockImageData);
-
-            // key1 should still exist (was moved to front)
-            // key2 should be evicted (was least recently used)
-            expect(cache.has('key1')).toBe(true);
-            expect(cache.get('key1')).toBe(newImageData);
-            expect(cache.has('key2')).toBe(false);
-            expect(cache.has('key3')).toBe(true);
-            expect(cache.has('key4')).toBe(true);
+            expect(result1).toBe('value-key1');
+            expect(result2).toBe('value-key2');
+            expect(mockValueBuilder).toHaveBeenCalledTimes(2);
         });
 
-        it('should evict least recently used item when cache is full', () => {
+        it('should evict LRU item when cache is full', async () => {
             // Fill cache to capacity
-            cache.set('key1', mockImageData);
-            cache.set('key2', mockImageData);
-            cache.set('key3', mockImageData);
-
-            expect(cache.has('key1')).toBe(true);
-            expect(cache.has('key2')).toBe(true);
-            expect(cache.has('key3')).toBe(true);
+            await cache.get('key1');
+            await cache.get('key2');
+            await cache.get('key3');
 
             // Add one more item to trigger eviction
-            cache.set('key4', mockImageData);
+            await cache.get('key4');
 
-            // key1 should be evicted (least recently used)
-            expect(cache.has('key1')).toBe(false);
-            expect(cache.has('key2')).toBe(true);
-            expect(cache.has('key3')).toBe(true);
-            expect(cache.has('key4')).toBe(true);
+            expect(mockCleanupFn).toHaveBeenCalledWith('value-key1');
+            expect(mockCleanupFn).toHaveBeenCalledTimes(1);
+
+            // Verify key1 is no longer cached
+            await cache.get('key1');
+            expect(mockValueBuilder).toHaveBeenCalledWith('key1');
         });
 
-        it('should maintain correct order when items are accessed', () => {
-            // Fill cache
-            cache.set('key1', mockImageData);
-            cache.set('key2', mockImageData);
-            cache.set('key3', mockImageData);
+        it('should update LRU order when accessing cached items', async () => {
+            await cache.get('key1');
+            await cache.get('key2');
+            await cache.get('key3');
 
-            // Access key2 to make it most recently used
-            cache.get('key2');
+            // Access key1 to make it most recently used
+            await cache.get('key1');
 
-            // Add new item
-            cache.set('key4', mockImageData);
+            // Add key4 to trigger eviction (should evict key2)
+            await cache.get('key4');
 
-            // key1 should be evicted (now least recently used)
-            expect(cache.has('key1')).toBe(false);
-            expect(cache.has('key2')).toBe(true);
-            expect(cache.has('key3')).toBe(true);
-            expect(cache.has('key4')).toBe(true);
+            expect(mockCleanupFn).toHaveBeenCalledWith('value-key2');
+        });
+
+        it('should handle valueBuilder errors', async () => {
+            const errorBuilder = jest.fn().mockRejectedValue(new Error('Build failed'));
+            const errorCache = new Cache<string, string>(3, mockKeyMapper, errorBuilder);
+
+            await expect(errorCache.get('key1')).rejects.toThrow('Build failed');
         });
     });
 
     describe('has method', () => {
         it('should return false for non-existent key', () => {
-            expect(cache.has('non-existent')).toBe(false);
+            expect(cache.has('nonexistent')).toBe(false);
         });
 
-        it('should return true for existing key', () => {
-            cache.set('test-key', mockImageData);
-            expect(cache.has('test-key')).toBe(true);
+        it('should return true for cached key', async () => {
+            await cache.get('key1');
+            expect(cache.has('key1')).toBe(true);
         });
 
-        it('should not affect LRU order', () => {
-            // Fill cache
-            cache.set('key1', mockImageData);
-            cache.set('key2', mockImageData);
-            cache.set('key3', mockImageData);
+        it('should return false after eviction', async () => {
+            await cache.get('key1');
+            await cache.get('key2');
+            await cache.get('key3');
+            await cache.get('key4'); // Evicts key1
 
-            // Check existence without affecting order
-            cache.has('key1');
-
-            // Add new item
-            cache.set('key4', mockImageData);
-
-            // key1 should still be evicted (has() doesn't update LRU)
             expect(cache.has('key1')).toBe(false);
-            expect(cache.has('key2')).toBe(true);
-            expect(cache.has('key3')).toBe(true);
-            expect(cache.has('key4')).toBe(true);
-        });
-    });
-
-    describe('delete method', () => {
-        it('should return false for non-existent key', () => {
-            const result = cache.delete('non-existent');
-            expect(result).toBe(false);
-        });
-
-        it('should return true and remove existing key', () => {
-            cache.set('test-key', mockImageData);
-            expect(cache.has('test-key')).toBe(true);
-
-            const result = cache.delete('test-key');
-            expect(result).toBe(true);
-            expect(cache.has('test-key')).toBe(false);
-        });
-
-        it('should properly update LRU structure when deleting head', () => {
-            cache.set('key1', mockImageData);
-            cache.set('key2', mockImageData);
-            cache.set('key3', mockImageData); // key3 is now head
-
-            cache.delete('key3');
-
-            // Should still be able to add items and maintain order
-            cache.set('key4', mockImageData);
-            // After deleting head, we have space for key4, so no eviction should occur
-            expect(cache.has('key1')).toBe(true);
-            expect(cache.has('key2')).toBe(true);
-            expect(cache.has('key4')).toBe(true);
-        });
-
-        it('should properly update LRU structure when deleting tail', () => {
-            cache.set('key1', mockImageData);
-            cache.set('key2', mockImageData);
-            cache.set('key3', mockImageData);
-
-            cache.delete('key1'); // key1 is tail
-
-            // Add new item - should not cause eviction since we have space
-            cache.set('key4', mockImageData);
-            expect(cache.has('key2')).toBe(true);
-            expect(cache.has('key3')).toBe(true);
-            expect(cache.has('key4')).toBe(true);
-        });
-
-        it('should properly update LRU structure when deleting middle item', () => {
-            cache.set('key1', mockImageData);
-            cache.set('key2', mockImageData);
-            cache.set('key3', mockImageData);
-
-            cache.delete('key2'); // key2 is in middle
-
-            // Add new item - should not cause eviction since we have space
-            cache.set('key4', mockImageData);
-            expect(cache.has('key1')).toBe(true);
-            expect(cache.has('key3')).toBe(true);
             expect(cache.has('key4')).toBe(true);
         });
     });
 
     describe('clear method', () => {
-        it('should remove all items from cache', () => {
-            cache.set('key1', mockImageData);
-            cache.set('key2', mockImageData);
-            cache.set('key3', mockImageData);
-
-            expect(cache.has('key1')).toBe(true);
-            expect(cache.has('key2')).toBe(true);
-            expect(cache.has('key3')).toBe(true);
+        it('should clear all cached items', async () => {
+            await cache.get('key1');
+            await cache.get('key2');
 
             cache.clear();
 
             expect(cache.has('key1')).toBe(false);
             expect(cache.has('key2')).toBe(false);
-            expect(cache.has('key3')).toBe(false);
         });
 
-        it('should reset LRU structure', () => {
-            cache.set('key1', mockImageData);
-            cache.set('key2', mockImageData);
+        it('should call cleanup function for all items', async () => {
+            await cache.get('key1');
+            await cache.get('key2');
+
             cache.clear();
 
-            // Should be able to add items normally after clear
-            cache.set('key3', mockImageData);
-            cache.set('key4', mockImageData);
-            cache.set('key5', mockImageData);
-            cache.set('key6', mockImageData); // Should evict key3
-
-            expect(cache.has('key3')).toBe(false);
-            expect(cache.has('key4')).toBe(true);
-            expect(cache.has('key5')).toBe(true);
-            expect(cache.has('key6')).toBe(true);
+            expect(mockCleanupFn).toHaveBeenCalledWith('value-key1');
+            expect(mockCleanupFn).toHaveBeenCalledWith('value-key2');
+            expect(mockCleanupFn).toHaveBeenCalledTimes(2);
         });
 
-        it('should work on empty cache', () => {
-            expect(() => cache.clear()).not.toThrow();
+        it('should handle clear without cleanup function', async () => {
+            const cacheWithoutCleanup = new Cache<string, string>(
+                3,
+                mockKeyMapper,
+                mockValueBuilder
+            );
+            await cacheWithoutCleanup.get('key1');
+
+            expect(() => cacheWithoutCleanup.clear()).not.toThrow();
         });
     });
 
     describe('getKeys method', () => {
         it('should return empty array for empty cache', () => {
-            const keys = cache.getKeys();
-            expect(keys).toEqual([]);
+            expect(cache.getKeys()).toEqual([]);
         });
 
-        it('should return all cached keys', () => {
-            cache.set('key1', mockImageData);
-            cache.set('key2', mockImageData);
-            cache.set('key3', mockImageData);
+        it('should return all cached keys', async () => {
+            await cache.get('key1');
+            await cache.get('key2');
 
             const keys = cache.getKeys();
-            expect(keys).toHaveLength(3);
             expect(keys).toContain('key1');
             expect(keys).toContain('key2');
-            expect(keys).toContain('key3');
-        });
-
-        it('should return current keys after eviction', () => {
-            cache.set('key1', mockImageData);
-            cache.set('key2', mockImageData);
-            cache.set('key3', mockImageData);
-            cache.set('key4', mockImageData); // Should evict key1
-
-            const keys = cache.getKeys();
-            expect(keys).toHaveLength(3);
-            expect(keys).not.toContain('key1');
-            expect(keys).toContain('key2');
-            expect(keys).toContain('key3');
-            expect(keys).toContain('key4');
+            expect(keys).toHaveLength(2);
         });
     });
 
     describe('getLRUKeys method', () => {
         it('should return empty array for empty cache', () => {
-            const lruKeys = cache.getLRUKeys();
-            expect(lruKeys).toEqual([]);
-        });
-
-        it('should return keys in LRU order (least to most recent)', () => {
-            cache.set('key1', mockImageData);
-            cache.set('key2', mockImageData);
-            cache.set('key3', mockImageData);
-
-            const lruKeys = cache.getLRUKeys();
-            expect(lruKeys).toEqual(['key1', 'key2', 'key3']);
-        });
-
-        it('should respect count parameter', () => {
-            cache.set('key1', mockImageData);
-            cache.set('key2', mockImageData);
-            cache.set('key3', mockImageData);
-
-            const lruKeys = cache.getLRUKeys(2);
-            expect(lruKeys).toEqual(['key1', 'key2']);
-        });
-
-        it('should update order when items are accessed', () => {
-            cache.set('key1', mockImageData);
-            cache.set('key2', mockImageData);
-            cache.set('key3', mockImageData);
-
-            // Access key1 to move it to front
-            cache.get('key1');
-
-            const lruKeys = cache.getLRUKeys();
-            expect(lruKeys).toEqual(['key2', 'key3', 'key1']);
-        });
-
-        it('should handle count larger than cache size', () => {
-            cache.set('key1', mockImageData);
-            cache.set('key2', mockImageData);
-
-            const lruKeys = cache.getLRUKeys(10);
-            expect(lruKeys).toEqual(['key1', 'key2']);
-        });
-
-        it('should handle single item cache', () => {
-            cache.set('only-key', mockImageData);
-
-            const lruKeys = cache.getLRUKeys();
-            expect(lruKeys).toEqual(['only-key']);
-        });
-    });
-
-    describe('edge cases and boundary conditions', () => {
-        it('should handle cache with size 1', () => {
-            const smallCache = new Cache<ImageData>(1);
-
-            smallCache.set('key1', mockImageData);
-            expect(smallCache.has('key1')).toBe(true);
-
-            smallCache.set('key2', mockImageData);
-            expect(smallCache.has('key1')).toBe(false);
-            expect(smallCache.has('key2')).toBe(true);
-        });
-
-        it('should handle operations on empty cache', () => {
-            expect(cache.get('any-key')).toBeNull();
-            expect(cache.has('any-key')).toBe(false);
-            expect(cache.delete('any-key')).toBe(false);
-            expect(cache.getKeys()).toEqual([]);
             expect(cache.getLRUKeys()).toEqual([]);
         });
 
-        it('should handle multiple operations on same key', () => {
-            cache.set('key1', mockImageData);
-            cache.get('key1');
-            cache.set('key1', new ImageData(128, 128));
-            cache.get('key1');
+        it('should return keys in LRU order', async () => {
+            await cache.get('key1');
+            await cache.get('key2');
+            await cache.get('key3');
 
-            expect(cache.has('key1')).toBe(true);
-            expect(cache.get('key1')).toBeInstanceOf(ImageData);
+            const lruKeys = cache.getLRUKeys();
+            expect(lruKeys).toEqual(['key1', 'key2', 'key3']); // From tail (LRU) to head (MRU)
         });
 
-        it('should maintain cache size limits under various operations', () => {
-            // Fill to capacity
-            cache.set('key1', mockImageData);
-            cache.set('key2', mockImageData);
-            cache.set('key3', mockImageData);
+        it('should limit returned keys to specified count', async () => {
+            await cache.get('key1');
+            await cache.get('key2');
+            await cache.get('key3');
 
-            // Perform various operations
-            cache.get('key1');
-            cache.delete('key2');
-            cache.set('key4', mockImageData);
-            cache.set('key5', mockImageData);
-
-            // Should never exceed max size
-            expect(cache.getKeys().length).toBeLessThanOrEqual(3);
+            const lruKeys = cache.getLRUKeys(2);
+            expect(lruKeys).toEqual(['key1', 'key2']); // First 2 from tail (LRU)
+            expect(lruKeys).toHaveLength(2);
         });
 
-        it('should handle null/undefined keys gracefully', () => {
-            // TypeScript should prevent this, but test runtime behavior
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            expect(() => (cache as any).set(null, mockImageData)).not.toThrow();
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            expect(() => (cache as any).get(null)).not.toThrow();
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            expect(() => (cache as any).has(null)).not.toThrow();
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            expect(() => (cache as any).delete(null)).not.toThrow();
-        });
+        it('should update order after accessing cached item', async () => {
+            await cache.get('key1');
+            await cache.get('key2');
+            await cache.get('key3');
 
-        it('should handle eviction on empty cache (edge case coverage)', () => {
-            // This tests the early return in evictLeastRecentlyUsed when this.tail is null
-            const emptyCache = new Cache<ImageData>(1);
+            // Access key1 to make it most recently used
+            await cache.get('key1');
 
-            // Clear to ensure empty state with null head/tail
-            emptyCache.clear();
-            expect(emptyCache.getKeys()).toEqual([]);
-
-            // Try to force eviction path when cache size would exceed
-            // This should trigger evictLeastRecentlyUsed with null tail
-            emptyCache.set('key1', mockImageData);
-            emptyCache.set('key2', mockImageData); // This should trigger eviction logic
-
-            expect(emptyCache.has('key2')).toBe(true);
-        });
-
-        it('should handle attempt to remove non-existent key from LRU structure', () => {
-            // This tests the early return in removeFromLRU when node is not found
-            cache.set('key1', mockImageData);
-
-            // Delete the same key twice to trigger the removeFromLRU early return
-            expect(cache.delete('key1')).toBe(true);
-            expect(cache.delete('key1')).toBe(false); // Second delete should return false and handle missing node
-
-            // Cache should still function normally
-            cache.set('key2', mockImageData);
-            expect(cache.has('key2')).toBe(true);
+            const lruKeys = cache.getLRUKeys();
+            expect(lruKeys).toEqual(['key2', 'key3', 'key1']); // key2 is now LRU, key1 is MRU
         });
     });
 
-    describe('LRU ordering integrity', () => {
-        it('should maintain correct head/tail pointers', () => {
-            // Start fresh
-            cache.clear();
+    describe('LRU edge cases', () => {
+        it('should handle single item cache', async () => {
+            const singleCache = new Cache<string, string>(
+                1,
+                mockKeyMapper,
+                mockValueBuilder,
+                mockCleanupFn
+            );
 
-            // Single item
-            cache.set('single', mockImageData);
-            expect(cache.getLRUKeys()).toEqual(['single']);
+            await singleCache.get('key1');
+            await singleCache.get('key2');
 
-            // Two items
-            cache.set('second', mockImageData);
-            expect(cache.getLRUKeys()).toEqual(['single', 'second']);
-
-            // Access first item
-            cache.get('single');
-            expect(cache.getLRUKeys()).toEqual(['second', 'single']);
-
-            // Delete head
-            cache.delete('single');
-            expect(cache.getLRUKeys()).toEqual(['second']);
-
-            // Add back
-            cache.set('third', mockImageData);
-            expect(cache.getLRUKeys()).toEqual(['second', 'third']);
+            expect(mockCleanupFn).toHaveBeenCalledWith('value-key1');
+            expect(singleCache.has('key1')).toBe(false);
+            expect(singleCache.has('key2')).toBe(true);
         });
 
-        it('should handle complex access patterns', () => {
-            cache.set('a', mockImageData);
-            cache.set('b', mockImageData);
-            cache.set('c', mockImageData);
+        it('should handle empty cache operations', () => {
+            expect(cache.getKeys()).toEqual([]);
+            expect(cache.getLRUKeys()).toEqual([]);
+            expect(cache.has('key1')).toBe(false);
+            expect(() => cache.clear()).not.toThrow();
+        });
 
-            // Pattern: access a, then b, then add d
-            cache.get('a'); // Order: b, c, a
-            cache.get('b'); // Order: c, a, b
-            cache.set('d', mockImageData); // Should evict c
+        it('should handle edge case in LRU removal operations', async () => {
+            // Test removeFromLRU edge cases by manipulating internal state
+            await cache.get('key1');
+            await cache.get('key2');
+            await cache.get('key3');
 
-            expect(cache.has('c')).toBe(false);
-            expect(cache.getLRUKeys()).toEqual(['a', 'b', 'd']);
+            // Trigger eviction to test internal removeFromLRU logic
+            await cache.get('key4'); // This should evict key1
+
+            expect(mockCleanupFn).toHaveBeenCalledWith('value-key1');
+        });
+
+        it('should handle missing node removal', () => {
+            // Try to access private methods if possible for coverage
+            const cacheInstance = cache as any;
+
+            // Test removeFromLRU with non-existent key (should not crash)
+            if (cacheInstance.removeFromLRU) {
+                expect(() => cacheInstance.removeFromLRU('nonexistent')).not.toThrow();
+            }
+
+            // Test delete with non-existent key
+            if (cacheInstance.delete) {
+                const result = cacheInstance.delete('nonexistent');
+                expect(result).toBe(false);
+            }
         });
     });
 });

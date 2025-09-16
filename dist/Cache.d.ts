@@ -1,30 +1,33 @@
 /**
  * LRU (Least Recently Used) cache with performance optimizations and cleanup support
  */
-export declare class Cache<T> {
+export declare class Cache<K, T> {
     private readonly maxSize;
     private readonly cache;
+    private readonly keyMapper;
+    private readonly valueBuilder;
     private readonly cleanupFn?;
     private readonly lruOrder;
     private head;
     private tail;
-    constructor(maxSize?: number, cleanupFn?: (value: T) => void);
+    private readonly lock;
+    constructor(maxSize: number | undefined, keyMapper: (key: K) => string, valueBuilder: (key: K) => Promise<T>, cleanupFn?: (value: T) => void);
     /**
      * Get item from cache
      */
-    get(key: string): T | null;
+    get(k: K): Promise<T>;
     /**
      * Store item in cache
      */
-    set(key: string, value: T): void;
+    private set;
     /**
      * Check if item exists in cache
      */
-    has(key: string): boolean;
+    has(k: K): boolean;
     /**
      * Remove item from cache
      */
-    delete(key: string): boolean;
+    private delete;
     /**
      * Clear all cached items
      */

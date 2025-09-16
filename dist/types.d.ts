@@ -13,10 +13,8 @@ export interface TileCoordinates {
     readonly y: number;
     readonly z: number;
 }
-/**
- * Position within a tile (0-255 range)
- */
-export interface TilePixelPosition {
+export interface Pixel {
+    readonly tile: TileCoordinates;
     readonly x: number;
     readonly y: number;
 }
@@ -54,10 +52,9 @@ export interface ElevationProviderConfig {
     readonly timeout?: number;
 }
 /**
- * Cached tile data with ImageBitmap for proper memory management
+ * Tile data with ImageBitmap for proper memory management
  */
-export interface CachedTile {
-    readonly key: string;
+export interface Tile {
     readonly data: ImageData;
     readonly bitmap: ImageBitmap;
 }

@@ -1,8 +1,5 @@
-const m = class m {
-  /**
-   * Convert WGS84 coordinates to Web Mercator tile coordinates
-   */
-  static toTileCoordinates(t, e) {
+const g = class g {
+  static toPixel(t, e) {
     if (!this.isValidLatitude(t.latitude))
       throw new Error(
         `Invalid latitude: ${t.latitude}. Must be between -85.0511 and 85.0511`
@@ -11,46 +8,23 @@ const m = class m {
       throw new Error(`Invalid longitude: ${t.longitude}. Must be between -180 and 180`);
     if (!this.isValidZoomLevel(e))
       throw new Error(`Invalid zoom level: ${e}. Must be between 0 and 15`);
-    const i = this.degToRad(t.latitude), a = Math.pow(2, e), r = Math.floor((t.longitude + 180) / 360 * a), o = Math.floor((1 - Math.log(Math.tan(i) + 1 / Math.cos(i)) / Math.PI) / 2 * a);
-    return { x: r, y: o, z: e };
-  }
-  /**
-   * Get pixel position within a tile (0-255 range)
-   */
-  static getTilePixelPosition(t, e) {
-    const i = this.degToRad(t.latitude), a = Math.pow(2, e.z), r = (t.longitude + 180) / 360 * a, o = (1 - Math.log(Math.tan(i) + 1 / Math.cos(i)) / Math.PI) / 2 * a, n = Math.floor((r - e.x) * this.TILE_SIZE), h = Math.floor((o - e.y) * this.TILE_SIZE);
+    const i = this.degToRad(t.latitude), a = Math.pow(2, e), r = (t.longitude + 180) / 360 * a, n = (1 - Math.log(Math.tan(i) + 1 / Math.cos(i)) / Math.PI) / 2 * a;
+    let l = Math.floor(r), o = Math.floor(n);
+    const c = a - 1;
+    l = Math.max(0, Math.min(c, l)), o = Math.max(0, Math.min(c, o));
+    const d = Math.floor((r - l) * this.TILE_SIZE), m = Math.floor((n - o) * this.TILE_SIZE);
     return {
-      x: Math.max(0, Math.min(this.TILE_SIZE - 1, n)),
-      y: Math.max(0, Math.min(this.TILE_SIZE - 1, h))
+      tile: {
+        z: e,
+        x: l,
+        y: o
+      },
+      x: Math.max(0, Math.min(this.TILE_SIZE - 1, d)),
+      y: Math.max(0, Math.min(this.TILE_SIZE - 1, m))
     };
-  }
-  /**
-   * Convert tile coordinates back to WGS84 coordinates (for tile center)
-   */
-  static fromTileCoordinates(t) {
-    const e = Math.pow(2, t.z), i = t.x / e * 360 - 180, a = Math.atan(Math.sinh(Math.PI * (1 - 2 * t.y / e)));
-    return {
-      latitude: this.radToDeg(a),
-      longitude: i
-    };
-  }
-  /**
-   * Generate tile key for caching
-   */
-  static getTileKey(t) {
-    return `${t.z}/${t.x}/${t.y}`;
-  }
-  /**
-   * Get tile URL from template
-   */
-  static getTileUrl(t, e = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png") {
-    return e.replace("{z}", t.z.toString()).replace("{x}", t.x.toString()).replace("{y}", t.y.toString());
   }
   static degToRad(t) {
     return t * Math.PI / 180;
-  }
-  static radToDeg(t) {
-    return t * 180 / Math.PI;
   }
   static isValidLatitude(t) {
     return t >= -85.0511 && t <= 85.0511;
@@ -62,9 +36,9 @@ const m = class m {
     return Number.isInteger(t) && t >= 0 && t <= 15;
   }
 };
-m.TILE_SIZE = 256;
-let l = m;
-const f = {
+g.TILE_SIZE = 256;
+let u = g;
+const w = {
   available: [],
   idleSize: 5,
   idleTimeout: 3e4,
@@ -85,7 +59,7 @@ const f = {
       this.available.pop();
   }
 };
-class M {
+class p {
   constructor(t = 5e3) {
     this.timeout = t;
   }
@@ -123,27 +97,27 @@ class M {
   async blobToImageDataAndBitmap(t) {
     let e = null, i = null;
     try {
-      if (e = f.acquire(), i = e.getContext("2d", { willReadFrequently: !0 }), !i)
+      if (e = w.acquire(), i = e.getContext("2d", { willReadFrequently: !0 }), !i)
         throw new Error("Failed to get 2D canvas context");
       const a = await createImageBitmap(t);
-      return e.width = a.width, e.height = a.height, i.drawImage(a, 0, 0), { imageData: i.getImageData(0, 0, a.width, a.height), imageBitmap: a };
+      return e.width = a.width, e.height = a.height, i.drawImage(a, 0, 0), { data: i.getImageData(0, 0, a.width, a.height), bitmap: a };
     } catch (a) {
       throw new Error(
         `Failed to process image: ${a instanceof Error ? a.message : "Unknown error"}`
       );
     } finally {
-      e && f.release(e);
+      e && w.release(e);
     }
   }
 }
-class w {
+class x {
   /**
    * Decode elevation from RGB values using Terrarium encoding
    * Formula: elevation = (red * 256 + green + blue / 256) - 32768
    */
   static decodeElevation(t) {
     const e = t.red * 256 + t.green + t.blue / 256 - 32768;
-    return Math.round(e * 10) / 10;
+    return Math.round(e * 100) / 100;
   }
   /**
    * Extract RGB values from ImageData at specific pixel position
@@ -171,49 +145,55 @@ class w {
     const i = this.getRGBFromImageData(t, e);
     return this.decodeElevation(i);
   }
-  /**
-   * Get interpolated elevation using bilinear interpolation
-   * This provides smoother elevation values between pixels
-   */
-  static getInterpolatedElevation(t, e, i) {
-    const a = Math.max(0, Math.min(t.width - 1, e)), r = Math.max(0, Math.min(t.height - 1, i)), o = Math.floor(a), n = Math.floor(r), h = Math.min(o + 1, t.width - 1), g = Math.min(n + 1, t.height - 1), c = a - o, d = r - n, u = this.getElevationFromImageData(t, { x: o, y: n }), v = this.getElevationFromImageData(t, { x: h, y: n }), p = this.getElevationFromImageData(t, { x: o, y: g }), T = this.getElevationFromImageData(t, { x: h, y: g }), E = u * (1 - c) + v * c, x = p * (1 - c) + T * c, I = E * (1 - d) + x * d;
-    return Math.round(I * 10) / 10;
+}
+class I {
+  constructor() {
+    this.locks = /* @__PURE__ */ new Map();
   }
-  /**
-   * Validate that RGB values represent valid terrain data
-   */
-  static isValidTerrainData(t) {
-    return !(t.red === 0 && t.green === 0 && t.blue === 0 || t.red === 255 && t.green === 255 && t.blue === 255);
+  async acquire(t, e) {
+    if (this.locks.has(t))
+      return this.locks.get(t);
+    const i = (async () => {
+      try {
+        return await e();
+      } finally {
+        this.locks.delete(t);
+      }
+    })();
+    return this.locks.set(t, i), i;
   }
 }
-class y {
-  constructor(t = 100, e) {
-    if (this.head = null, this.tail = null, t <= 0)
+class T {
+  constructor(t = 100, e, i, a) {
+    if (this.head = null, this.tail = null, this.lock = new I(), t <= 0)
       throw new Error("Cache size must be greater than 0");
-    this.maxSize = t, this.cleanupFn = e, this.cache = /* @__PURE__ */ new Map(), this.lruOrder = /* @__PURE__ */ new Map();
+    this.maxSize = t, this.keyMapper = e, this.valueBuilder = i, this.cleanupFn = a, this.cache = /* @__PURE__ */ new Map(), this.lruOrder = /* @__PURE__ */ new Map();
   }
   /**
    * Get item from cache
    */
-  get(t) {
-    const e = this.cache.get(t);
-    return e ? (this.moveToFront(t), e) : null;
+  async get(t) {
+    const e = this.keyMapper(t), i = this.cache.get(e);
+    return i ? (this.moveToFront(e), i) : this.lock.acquire(e, async () => {
+      const a = this.cache.get(e);
+      if (a)
+        return this.moveToFront(e), a;
+      const r = await this.valueBuilder(t);
+      return this.set(e, r), r;
+    });
   }
   /**
    * Store item in cache
    */
   set(t, e) {
-    if (this.cache.has(t)) {
-      this.cache.set(t, e), this.moveToFront(t);
-      return;
-    }
     this.cache.size >= this.maxSize && this.evictLeastRecentlyUsed(), this.cache.set(t, e), this.addToFront(t);
   }
   /**
    * Check if item exists in cache
    */
   has(t) {
-    return this.cache.has(t);
+    const e = this.keyMapper(t);
+    return this.cache.has(e);
   }
   /**
    * Remove item from cache
@@ -296,68 +276,82 @@ class y {
     }
   }
 }
-class b {
+const h = class h {
   constructor(t = {}) {
     this.config = {
       zoomLevel: t.zoomLevel ?? 12,
       cacheSize: t.cacheSize ?? 100,
       tileUrlTemplate: t.tileUrlTemplate ?? "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
       timeout: t.timeout ?? 5e3
-    }, this.validateConfig(), this.tileFetcher = new M(this.config.timeout);
+    }, this.validateConfig(), this.tileFetcher = new p(this.config.timeout);
     const e = (i) => {
       i.bitmap.close();
     };
-    this.cache = new y(this.config.cacheSize, e);
+    this.cache = new T(
+      this.config.cacheSize,
+      (i) => `${i.z}/${i.x}/${i.y}`,
+      (i) => this.loadTile(i),
+      e
+    );
+  }
+  /**
+   * Get tile URL from template
+   */
+  getTileUrl(t) {
+    return this.config.tileUrlTemplate.replace("{z}", t.z.toString()).replace("{x}", t.x.toString()).replace("{y}", t.y.toString());
+  }
+  async loadTile(t) {
+    const e = this.getTileUrl(t);
+    return await this.tileFetcher.fetchTile(e);
   }
   /**
    * Get elevation at specific coordinates
    */
   async getElevation(t, e) {
-    const i = { latitude: t, longitude: e };
+    const i = { latitude: t, longitude: e }, a = u.toPixel(i, this.config.zoomLevel);
+    return await this.getElevationPixel(a);
+  }
+  async getElevationPixel(t) {
     try {
-      const a = l.toTileCoordinates(i, this.config.zoomLevel), r = l.getTileKey(a), o = this.cache.get(r);
-      let n;
-      if (o)
-        n = o.data;
-      else {
-        const c = l.getTileUrl(
-          a,
-          this.config.tileUrlTemplate
-        ), { imageData: d, imageBitmap: u } = await this.tileFetcher.fetchTile(c);
-        n = d, this.cache.set(r, { key: r, data: n, bitmap: u });
-      }
-      const h = l.getTilePixelPosition(i, a);
-      return w.getElevationFromImageData(n, h);
-    } catch (a) {
-      throw a instanceof Error ? new Error(`Failed to get elevation: ${a.message}`) : new Error("Failed to get elevation: Unknown error");
+      const i = (await this.cache.get(t.tile)).data;
+      return x.getElevationFromImageData(i, t);
+    } catch (e) {
+      throw e instanceof Error ? new Error(`Failed to get elevation: ${e.message}`) : new Error("Failed to get elevation: Unknown error");
     }
   }
-  /**
-   * Get interpolated elevation for smoother results
-   */
   async getInterpolatedElevation(t, e) {
-    const i = { latitude: t, longitude: e };
-    try {
-      const a = l.toTileCoordinates(i, this.config.zoomLevel), r = l.getTileKey(a), o = this.cache.get(r);
-      let n;
-      if (o)
-        n = o.data;
-      else {
-        const c = l.getTileUrl(
-          a,
-          this.config.tileUrlTemplate
-        ), { imageData: d, imageBitmap: u } = await this.tileFetcher.fetchTile(c);
-        n = d, this.cache.set(r, { key: r, data: n, bitmap: u });
-      }
-      const h = l.getTilePixelPosition(i, a);
-      return w.getInterpolatedElevation(
-        n,
-        h.x,
-        h.y
-      );
-    } catch (a) {
-      throw a instanceof Error ? new Error(`Failed to get interpolated elevation: ${a.message}`) : new Error("Failed to get interpolated elevation: Unknown error");
-    }
+    const i = { latitude: t, longitude: e }, a = u.toPixel(i, this.config.zoomLevel);
+    return await this.getInterpolatedElevationPixel(a);
+  }
+  async getInterpolatedElevationPixel(t) {
+    const e = Math.floor(t.x), i = Math.floor(t.y), a = e + 1, r = i + 1, n = t.x - e, l = t.y - i, o = await this.getElevationPixel(
+      this.normalizePixel({ tile: t.tile, x: e, y: i })
+    ), c = await this.getElevationPixel(
+      this.normalizePixel({ tile: t.tile, x: a, y: i })
+    ), d = await this.getElevationPixel(
+      this.normalizePixel({ tile: t.tile, x: e, y: r })
+    ), m = await this.getElevationPixel(
+      this.normalizePixel({ tile: t.tile, x: a, y: r })
+    ), f = o * (1 - n) + c * n, E = d * (1 - n) + m * n;
+    return f * (1 - l) + E * l;
+  }
+  normalizePixel(t) {
+    let { x: e, y: i } = t;
+    const a = t.tile;
+    let r = a.x, n = a.y;
+    const l = a.z;
+    e < 0 && (e += h.TILE_SIZE, r -= 1), e >= h.TILE_SIZE && (e -= h.TILE_SIZE, r += 1), i < 0 && (i += h.TILE_SIZE, n -= 1), i >= h.TILE_SIZE && (i -= h.TILE_SIZE, n += 1);
+    const o = Math.pow(2, l) - 1;
+    return r = Math.max(0, Math.min(o, r)), n = Math.max(0, Math.min(o, n)), { tile: { z: l, x: r, y: n }, x: e, y: i };
+  }
+  /**
+   * Batch get elevations for multiple coordinates
+   */
+  async getInterpolatedElevations(t) {
+    const e = t.map(
+      (i) => this.getInterpolatedElevation(i.latitude, i.longitude)
+    );
+    return Promise.all(e);
   }
   /**
    * Batch get elevations for multiple coordinates
@@ -400,8 +394,10 @@ class b {
     if (!Number.isInteger(i) || i <= 0)
       throw new Error(`Invalid timeout: ${i}. Must be a positive integer`);
   }
-}
+};
+h.TILE_SIZE = 256;
+let v = h;
 export {
-  b as ElevationProvider
+  v as ElevationProvider
 };
 //# sourceMappingURL=index.esm.js.map

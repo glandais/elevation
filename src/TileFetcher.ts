@@ -1,3 +1,5 @@
+import { Tile } from './types';
+
 interface CanvasPool {
     available: HTMLCanvasElement[];
     idleSize: number;
@@ -58,9 +60,7 @@ export class TileFetcher {
     /**
      * Fetch a tile image and return both ImageData and ImageBitmap for memory management
      */
-    public async fetchTile(
-        url: string
-    ): Promise<{ imageData: ImageData; imageBitmap: ImageBitmap }> {
+    public async fetchTile(url: string): Promise<Tile> {
         try {
             const response = await this.fetchWithTimeout(url);
 
@@ -99,9 +99,7 @@ export class TileFetcher {
      * Convert blob to ImageData and ImageBitmap using createImageBitmap
      * This approach avoids memory leaks from Image objects and blob URLs
      */
-    private async blobToImageDataAndBitmap(
-        blob: Blob
-    ): Promise<{ imageData: ImageData; imageBitmap: ImageBitmap }> {
+    private async blobToImageDataAndBitmap(blob: Blob): Promise<Tile> {
         let canvas: HTMLCanvasElement | null = null;
         let ctx: CanvasRenderingContext2D | null = null;
         try {
@@ -111,17 +109,17 @@ export class TileFetcher {
                 throw new Error('Failed to get 2D canvas context');
             }
             // Create ImageBitmap directly from blob - more efficient and better memory management
-            const imageBitmap = await createImageBitmap(blob);
+            const bitmap = await createImageBitmap(blob);
 
             // Resize canvas to match image dimensions
-            canvas.width = imageBitmap.width;
-            canvas.height = imageBitmap.height;
+            canvas.width = bitmap.width;
+            canvas.height = bitmap.height;
 
             // Draw ImageBitmap to canvas and extract ImageData
-            ctx.drawImage(imageBitmap, 0, 0);
-            const imageData = ctx.getImageData(0, 0, imageBitmap.width, imageBitmap.height);
+            ctx.drawImage(bitmap, 0, 0);
+            const data = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
 
-            return { imageData, imageBitmap };
+            return { data, bitmap };
         } catch (error) {
             throw new Error(
                 `Failed to process image: ${error instanceof Error ? error.message : 'Unknown error'}`

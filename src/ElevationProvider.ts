@@ -2,15 +2,24 @@ import { CoordinateConverter } from './CoordinateConverter';
 import { TileFetcher } from './TileFetcher';
 import { ElevationDecoder } from './ElevationDecoder';
 import { Cache } from './Cache';
-import type { Coordinates, ElevationProviderConfig, Attribution, CachedTile } from './types';
+import type {
+    Coordinates,
+    ElevationProviderConfig,
+    Attribution,
+    Tile,
+    TileCoordinates,
+    Pixel,
+} from './types';
 
 /**
  * Main API class for retrieving elevation data from geographic coordinates
  */
 export class ElevationProvider {
+    private static readonly TILE_SIZE = 256;
+
     private readonly config: Required<ElevationProviderConfig>;
     private readonly tileFetcher: TileFetcher;
-    private readonly cache: Cache<CachedTile>;
+    private readonly cache: Cache<TileCoordinates, Tile>;
 
     constructor(config: ElevationProviderConfig = {}) {
         this.config = {
@@ -26,10 +35,30 @@ export class ElevationProvider {
         this.tileFetcher = new TileFetcher(this.config.timeout);
 
         // Create cache with cleanup function to close ImageBitmaps
-        const cleanupFunction = (cachedTile: CachedTile) => {
+        const cleanupFunction = (cachedTile: Tile) => {
             cachedTile.bitmap.close();
         };
-        this.cache = new Cache<CachedTile>(this.config.cacheSize, cleanupFunction);
+        this.cache = new Cache<TileCoordinates, Tile>(
+            this.config.cacheSize,
+            tileCoords => `${tileCoords.z}/${tileCoords.x}/${tileCoords.y}`,
+            tileCoords => this.loadTile(tileCoords),
+            cleanupFunction
+        );
+    }
+
+    /**
+     * Get tile URL from template
+     */
+    private getTileUrl(tileCoords: TileCoordinates): string {
+        return this.config.tileUrlTemplate
+            .replace('{z}', tileCoords.z.toString())
+            .replace('{x}', tileCoords.x.toString())
+            .replace('{y}', tileCoords.y.toString());
+    }
+
+    private async loadTile(tileCoords: TileCoordinates): Promise<Tile> {
+        const tileUrl = this.getTileUrl(tileCoords);
+        return await this.tileFetcher.fetchTile(tileUrl);
     }
 
     /**
@@ -37,37 +66,17 @@ export class ElevationProvider {
      */
     public async getElevation(latitude: number, longitude: number): Promise<number> {
         const coords: Coordinates = { latitude, longitude };
+        const pixel = CoordinateConverter.toPixel(coords, this.config.zoomLevel);
+        return await this.getElevationPixel(pixel);
+    }
 
+    private async getElevationPixel(pixel: Pixel): Promise<number> {
         try {
-            const tileCoords = CoordinateConverter.toTileCoordinates(coords, this.config.zoomLevel);
-
-            const tileKey = CoordinateConverter.getTileKey(tileCoords);
-
             // Try to get tile from cache
-            const cachedTile = this.cache.get(tileKey);
-            let imageData: ImageData;
-
-            // If not in cache, fetch it
-            if (!cachedTile) {
-                const tileUrl = CoordinateConverter.getTileUrl(
-                    tileCoords,
-                    this.config.tileUrlTemplate
-                );
-
-                const { imageData: fetchedImageData, imageBitmap } =
-                    await this.tileFetcher.fetchTile(tileUrl);
-                imageData = fetchedImageData;
-                this.cache.set(tileKey, { key: tileKey, data: imageData, bitmap: imageBitmap });
-            } else {
-                imageData = cachedTile.data;
-            }
-
-            // Get pixel position within tile
-            const pixelPosition = CoordinateConverter.getTilePixelPosition(coords, tileCoords);
-
+            const cachedTile = await this.cache.get(pixel.tile);
+            const imageData = cachedTile.data;
             // Decode elevation from pixel data
-            const elevation = ElevationDecoder.getElevationFromImageData(imageData, pixelPosition);
-
+            const elevation = ElevationDecoder.getElevationFromImageData(imageData, pixel);
             return elevation;
         } catch (error) {
             if (error instanceof Error) {
@@ -77,53 +86,85 @@ export class ElevationProvider {
         }
     }
 
-    /**
-     * Get interpolated elevation for smoother results
-     */
     public async getInterpolatedElevation(latitude: number, longitude: number): Promise<number> {
         const coords: Coordinates = { latitude, longitude };
+        const pixel = CoordinateConverter.toPixel(coords, this.config.zoomLevel);
+        return await this.getInterpolatedElevationPixel(pixel);
+    }
 
-        try {
-            const tileCoords = CoordinateConverter.toTileCoordinates(coords, this.config.zoomLevel);
+    private async getInterpolatedElevationPixel(pixelFloat: {
+        tile: Pixel['tile'];
+        x: number;
+        y: number;
+    }): Promise<number> {
+        const x0 = Math.floor(pixelFloat.x);
+        const y0 = Math.floor(pixelFloat.y);
+        const x1 = x0 + 1;
+        const y1 = y0 + 1;
 
-            const tileKey = CoordinateConverter.getTileKey(tileCoords);
+        const dx = pixelFloat.x - x0;
+        const dy = pixelFloat.y - y0;
 
-            // Try to get tile from cache
-            const cachedTile = this.cache.get(tileKey);
-            let imageData: ImageData;
+        const p00 = await this.getElevationPixel(
+            this.normalizePixel({ tile: pixelFloat.tile, x: x0, y: y0 })
+        );
+        const p10 = await this.getElevationPixel(
+            this.normalizePixel({ tile: pixelFloat.tile, x: x1, y: y0 })
+        );
+        const p01 = await this.getElevationPixel(
+            this.normalizePixel({ tile: pixelFloat.tile, x: x0, y: y1 })
+        );
+        const p11 = await this.getElevationPixel(
+            this.normalizePixel({ tile: pixelFloat.tile, x: x1, y: y1 })
+        );
 
-            // If not in cache, fetch it
-            if (!cachedTile) {
-                const tileUrl = CoordinateConverter.getTileUrl(
-                    tileCoords,
-                    this.config.tileUrlTemplate
-                );
+        const top = p00 * (1 - dx) + p10 * dx;
+        const bottom = p01 * (1 - dx) + p11 * dx;
+        return top * (1 - dy) + bottom * dy;
+    }
 
-                const { imageData: fetchedImageData, imageBitmap } =
-                    await this.tileFetcher.fetchTile(tileUrl);
-                imageData = fetchedImageData;
-                this.cache.set(tileKey, { key: tileKey, data: imageData, bitmap: imageBitmap });
-            } else {
-                imageData = cachedTile.data;
-            }
+    private normalizePixel(pixel: Pixel): Pixel {
+        let { x, y } = pixel;
+        const tile = pixel.tile;
+        let tileX = tile.x;
+        let tileY = tile.y;
+        const z = tile.z;
 
-            // Get exact pixel position (with decimal values for interpolation)
-            const pixelPosition = CoordinateConverter.getTilePixelPosition(coords, tileCoords);
-
-            // Use interpolated elevation
-            const elevation = ElevationDecoder.getInterpolatedElevation(
-                imageData,
-                pixelPosition.x,
-                pixelPosition.y
-            );
-
-            return elevation;
-        } catch (error) {
-            if (error instanceof Error) {
-                throw new Error(`Failed to get interpolated elevation: ${error.message}`);
-            }
-            throw new Error('Failed to get interpolated elevation: Unknown error');
+        if (x < 0) {
+            x += ElevationProvider.TILE_SIZE;
+            tileX -= 1;
         }
+        if (x >= ElevationProvider.TILE_SIZE) {
+            x -= ElevationProvider.TILE_SIZE;
+            tileX += 1;
+        }
+        if (y < 0) {
+            y += ElevationProvider.TILE_SIZE;
+            tileY -= 1;
+        }
+        if (y >= ElevationProvider.TILE_SIZE) {
+            y -= ElevationProvider.TILE_SIZE;
+            tileY += 1;
+        }
+
+        const maxTile = Math.pow(2, z) - 1;
+        tileX = Math.max(0, Math.min(maxTile, tileX));
+        tileY = Math.max(0, Math.min(maxTile, tileY));
+
+        return { tile: { z, x: tileX, y: tileY }, x, y };
+    }
+
+    /**
+     * Batch get elevations for multiple coordinates
+     */
+    public async getInterpolatedElevations(
+        coordinates: Array<{ latitude: number; longitude: number }>
+    ): Promise<number[]> {
+        const promises = coordinates.map(coord =>
+            this.getInterpolatedElevation(coord.latitude, coord.longitude)
+        );
+
+        return Promise.all(promises);
     }
 
     /**

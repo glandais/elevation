@@ -1,4 +1,4 @@
-import { RGBColor, TilePixelPosition } from './types';
+import { Pixel, RGBColor } from './types';
 /**
  * Decodes elevation data from RGB terrain tiles using Terrarium encoding
  */
@@ -11,19 +11,10 @@ export declare class ElevationDecoder {
     /**
      * Extract RGB values from ImageData at specific pixel position
      */
-    static getRGBFromImageData(imageData: ImageData, position: TilePixelPosition): RGBColor;
+    static getRGBFromImageData(imageData: ImageData, position: Pixel): RGBColor;
     /**
      * Get elevation from ImageData at specific pixel position
      */
-    static getElevationFromImageData(imageData: ImageData, position: TilePixelPosition): number;
-    /**
-     * Get interpolated elevation using bilinear interpolation
-     * This provides smoother elevation values between pixels
-     */
-    static getInterpolatedElevation(imageData: ImageData, x: number, y: number): number;
-    /**
-     * Validate that RGB values represent valid terrain data
-     */
-    static isValidTerrainData(rgb: RGBColor): boolean;
+    static getElevationFromImageData(imageData: ImageData, position: Pixel): number;
 }
 //# sourceMappingURL=ElevationDecoder.d.ts.map

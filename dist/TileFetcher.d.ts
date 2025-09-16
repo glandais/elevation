@@ -1,3 +1,4 @@
+import { Tile } from './types';
 /**
  * HTTP client for fetching terrain RGB tiles with memory-efficient ImageBitmap
  */
@@ -7,10 +8,7 @@ export declare class TileFetcher {
     /**
      * Fetch a tile image and return both ImageData and ImageBitmap for memory management
      */
-    fetchTile(url: string): Promise<{
-        imageData: ImageData;
-        imageBitmap: ImageBitmap;
-    }>;
+    fetchTile(url: string): Promise<Tile>;
     /**
      * Fetch with timeout support
      */

@@ -12,10 +12,10 @@ module.exports = {
     transformIgnorePatterns: ['node_modules/(?!(leaflet)/)'],
     coverageThreshold: {
         global: {
-            branches: 50,
-            functions: 50,
-            lines: 50,
-            statements: 50,
+            branches: 89,
+            functions: 94,
+            lines: 95,
+            statements: 95,
         },
     },
     collectCoverageFrom: ['src/**/*.ts', '!src/**/*.test.ts', '!src/**/*.d.ts'],
