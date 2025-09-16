@@ -50,15 +50,16 @@ test.describe('ElevationProvider Browser Tests', () => {
         console.log('Browser compatibility verified:', browserCompatibility);
     });
 
-    test('should getElevation/getInterpolatedElevation', async ({ page }) => {
+    test('should getElevation with and without interpolation', async ({ page }) => {
         const readmeExampleResult = await page.evaluate(async () => {
             try {
                 const elevationProvider: ElevationProvider =
                     new window.Elevation.ElevationProvider();
-                const elevation = await elevationProvider.getElevation(47.2, -1.5);
-                const interpolatedElevation = await elevationProvider.getInterpolatedElevation(
+                const elevation = await elevationProvider.getElevation(47.2, -1.5, false);
+                const interpolatedElevation = await elevationProvider.getElevation(
                     47.2,
-                    -1.5
+                    -1.5,
+                    true
                 );
                 return {
                     success: true,
@@ -78,12 +79,12 @@ test.describe('ElevationProvider Browser Tests', () => {
         expect(typeof readmeExampleResult.interpolatedElevation).toBe('number');
 
         console.log(
-            'getElevation/getInterpolatedElevation executed successfully:',
+            'getElevation with and without interpolation executed successfully:',
             readmeExampleResult
         );
     });
 
-    test('should getInterpolatedElevations', async ({ page }) => {
+    test('should getElevationsFromArray with interpolation', async ({ page }) => {
         const readmeExampleResult = await page.evaluate(async () => {
             try {
                 const elevationProvider: ElevationProvider =
@@ -138,8 +139,7 @@ test.describe('ElevationProvider Browser Tests', () => {
 
                 console.log(`Created array with ${array.length} coordinates`);
 
-                const elevations =
-                    await elevationProvider.getInterpolatedElevationsFromArray(array);
+                const elevations = await elevationProvider.getElevationsFromArray(array, true);
                 return {
                     success: true,
                     elevations,
@@ -160,7 +160,7 @@ test.describe('ElevationProvider Browser Tests', () => {
         expect(readmeExampleResult.coordinateCount).toBe(150);
 
         console.log(
-            'getInterpolatedElevations executed successfully:',
+            'getElevationsFromArray with interpolation executed successfully:',
             `${readmeExampleResult.coordinateCount} coordinates processed, got ${readmeExampleResult.elevations?.length} elevations`
         );
     });

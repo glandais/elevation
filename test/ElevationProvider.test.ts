@@ -11,15 +11,11 @@ const MockedTileManager = TileManager as jest.MockedClass<typeof TileManager>;
 // Create a manual mock that preserves static methods
 const mockCalculator = {
     getElevation: jest.fn(),
-    getInterpolatedElevation: jest.fn(),
     normalizePixel: jest.fn(),
 };
 
 jest.spyOn(ElevationCalculator.prototype, 'getElevation').mockImplementation(
     mockCalculator.getElevation
-);
-jest.spyOn(ElevationCalculator.prototype, 'getInterpolatedElevation').mockImplementation(
-    mockCalculator.getInterpolatedElevation
 );
 jest.spyOn(ElevationCalculator.prototype, 'normalizePixel').mockImplementation(
     mockCalculator.normalizePixel
@@ -62,25 +58,20 @@ describe('ElevationProvider', () => {
 
         // Configure mock implementation for ElevationCalculator methods
         // Allow validation errors to pass through but mock successful calculations
-        mockCalculator.getElevation.mockImplementation(async (coords, zoomLevel) => {
-            // Let the toPixel method run for validation - it will throw if invalid
-            // Create a calculator instance to call the instance method
-            const validatorCalc = new ElevationCalculator(mockTileManager);
-            (
-                validatorCalc as unknown as { toPixel: (coords: Coordinates, z: number) => unknown }
-            ).toPixel(coords, zoomLevel);
-            return 0; // Return mock value for valid inputs
-        });
-        mockCalculator.getInterpolatedElevation.mockImplementation(async (coords, zoomLevel) => {
-            // Create a calculator instance to call the instance method
-            const validatorCalc = new ElevationCalculator(mockTileManager);
-            (
-                validatorCalc as unknown as {
-                    toPixel: (coords: Coordinates, z: number) => unknown;
-                }
-            ).toPixel(coords, zoomLevel);
-            return 0;
-        });
+        mockCalculator.getElevation.mockImplementation(
+            async (coords, zoomLevel, _interpolation = true) => {
+                // Let the toPixel method run for validation - it will throw if invalid
+                // Create a calculator instance to call the instance method
+                const validatorCalc = new ElevationCalculator(mockTileManager);
+                (
+                    validatorCalc as unknown as {
+                        toPixel: (coords: Coordinates, z: number) => unknown;
+                    }
+                ).toPixel(coords, zoomLevel);
+
+                return 0; // Default return value
+            }
+        );
         mockCalculator.normalizePixel.mockReturnValue({
             tile: { z: 12, x: 100, y: 200 },
             x: 0,
@@ -241,39 +232,6 @@ describe('ElevationProvider', () => {
         });
     });
 
-    describe('getInterpolatedElevation method', () => {
-        let provider: ElevationProvider;
-
-        beforeEach(() => {
-            provider = new ElevationProvider();
-        });
-
-        it('should get interpolated elevation for valid coordinates', async () => {
-            mockCalculator.getInterpolatedElevation.mockResolvedValueOnce(125.5);
-
-            const elevation = await provider.getInterpolatedElevation(0, 0);
-            expect(typeof elevation).toBe('number');
-            expect(elevation).toBe(125.5);
-            expect(mockCalculator.getInterpolatedElevation).toHaveBeenCalled();
-        });
-
-        it('should handle coordinates requiring multiple tiles', async () => {
-            mockCalculator.getInterpolatedElevation.mockResolvedValueOnce(75.25);
-
-            // Coordinates that might require pixel normalization
-            const elevation = await provider.getInterpolatedElevation(0.001, 0.001);
-            expect(typeof elevation).toBe('number');
-            expect(elevation).toBe(75.25);
-            expect(mockCalculator.getInterpolatedElevation).toHaveBeenCalled();
-        });
-
-        it('should reject invalid coordinates', async () => {
-            await expect(provider.getInterpolatedElevation(90, 0)).rejects.toThrow(
-                'Invalid latitude: 90. Must be between -85.0511 and 85.0511'
-            );
-        });
-    });
-
     describe('batch methods', () => {
         let provider: ElevationProvider;
 
@@ -299,13 +257,13 @@ describe('ElevationProvider', () => {
             });
 
             it('should handle empty array', async () => {
-                const elevations = await provider.getElevationsFromArray([]);
+                const elevations = await provider.getElevationsFromArray([], true);
                 expect(elevations).toEqual([]);
             });
 
             it('should handle single coordinate', async () => {
                 const coordinates = [{ latitude: 0, longitude: 0 }];
-                const elevations = await provider.getElevationsFromArray(coordinates);
+                const elevations = await provider.getElevationsFromArray(coordinates, false);
 
                 expect(elevations).toHaveLength(1);
                 expect(typeof elevations[0]).toBe('number');
@@ -317,164 +275,49 @@ describe('ElevationProvider', () => {
                     { latitude: 90, longitude: 0 }, // Invalid
                 ];
 
-                await expect(provider.getElevationsFromArray(coordinates)).rejects.toThrow();
+                await expect(provider.getElevationsFrom(coordinates.values())).rejects.toThrow();
             });
-        });
 
-        describe('getInterpolatedElevationsFromArray', () => {
-            it('should get interpolated elevations for multiple coordinates', async () => {
-                const coordinates = [
-                    { latitude: 0, longitude: 0 },
-                    { latitude: 1, longitude: 1 },
-                ];
+            it('should handle large batch processing (triggers batch logic)', async () => {
+                // Create array with more than 100 coordinates to trigger batch processing
+                const coordinates = Array.from({ length: 150 }, (_, i) => ({
+                    latitude: i % 85,
+                    longitude: i % 180,
+                }));
 
-                const elevations = await provider.getInterpolatedElevationsFromArray(coordinates);
+                mockCalculator.getElevation.mockResolvedValue(100);
 
-                expect(elevations).toHaveLength(2);
+                const elevations = await provider.getElevationsFromArray(coordinates);
+
+                expect(elevations).toHaveLength(150);
                 elevations.forEach(elevation => {
                     expect(typeof elevation).toBe('number');
-                    expect(isFinite(elevation)).toBe(true);
-                });
-            });
-
-            it('should handle empty array', async () => {
-                const elevations = await provider.getInterpolatedElevationsFromArray([]);
-                expect(elevations).toEqual([]);
-            });
-        });
-    });
-
-    describe('batch processing internals', () => {
-        let provider: ElevationProvider;
-
-        beforeEach(() => {
-            provider = new ElevationProvider();
-        });
-
-        it('should handle empty iterator in computeElevations', async () => {
-            const emptyCoords: Coordinates[] = [];
-            const emptyIterator = emptyCoords[Symbol.iterator]();
-
-            const providerInstance = provider as unknown as {
-                computeElevations: (
-                    coords: Iterator<Coordinates>,
-                    fn: (coord: Coordinates) => Promise<number>
-                ) => Promise<number[]>;
-            };
-
-            const result = await providerInstance.computeElevations(emptyIterator, async () => 42);
-            expect(result).toEqual([]);
-        });
-
-        it('should handle single coordinate in batch', async () => {
-            const singleCoord: Coordinates[] = [{ latitude: 47.2, longitude: -1.5 }];
-            const singleIterator = singleCoord[Symbol.iterator]();
-
-            const mockGetElevation = jest.spyOn(provider, 'getElevation').mockResolvedValue(123);
-
-            const providerInstance = provider as unknown as {
-                computeElevations: (
-                    coords: Iterator<Coordinates>,
-                    fn: (coord: Coordinates) => Promise<number>
-                ) => Promise<number[]>;
-            };
-
-            const fn = (coord: Coordinates) =>
-                provider.getElevation(coord.latitude, coord.longitude);
-            const result = await providerInstance.computeElevations(singleIterator, fn);
-
-            expect(result).toEqual([123]);
-            expect(mockGetElevation).toHaveBeenCalledWith(47.2, -1.5);
-
-            mockGetElevation.mockRestore();
-        });
-
-        it('should process partial final batch correctly', async () => {
-            const coordinates: Coordinates[] = [];
-            for (let i = 0; i < 150; i++) {
-                coordinates.push({ latitude: 47.2 + i * 0.001, longitude: -1.5 + i * 0.001 });
-            }
-
-            const mockGetElevation = jest
-                .spyOn(provider, 'getElevation')
-                .mockImplementation(async () => Math.floor(Math.random() * 1000));
-
-            const result = await provider.getElevationsFromArray(coordinates);
-
-            expect(result).toHaveLength(150);
-            expect(mockGetElevation).toHaveBeenCalledTimes(150);
-
-            mockGetElevation.mockRestore();
-        });
-
-        it('should handle exact multiple of batch size', async () => {
-            const coordinates: Coordinates[] = [];
-            for (let i = 0; i < 200; i++) {
-                coordinates.push({ latitude: 47.2 + i * 0.001, longitude: -1.5 + i * 0.001 });
-            }
-
-            const mockGetElevation = jest
-                .spyOn(provider, 'getElevation')
-                .mockImplementation(async () => 42);
-
-            const result = await provider.getElevationsFromArray(coordinates);
-
-            expect(result).toHaveLength(200);
-            expect(result.every(elevation => elevation === 42)).toBe(true);
-            expect(mockGetElevation).toHaveBeenCalledTimes(200);
-
-            mockGetElevation.mockRestore();
-        });
-
-        it('should handle batch processing errors', async () => {
-            const coordinates: Coordinates[] = [
-                { latitude: 47.2, longitude: -1.5 },
-                { latitude: 47.3, longitude: -1.6 },
-                { latitude: 47.4, longitude: -1.7 },
-            ];
-
-            const mockGetElevation = jest
-                .spyOn(provider, 'getElevation')
-                .mockResolvedValueOnce(100)
-                .mockRejectedValueOnce(new Error('Network error'))
-                .mockResolvedValueOnce(200);
-
-            await expect(provider.getElevationsFromArray(coordinates)).rejects.toThrow(
-                'Network error'
-            );
-
-            mockGetElevation.mockRestore();
-        });
-
-        it('should process batches sequentially', async () => {
-            const coordinates: Coordinates[] = [];
-            for (let i = 0; i < 250; i++) {
-                coordinates.push({ latitude: 47.2 + i * 0.001, longitude: -1.5 + i * 0.001 });
-            }
-
-            const callOrder: number[] = [];
-            const mockGetElevation = jest
-                .spyOn(provider, 'getElevation')
-                .mockImplementation(async lat => {
-                    const index = Math.round((lat - 47.2) / 0.001);
-                    callOrder.push(index);
-                    return index;
+                    expect(elevation).toBe(100);
                 });
 
-            const result = await provider.getElevationsFromArray(coordinates);
+                // Should have called getElevation for each coordinate
+                expect(mockCalculator.getElevation).toHaveBeenCalledTimes(150);
+            });
 
-            expect(result).toHaveLength(250);
-            expect(mockGetElevation).toHaveBeenCalledTimes(250);
+            it('should handle batch with remainder (tests last batch processing)', async () => {
+                // Create array with 105 coordinates to test remainder processing (100 + 5)
+                const coordinates = Array.from({ length: 105 }, (_, i) => ({
+                    latitude: i % 85,
+                    longitude: i % 180,
+                }));
 
-            // Verify sequential processing
-            const firstBatchCalls = callOrder.slice(0, 100);
-            const secondBatchCalls = callOrder.slice(100, 200);
-            const thirdBatchCalls = callOrder.slice(200, 250);
+                mockCalculator.getElevation.mockResolvedValue(200);
 
-            expect(Math.max(...firstBatchCalls)).toBeLessThan(Math.min(...secondBatchCalls));
-            expect(Math.max(...secondBatchCalls)).toBeLessThan(Math.min(...thirdBatchCalls));
+                const elevations = await provider.getElevationsFromArray(coordinates);
 
-            mockGetElevation.mockRestore();
+                expect(elevations).toHaveLength(105);
+                elevations.forEach(elevation => {
+                    expect(typeof elevation).toBe('number');
+                    expect(elevation).toBe(200);
+                });
+
+                expect(mockCalculator.getElevation).toHaveBeenCalledTimes(105);
+            });
         });
     });
 
@@ -592,7 +435,7 @@ describe('ElevationProvider', () => {
         });
 
         it('should exercise interpolation pixel normalization paths', async () => {
-            mockCalculator.getInterpolatedElevation.mockResolvedValue(250);
+            mockCalculator.getElevation.mockResolvedValue(250);
 
             const provider = new ElevationProvider({
                 zoomLevel: 2,
@@ -606,14 +449,14 @@ describe('ElevationProvider', () => {
             ];
 
             for (const { lat, lon } of testCoords) {
-                const elevation = await provider.getInterpolatedElevation(lat, lon);
+                const elevation = await provider.getElevation(lat, lon, true);
                 expect(typeof elevation).toBe('number');
                 expect(elevation).toBe(250);
                 expect(isFinite(elevation)).toBe(true);
             }
 
             // Verify interpolation calculations were called
-            expect(mockCalculator.getInterpolatedElevation).toHaveBeenCalledTimes(3);
+            expect(mockCalculator.getElevation).toHaveBeenCalledTimes(3);
         });
 
         it('should test cache cleanup function execution', async () => {

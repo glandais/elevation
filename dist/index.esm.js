@@ -1,4 +1,4 @@
-class E {
+class p {
   constructor() {
     this.available = [], this.idleSize = 5, this.idleTimeout = 3e4, this.idleTimer = null;
   }
@@ -29,12 +29,12 @@ class E {
       this.available.pop();
   }
 }
-class x {
+class E {
   // ========================================================================
   // CONSTRUCTOR
   // ========================================================================
   constructor(t, e = 5e3) {
-    this.tileUrlTemplate = t, this.timeout = e, this.canvasPool = new E();
+    this.tileUrlTemplate = t, this.timeout = e, this.canvasPool = new p();
   }
   // ========================================================================
   // PUBLIC API
@@ -309,7 +309,7 @@ class I {
 }
 class y {
   constructor(t, e, i) {
-    this.tileFetcher = new x(t, e);
+    this.tileFetcher = new E(t, e);
     const a = (r) => {
       r.bitmap.close();
     };
@@ -385,15 +385,19 @@ const o = class o {
   // ========================================================================
   // PUBLIC API - ELEVATION CALCULATIONS
   // ========================================================================
-  async getElevation(t, e) {
+  async getElevation(t, e, i = !0) {
     try {
-      const i = this.toPixel(t, e);
-      return await this.getElevationFromPixel(i);
-    } catch (i) {
-      throw i instanceof Error ? new Error(`Failed to get elevation: ${i.message}`) : new Error("Failed to get elevation: Unknown error");
+      if (i)
+        return await this.getInterpolatedElevationInternal(t, e);
+      {
+        const a = this.toPixel(t, e);
+        return await this.getElevationFromPixel(a);
+      }
+    } catch (a) {
+      throw a instanceof Error ? new Error(`Failed to get elevation: ${a.message}`) : new Error("Failed to get elevation: Unknown error");
     }
   }
-  async getInterpolatedElevation(t, e) {
+  async getInterpolatedElevationInternal(t, e) {
     const i = this.toPixel(t, e), a = {
       tile: i.tile,
       x: i.x,
@@ -402,12 +406,12 @@ const o = class o {
       this.normalizePixel({ tile: a.tile, x: r, y: s })
     ), m = await this.getElevationFromPixel(
       this.normalizePixel({ tile: a.tile, x: n, y: s })
-    ), v = await this.getElevationFromPixel(
-      this.normalizePixel({ tile: a.tile, x: r, y: l })
     ), w = await this.getElevationFromPixel(
+      this.normalizePixel({ tile: a.tile, x: r, y: l })
+    ), v = await this.getElevationFromPixel(
       this.normalizePixel({ tile: a.tile, x: n, y: l })
-    ), f = d * (1 - h) + m * h, p = v * (1 - h) + w * h;
-    return f * (1 - u) + p * u;
+    ), f = d * (1 - h) + m * h, x = w * (1 - h) + v * h;
+    return f * (1 - u) + x * u;
   }
   // ========================================================================
   // PRIVATE - HELPER METHODS
@@ -492,6 +496,37 @@ const o = class o {
 o.TILE_SIZE = 256;
 let g = o;
 class b {
+  constructor(t) {
+    this.elevationCalculator = t;
+  }
+  /**
+   * Get elevations for multiple coordinates from an iterator
+   * @param coordinates - Iterator of coordinates
+   * @param interpolation - Use bilinear interpolation for smoother results (default: true)
+   */
+  async getElevationsFrom(t, e, i = !0) {
+    const r = [];
+    let s = [], n = t.next();
+    for (; !n.done; ) {
+      const l = this.elevationCalculator.getElevation(
+        n.value,
+        e,
+        i
+      );
+      if (s.push(l), s.length >= 100) {
+        const h = await Promise.all(s);
+        r.push(...h), s = [];
+      }
+      n = t.next();
+    }
+    if (s.length > 0) {
+      const l = await Promise.all(s);
+      r.push(...l);
+    }
+    return r;
+  }
+}
+class F {
   // ============================================================================
   // CONSTRUCTOR & CONFIGURATION
   // ============================================================================
@@ -505,7 +540,7 @@ class b {
       this.config.tileUrlTemplate,
       this.config.timeout,
       this.config.cacheSize
-    ), this.calculator = new g(this.tileManager);
+    ), this.calculator = new g(this.tileManager), this.batchCalculator = new b(this.calculator);
   }
   /**
    * Get current configuration
@@ -527,46 +562,36 @@ class b {
   // ============================================================================
   /**
    * Get elevation at specific coordinates
+   * @param latitude - Latitude in decimal degrees
+   * @param longitude - Longitude in decimal degrees
+   * @param interpolation - Use bilinear interpolation for smoother results (default: true)
    */
-  async getElevation(t, e) {
-    const i = { latitude: t, longitude: e };
-    return await this.calculator.getElevation(i, this.config.zoomLevel);
-  }
-  /**
-   * Get interpolated elevation at specific coordinates (smoother results)
-   */
-  async getInterpolatedElevation(t, e) {
-    const i = { latitude: t, longitude: e };
-    return await this.calculator.getInterpolatedElevation(i, this.config.zoomLevel);
+  async getElevation(t, e, i = !0) {
+    const a = { latitude: t, longitude: e };
+    return await this.calculator.getElevation(a, this.config.zoomLevel, i);
   }
   // ============================================================================
   // PUBLIC API - BULK COORDINATE METHODS
   // ============================================================================
   /**
    * Get elevations for multiple coordinates from an array
+   * @param coordinates - Array of coordinates
+   * @param interpolation - Use bilinear interpolation for smoother results (default: true)
    */
-  async getElevationsFromArray(t) {
-    return this.getElevationsFrom(t.values());
+  async getElevationsFromArray(t, e = !0) {
+    return this.getElevationsFrom(t.values(), e);
   }
   /**
    * Get elevations for multiple coordinates from an iterator
+   * @param coordinates - Iterator of coordinates
+   * @param interpolation - Use bilinear interpolation for smoother results (default: true)
    */
-  async getElevationsFrom(t) {
-    const e = (i) => this.getElevation(i.latitude, i.longitude);
-    return this.computeElevations(t, e);
-  }
-  /**
-   * Get interpolated elevations for multiple coordinates from an array
-   */
-  async getInterpolatedElevationsFromArray(t) {
-    return this.getInterpolatedElevations(t.values());
-  }
-  /**
-   * Get interpolated elevations for multiple coordinates from an iterator
-   */
-  async getInterpolatedElevations(t) {
-    const e = (i) => this.getInterpolatedElevation(i.latitude, i.longitude);
-    return this.computeElevations(t, e);
+  async getElevationsFrom(t, e = !0) {
+    return this.batchCalculator.getElevationsFrom(
+      t,
+      this.config.zoomLevel,
+      e
+    );
   }
   // ============================================================================
   // PUBLIC API - CACHE MANAGEMENT
@@ -576,25 +601,6 @@ class b {
    */
   clearCache() {
     this.tileManager.clearCache();
-  }
-  // ============================================================================
-  // PRIVATE - BATCH PROCESSING
-  // ============================================================================
-  async computeElevations(t, e) {
-    const a = [];
-    let r = [], s = t.next();
-    for (; !s.done; ) {
-      if (r.push(e(s.value)), r.length >= 100) {
-        const n = await Promise.all(r);
-        a.push(...n), r = [];
-      }
-      s = t.next();
-    }
-    if (r.length > 0) {
-      const n = await Promise.all(r);
-      a.push(...n);
-    }
-    return a;
   }
   // ============================================================================
   // PRIVATE - VALIDATION
@@ -612,6 +618,6 @@ class b {
   }
 }
 export {
-  b as ElevationProvider
+  F as ElevationProvider
 };
 //# sourceMappingURL=index.esm.js.map

@@ -359,6 +359,35 @@ describe('TileFetcher', () => {
             expect(result).toHaveProperty('data');
             expect(result.data).toBeInstanceOf(ImageData);
         });
+
+        it('should trigger timeout callback when request is slow', async () => {
+            const shortTimeoutFetcher = new TileFetcher(
+                'https://example.com/{z}/{x}/{y}.png',
+                10 // Very short timeout
+            );
+
+            // Mock fetch to return a promise that never resolves
+            // This will allow the timeout to trigger and call the abort callback
+            mockFetch.mockImplementation(() => {
+                return new Promise(() => {
+                    // Never resolve or reject - timeout will handle abort
+                });
+            });
+
+            // Start the request and expect it to be aborted due to timeout
+            const requestPromise = shortTimeoutFetcher.loadTile({ z: 12, x: 1024, y: 1536 });
+
+            // Wait for the timeout to trigger (should be 10ms + some buffer)
+            await new Promise(resolve => setTimeout(resolve, 50));
+
+            // Verify that the abort method was called due to the timeout
+            expect(mockAbort).toHaveBeenCalled();
+
+            // Clean up the hanging promise to avoid warnings
+            requestPromise.catch(() => {
+                // Expected to be aborted, suppress the error
+            });
+        });
     });
 
     describe('integration edge cases', () => {

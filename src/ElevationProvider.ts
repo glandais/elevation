@@ -1,5 +1,5 @@
-import { TileManager } from './tile/TileManager';
-import { ElevationCalculator } from './calculator/ElevationCalculator';
+import { TileManager } from './tile';
+import { ElevationCalculator, BatchCalculator } from './calculator';
 import type { Coordinates, ElevationProviderConfig, Attribution } from './types';
 
 /**
@@ -9,6 +9,7 @@ export class ElevationProvider {
     private readonly config: Required<ElevationProviderConfig>;
     private readonly tileManager: TileManager;
     private readonly calculator: ElevationCalculator;
+    private readonly batchCalculator: BatchCalculator;
 
     // ============================================================================
     // CONSTRUCTOR & CONFIGURATION
@@ -31,6 +32,7 @@ export class ElevationProvider {
             this.config.cacheSize
         );
         this.calculator = new ElevationCalculator(this.tileManager);
+        this.batchCalculator = new BatchCalculator(this.calculator);
     }
 
     /**
@@ -56,18 +58,17 @@ export class ElevationProvider {
 
     /**
      * Get elevation at specific coordinates
+     * @param latitude - Latitude in decimal degrees
+     * @param longitude - Longitude in decimal degrees
+     * @param interpolation - Use bilinear interpolation for smoother results (default: true)
      */
-    public async getElevation(latitude: number, longitude: number): Promise<number> {
+    public async getElevation(
+        latitude: number,
+        longitude: number,
+        interpolation: boolean = true
+    ): Promise<number> {
         const coords: Coordinates = { latitude, longitude };
-        return await this.calculator.getElevation(coords, this.config.zoomLevel);
-    }
-
-    /**
-     * Get interpolated elevation at specific coordinates (smoother results)
-     */
-    public async getInterpolatedElevation(latitude: number, longitude: number): Promise<number> {
-        const coords: Coordinates = { latitude, longitude };
-        return await this.calculator.getInterpolatedElevation(coords, this.config.zoomLevel);
+        return await this.calculator.getElevation(coords, this.config.zoomLevel, interpolation);
     }
 
     // ============================================================================
@@ -76,35 +77,30 @@ export class ElevationProvider {
 
     /**
      * Get elevations for multiple coordinates from an array
+     * @param coordinates - Array of coordinates
+     * @param interpolation - Use bilinear interpolation for smoother results (default: true)
      */
-    public async getElevationsFromArray(coordinates: Array<Coordinates>): Promise<number[]> {
-        return this.getElevationsFrom(coordinates.values());
+    public async getElevationsFromArray(
+        coordinates: Array<Coordinates>,
+        interpolation: boolean = true
+    ): Promise<number[]> {
+        return this.getElevationsFrom(coordinates.values(), interpolation);
     }
 
     /**
      * Get elevations for multiple coordinates from an iterator
+     * @param coordinates - Iterator of coordinates
+     * @param interpolation - Use bilinear interpolation for smoother results (default: true)
      */
-    public async getElevationsFrom(coordinates: Iterator<Coordinates>): Promise<number[]> {
-        const f = (coord: Coordinates) => this.getElevation(coord.latitude, coord.longitude);
-        return this.computeElevations(coordinates, f);
-    }
-
-    /**
-     * Get interpolated elevations for multiple coordinates from an array
-     */
-    public async getInterpolatedElevationsFromArray(
-        coordinates: Array<Coordinates>
+    public async getElevationsFrom(
+        coordinates: Iterator<Coordinates>,
+        interpolation: boolean = true
     ): Promise<number[]> {
-        return this.getInterpolatedElevations(coordinates.values());
-    }
-
-    /**
-     * Get interpolated elevations for multiple coordinates from an iterator
-     */
-    public async getInterpolatedElevations(coordinates: Iterator<Coordinates>): Promise<number[]> {
-        const f = (coord: Coordinates) =>
-            this.getInterpolatedElevation(coord.latitude, coord.longitude);
-        return this.computeElevations(coordinates, f);
+        return this.batchCalculator.getElevationsFrom(
+            coordinates,
+            this.config.zoomLevel,
+            interpolation
+        );
     }
 
     // ============================================================================
@@ -116,41 +112,6 @@ export class ElevationProvider {
      */
     public clearCache(): void {
         this.tileManager.clearCache();
-    }
-
-    // ============================================================================
-    // PRIVATE - BATCH PROCESSING
-    // ============================================================================
-
-    private async computeElevations(
-        coordinates: Iterator<Coordinates>,
-        f: (coord: Coordinates) => Promise<number>
-    ): Promise<number[]> {
-        const batchSize = 100;
-        const allResults: number[] = [];
-        let batch: Promise<number>[] = [];
-
-        let result = coordinates.next();
-        while (!result.done) {
-            batch.push(f(result.value));
-
-            // Process batch when it reaches the batch size
-            if (batch.length >= batchSize) {
-                const batchResults = await Promise.all(batch);
-                allResults.push(...batchResults);
-                batch = [];
-            }
-
-            result = coordinates.next();
-        }
-
-        // Process any remaining items in the last batch
-        if (batch.length > 0) {
-            const batchResults = await Promise.all(batch);
-            allResults.push(...batchResults);
-        }
-
-        return allResults;
     }
 
     // ============================================================================

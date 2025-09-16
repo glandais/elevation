@@ -1,3 +1,3 @@
 export { ElevationCalculator } from './ElevationCalculator';
-export { ElevationDecoder } from './ElevationDecoder';
+export { BatchCalculator } from './BatchCalculator';
 //# sourceMappingURL=index.d.ts.map

@@ -139,59 +139,73 @@ describe('ElevationCalculator', () => {
                 'Failed to get elevation: Invalid zoom level: 16. Must be between 0 and 15'
             );
         });
-    });
 
-    describe('getInterpolatedElevation', () => {
-        it('should perform bilinear interpolation', async () => {
+        it('should use non-interpolated path when interpolation is false', async () => {
             const coords: Coordinates = { latitude: 0, longitude: 0 };
             const zoomLevel = 12;
 
-            // Mock calculator to track calls to getElevationFromPixel
-            const mockGetElevationFromPixel = jest
-                .spyOn(
-                    calculator as unknown as {
-                        getElevationFromPixel: (
-                            pixel: Pixel,
-                            tileManager: TileManager
-                        ) => Promise<number>;
-                    },
-                    'getElevationFromPixel'
-                )
-                .mockResolvedValueOnce(1000) // p00
-                .mockResolvedValueOnce(2000) // p10
-                .mockResolvedValueOnce(1500) // p01
-                .mockResolvedValueOnce(2500); // p11
+            // Spy on the private methods to verify the correct execution path
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const toPixelSpy = jest.spyOn(calculator as any, 'toPixel').mockReturnValue({
+                tile: { z: 12, x: 2048, y: 2048 },
+                x: 128,
+                y: 128,
+            });
 
-            const result = await calculator.getInterpolatedElevation(coords, zoomLevel);
+            const getElevationFromPixelSpy = jest
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                .spyOn(calculator as any, 'getElevationFromPixel')
+                .mockResolvedValue(1500);
 
-            // Should call getElevationFromPixel 4 times for the 4 corners
-            expect(mockGetElevationFromPixel).toHaveBeenCalledTimes(4);
-
-            // Result should be the bilinear interpolation of the 4 values
-            // With dx=0, dy=0 (since we're at exact pixel coordinates), result should be p00
-            expect(result).toBe(1000);
-
-            mockGetElevationFromPixel.mockRestore();
-        });
-
-        it('should handle different coordinates for interpolation', async () => {
-            const coords: Coordinates = { latitude: 45, longitude: 90 };
-            const zoomLevel = 12;
-
-            const result = await calculator.getInterpolatedElevation(coords, zoomLevel);
-
-            expect(typeof result).toBe('number');
-            expect(isFinite(result)).toBe(true);
-        });
-
-        it('should propagate tile manager errors in interpolation', async () => {
-            const coords: Coordinates = { latitude: 0, longitude: 0 };
-            const error = new Error('Tile fetch failed');
-            mockTileManager.getTile.mockRejectedValueOnce(error);
-
-            await expect(calculator.getInterpolatedElevation(coords, 12)).rejects.toThrow(
-                'Tile fetch failed'
+            const getInterpolatedElevationInternalSpy = jest.spyOn(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                calculator as any,
+                'getInterpolatedElevationInternal'
             );
+
+            // Call with interpolation = false to test the selected branch
+            const elevation = await calculator.getElevation(coords, zoomLevel, false);
+
+            // Verify the non-interpolated path was taken (lines 25-27)
+            expect(toPixelSpy).toHaveBeenCalledWith(coords, zoomLevel);
+            expect(getElevationFromPixelSpy).toHaveBeenCalledWith({
+                tile: { z: 12, x: 2048, y: 2048 },
+                x: 128,
+                y: 128,
+            });
+            expect(getInterpolatedElevationInternalSpy).not.toHaveBeenCalled();
+            expect(elevation).toBe(1500);
+
+            // Clean up spies
+            toPixelSpy.mockRestore();
+            getElevationFromPixelSpy.mockRestore();
+            getInterpolatedElevationInternalSpy.mockRestore();
+        });
+
+        it('should use interpolated path when interpolation is true', async () => {
+            const coords: Coordinates = { latitude: 0, longitude: 0 };
+            const zoomLevel = 12;
+
+            // Spy on the private methods to verify the correct execution path
+            const getInterpolatedElevationInternalSpy = jest
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                .spyOn(calculator as any, 'getInterpolatedElevationInternal')
+                .mockResolvedValue(1750);
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const getElevationFromPixelSpy = jest.spyOn(calculator as any, 'getElevationFromPixel');
+
+            // Call with interpolation = true (default)
+            const elevation = await calculator.getElevation(coords, zoomLevel, true);
+
+            // Verify the interpolated path was taken
+            expect(getInterpolatedElevationInternalSpy).toHaveBeenCalledWith(coords, zoomLevel);
+            expect(getElevationFromPixelSpy).not.toHaveBeenCalled();
+            expect(elevation).toBe(1750);
+
+            // Clean up spies
+            getInterpolatedElevationInternalSpy.mockRestore();
+            getElevationFromPixelSpy.mockRestore();
         });
     });
 

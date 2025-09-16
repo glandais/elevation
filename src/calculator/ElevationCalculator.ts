@@ -14,10 +14,18 @@ export class ElevationCalculator {
     // PUBLIC API - ELEVATION CALCULATIONS
     // ========================================================================
 
-    public async getElevation(coords: Coordinates, zoomLevel: number): Promise<number> {
+    public async getElevation(
+        coords: Coordinates,
+        zoomLevel: number,
+        interpolation: boolean = true
+    ): Promise<number> {
         try {
-            const pixel = this.toPixel(coords, zoomLevel);
-            return await this.getElevationFromPixel(pixel);
+            if (interpolation) {
+                return await this.getInterpolatedElevationInternal(coords, zoomLevel);
+            } else {
+                const pixel = this.toPixel(coords, zoomLevel);
+                return await this.getElevationFromPixel(pixel);
+            }
         } catch (error) {
             if (error instanceof Error) {
                 throw new Error(`Failed to get elevation: ${error.message}`);
@@ -26,7 +34,10 @@ export class ElevationCalculator {
         }
     }
 
-    public async getInterpolatedElevation(coords: Coordinates, zoomLevel: number): Promise<number> {
+    private async getInterpolatedElevationInternal(
+        coords: Coordinates,
+        zoomLevel: number
+    ): Promise<number> {
         const pixel = this.toPixel(coords, zoomLevel);
         const pixelFloat = {
             tile: pixel.tile,

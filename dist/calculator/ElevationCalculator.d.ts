@@ -4,8 +4,8 @@ export declare class ElevationCalculator {
     private static readonly TILE_SIZE;
     private readonly tileManager;
     constructor(tileManager: TileManager);
-    getElevation(coords: Coordinates, zoomLevel: number): Promise<number>;
-    getInterpolatedElevation(coords: Coordinates, zoomLevel: number): Promise<number>;
+    getElevation(coords: Coordinates, zoomLevel: number, interpolation?: boolean): Promise<number>;
+    private getInterpolatedElevationInternal;
     /**
      * Convert WGS84 coordinates to Web Mercator tile pixel coordinates
      * @param coords - WGS84 latitude/longitude coordinates

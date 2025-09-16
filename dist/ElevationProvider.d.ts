@@ -6,6 +6,7 @@ export declare class ElevationProvider {
     private readonly config;
     private readonly tileManager;
     private readonly calculator;
+    private readonly batchCalculator;
     constructor(config?: ElevationProviderConfig);
     /**
      * Get current configuration
@@ -17,33 +18,27 @@ export declare class ElevationProvider {
     static getAttribution(): Attribution;
     /**
      * Get elevation at specific coordinates
+     * @param latitude - Latitude in decimal degrees
+     * @param longitude - Longitude in decimal degrees
+     * @param interpolation - Use bilinear interpolation for smoother results (default: true)
      */
-    getElevation(latitude: number, longitude: number): Promise<number>;
-    /**
-     * Get interpolated elevation at specific coordinates (smoother results)
-     */
-    getInterpolatedElevation(latitude: number, longitude: number): Promise<number>;
+    getElevation(latitude: number, longitude: number, interpolation?: boolean): Promise<number>;
     /**
      * Get elevations for multiple coordinates from an array
+     * @param coordinates - Array of coordinates
+     * @param interpolation - Use bilinear interpolation for smoother results (default: true)
      */
-    getElevationsFromArray(coordinates: Array<Coordinates>): Promise<number[]>;
+    getElevationsFromArray(coordinates: Array<Coordinates>, interpolation?: boolean): Promise<number[]>;
     /**
      * Get elevations for multiple coordinates from an iterator
+     * @param coordinates - Iterator of coordinates
+     * @param interpolation - Use bilinear interpolation for smoother results (default: true)
      */
-    getElevationsFrom(coordinates: Iterator<Coordinates>): Promise<number[]>;
-    /**
-     * Get interpolated elevations for multiple coordinates from an array
-     */
-    getInterpolatedElevationsFromArray(coordinates: Array<Coordinates>): Promise<number[]>;
-    /**
-     * Get interpolated elevations for multiple coordinates from an iterator
-     */
-    getInterpolatedElevations(coordinates: Iterator<Coordinates>): Promise<number[]>;
+    getElevationsFrom(coordinates: Iterator<Coordinates>, interpolation?: boolean): Promise<number[]>;
     /**
      * Clear tile cache
      */
     clearCache(): void;
-    private computeElevations;
     private validateConfig;
 }
 //# sourceMappingURL=ElevationProvider.d.ts.map
