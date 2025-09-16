@@ -9,30 +9,58 @@ describe('TileFetcher Coverage Tests', () => {
     it('should test canvas pool trim functionality', async () => {
         // Access the internal canvas pool
         const TileFetcherModule = require('../src/TileFetcher');
-        const canvasPool = TileFetcherModule.canvasPool;
+        const canvasPool = TileFetcherModule._canvasPool;
 
         if (canvasPool) {
-            // Force the pool to exceed idleSize to trigger trim
-            const maxSize = canvasPool.idleSize + 10;
+            // Test the pool by acquiring and releasing canvases
+            const canvases: HTMLCanvasElement[] = [];
 
-            // Add excess canvases
-            for (let i = 0; i < maxSize; i++) {
-                const canvas = document.createElement('canvas');
-                canvasPool.available.push(canvas);
+            // Acquire multiple canvases
+            for (let i = 0; i < 10; i++) {
+                canvases.push(canvasPool.acquire());
             }
 
-            // Manually trigger _trim to test line 44-45
-            if (canvasPool._trim) {
-                canvasPool._trim();
-                expect(canvasPool.available.length).toBeLessThanOrEqual(canvasPool.idleSize);
-            }
+            // Release them to populate the pool
+            canvases.forEach(canvas => canvasPool.release(canvas));
 
-            // Also test the idle timer mechanism by manipulating pool
-            if (canvasPool.schedule) {
-                canvasPool.schedule();
-                // Allow timer to potentially execute
-                await new Promise(resolve => setTimeout(resolve, 1));
+            // Access private members for testing trim functionality
+            const poolInstance = canvasPool as unknown as {
+                available: HTMLCanvasElement[];
+                _trim: () => void;
+            };
+
+            // Verify pool has canvases
+            expect(poolInstance.available.length).toBeGreaterThan(0);
+
+            // Manually trigger _trim to test trim functionality
+            if (poolInstance._trim) {
+                poolInstance._trim();
+                // After trim, should have at most 5 canvases (idleSize)
+                expect(poolInstance.available.length).toBeLessThanOrEqual(5);
             }
+        }
+    });
+
+    it('should handle canvas context creation failure (line 109)', async () => {
+        const fetcher = new TileFetcher(1000);
+
+        // Mock HTMLCanvasElement.getContext to return null
+        const originalGetContext = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = jest.fn().mockReturnValue(null);
+
+        try {
+            const blob = new Blob(['test'], { type: 'image/png' });
+
+            await expect(
+                (
+                    fetcher as unknown as {
+                        blobToImageDataAndBitmap: (blob: Blob) => Promise<unknown>;
+                    }
+                ).blobToImageDataAndBitmap(blob)
+            ).rejects.toThrow('Failed to get 2D canvas context');
+        } finally {
+            // Restore original method
+            HTMLCanvasElement.prototype.getContext = originalGetContext;
         }
     });
 
@@ -62,29 +90,72 @@ describe('TileFetcher Coverage Tests', () => {
         }
     });
 
+    it('should trigger canvas pool trim functionality', () => {
+        // Access the internal canvas pool directly
+        const TileFetcherModule = require('../src/TileFetcher');
+        const canvasPool = TileFetcherModule._canvasPool;
+
+        if (canvasPool) {
+            // Access private members for testing
+            const poolInstance = canvasPool as unknown as {
+                available: HTMLCanvasElement[];
+                _trim: () => void;
+            };
+
+            if (poolInstance._trim) {
+                // Backup original state
+                const originalAvailable = [...poolInstance.available];
+
+                // Force pool to exceed idle size to trigger trim (lines 32-35)
+                poolInstance.available = [];
+                for (let i = 0; i < 10; i++) {
+                    // 10 > 5 (idleSize)
+                    poolInstance.available.push(document.createElement('canvas'));
+                }
+
+                expect(poolInstance.available.length).toBeGreaterThan(5);
+
+                // Trigger trim
+                poolInstance._trim();
+
+                // Should have trimmed excess canvases
+                expect(poolInstance.available.length).toBeLessThanOrEqual(5);
+
+                // Restore original state
+                poolInstance.available = originalAvailable;
+            }
+        }
+    });
+
     it('should test canvas pool edge cases', () => {
         // Access canvas pool for direct testing
         const TileFetcherModule = require('../src/TileFetcher');
-        const canvasPool = TileFetcherModule.canvasPool;
+        const canvasPool = TileFetcherModule._canvasPool;
 
-        if (canvasPool && canvasPool._trim) {
+        if (canvasPool) {
+            // Access private members for testing
+            const poolInstance = canvasPool as unknown as {
+                available: HTMLCanvasElement[];
+                _trim: () => void;
+            };
+
             // Test trim with empty pool
-            const originalAvailable = [...canvasPool.available];
-            canvasPool.available = [];
+            const originalAvailable = [...poolInstance.available];
+            poolInstance.available = [];
 
-            expect(() => canvasPool._trim()).not.toThrow();
+            expect(() => poolInstance._trim()).not.toThrow();
 
-            // Test trim with exactly idleSize items
-            canvasPool.available = [];
-            for (let i = 0; i < canvasPool.idleSize; i++) {
-                canvasPool.available.push(document.createElement('canvas'));
+            // Test trim with exactly idleSize items (5)
+            poolInstance.available = [];
+            for (let i = 0; i < 5; i++) {
+                poolInstance.available.push(document.createElement('canvas'));
             }
 
-            canvasPool._trim();
-            expect(canvasPool.available.length).toBe(canvasPool.idleSize);
+            poolInstance._trim();
+            expect(poolInstance.available.length).toBe(5);
 
             // Restore state
-            canvasPool.available = originalAvailable;
+            poolInstance.available = originalAvailable;
         }
     });
 

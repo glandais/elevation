@@ -1,7 +1,7 @@
 import { ElevationProvider } from '../src/ElevationProvider';
 import { TileFetcher } from '../src/TileFetcher';
 import { Cache } from '../src/Cache';
-import type { ElevationProviderConfig, Tile } from '../src/types';
+import type { ElevationProviderConfig, Tile, Coordinates } from '../src/types';
 
 // Mock dependencies
 jest.mock('../src/TileFetcher');
@@ -510,6 +510,212 @@ describe('ElevationProvider', () => {
             }
 
             expect(provider).toBeDefined();
+        });
+    });
+
+    describe('Batch Processing Coverage', () => {
+        it('should handle empty iterator in computeElevations', async () => {
+            const provider = new ElevationProvider();
+
+            // Create empty iterator
+            const emptyCoords: Coordinates[] = [];
+            const emptyIterator = emptyCoords[Symbol.iterator]();
+
+            // Access private method for testing
+            const providerInstance = provider as unknown as {
+                computeElevations: (
+                    coords: Iterator<Coordinates>,
+                    fn: (coord: Coordinates) => Promise<number>
+                ) => Promise<number[]>;
+            };
+
+            const result = await providerInstance.computeElevations(emptyIterator, async () => 42);
+            expect(result).toEqual([]);
+        });
+
+        it('should handle single coordinate in batch', async () => {
+            const provider = new ElevationProvider();
+
+            const singleCoord: Coordinates[] = [{ latitude: 47.2, longitude: -1.5 }];
+            const singleIterator = singleCoord[Symbol.iterator]();
+
+            // Mock the getElevation method to return a known value
+            const mockGetElevation = jest.spyOn(provider, 'getElevation').mockResolvedValue(123);
+
+            // Access private method for testing
+            const providerInstance = provider as unknown as {
+                computeElevations: (
+                    coords: Iterator<Coordinates>,
+                    fn: (coord: Coordinates) => Promise<number>
+                ) => Promise<number[]>;
+            };
+
+            const fn = (coord: Coordinates) =>
+                provider.getElevation(coord.latitude, coord.longitude);
+            const result = await providerInstance.computeElevations(singleIterator, fn);
+
+            expect(result).toEqual([123]);
+            expect(mockGetElevation).toHaveBeenCalledWith(47.2, -1.5);
+
+            mockGetElevation.mockRestore();
+        });
+
+        it('should process partial final batch correctly', async () => {
+            const provider = new ElevationProvider();
+
+            // Create 150 coordinates to test partial final batch (100 + 50)
+            const coordinates: Coordinates[] = [];
+            for (let i = 0; i < 150; i++) {
+                coordinates.push({ latitude: 47.2 + i * 0.001, longitude: -1.5 + i * 0.001 });
+            }
+
+            const mockGetElevation = jest
+                .spyOn(provider, 'getElevation')
+                .mockImplementation(async () => Math.floor(Math.random() * 1000));
+
+            const result = await provider.getElevationsFromArray(coordinates);
+
+            expect(result).toHaveLength(150);
+            expect(mockGetElevation).toHaveBeenCalledTimes(150);
+
+            mockGetElevation.mockRestore();
+        });
+
+        it('should handle exact multiple of batch size', async () => {
+            const provider = new ElevationProvider();
+
+            // Create exactly 200 coordinates (2 batches of 100)
+            const coordinates: Coordinates[] = [];
+            for (let i = 0; i < 200; i++) {
+                coordinates.push({ latitude: 47.2 + i * 0.001, longitude: -1.5 + i * 0.001 });
+            }
+
+            const mockGetElevation = jest
+                .spyOn(provider, 'getElevation')
+                .mockImplementation(async () => 42);
+
+            const result = await provider.getElevationsFromArray(coordinates);
+
+            expect(result).toHaveLength(200);
+            expect(result.every(elevation => elevation === 42)).toBe(true);
+            expect(mockGetElevation).toHaveBeenCalledTimes(200);
+
+            mockGetElevation.mockRestore();
+        });
+
+        it('should handle batch processing errors', async () => {
+            const provider = new ElevationProvider();
+
+            const coordinates: Coordinates[] = [
+                { latitude: 47.2, longitude: -1.5 },
+                { latitude: 47.3, longitude: -1.6 },
+                { latitude: 47.4, longitude: -1.7 },
+            ];
+
+            // Mock getElevation to fail for the second coordinate
+            const mockGetElevation = jest
+                .spyOn(provider, 'getElevation')
+                .mockResolvedValueOnce(100)
+                .mockRejectedValueOnce(new Error('Network error'))
+                .mockResolvedValueOnce(200);
+
+            await expect(provider.getElevationsFromArray(coordinates)).rejects.toThrow(
+                'Network error'
+            );
+
+            mockGetElevation.mockRestore();
+        });
+
+        it('should process batches sequentially', async () => {
+            const provider = new ElevationProvider();
+
+            // Create 250 coordinates to ensure 3 batches (100, 100, 50)
+            const coordinates: Coordinates[] = [];
+            for (let i = 0; i < 250; i++) {
+                coordinates.push({ latitude: 47.2 + i * 0.001, longitude: -1.5 + i * 0.001 });
+            }
+
+            const callOrder: number[] = [];
+            const mockGetElevation = jest
+                .spyOn(provider, 'getElevation')
+                .mockImplementation(async lat => {
+                    // Record the order of latitude values to verify sequential batch processing
+                    const index = Math.round((lat - 47.2) / 0.001);
+                    callOrder.push(index);
+                    return index;
+                });
+
+            const result = await provider.getElevationsFromArray(coordinates);
+
+            expect(result).toHaveLength(250);
+            expect(mockGetElevation).toHaveBeenCalledTimes(250);
+
+            // Verify sequential processing: first 100 calls should be 0-99, next 100 should be 100-199, etc.
+            // Note: Within each batch, calls may be concurrent, so we just verify batches are processed sequentially
+            const firstBatchCalls = callOrder.slice(0, 100);
+            const secondBatchCalls = callOrder.slice(100, 200);
+            const thirdBatchCalls = callOrder.slice(200, 250);
+
+            expect(Math.max(...firstBatchCalls)).toBeLessThan(Math.min(...secondBatchCalls));
+            expect(Math.max(...secondBatchCalls)).toBeLessThan(Math.min(...thirdBatchCalls));
+
+            mockGetElevation.mockRestore();
+        });
+    });
+
+    describe('Pixel Normalization Edge Cases', () => {
+        it('should handle negative x coordinate normalization', () => {
+            const provider = new ElevationProvider();
+
+            // Access private normalizePixel method for testing
+            const providerInstance = provider as unknown as {
+                normalizePixel: (pixel: { tile: Tile; x: number; y: number }) => {
+                    tile: Tile;
+                    x: number;
+                    y: number;
+                };
+            };
+
+            const inputPixel = {
+                tile: { z: 12, x: 100, y: 100 },
+                x: -1, // Negative x to trigger line 134-135
+                y: 128,
+            };
+
+            const result = providerInstance.normalizePixel(inputPixel);
+
+            // x should be normalized: -1 + 256 = 255, tileX should be decremented: 100 - 1 = 99
+            expect(result.x).toBe(255);
+            expect(result.tile.x).toBe(99);
+            expect(result.y).toBe(128);
+            expect(result.tile.y).toBe(100);
+        });
+
+        it('should handle negative y coordinate normalization', () => {
+            const provider = new ElevationProvider();
+
+            // Access private normalizePixel method for testing
+            const providerInstance = provider as unknown as {
+                normalizePixel: (pixel: { tile: Tile; x: number; y: number }) => {
+                    tile: Tile;
+                    x: number;
+                    y: number;
+                };
+            };
+
+            const inputPixel = {
+                tile: { z: 12, x: 100, y: 100 },
+                x: 128,
+                y: -1, // Negative y to trigger line 142-143
+            };
+
+            const result = providerInstance.normalizePixel(inputPixel);
+
+            // y should be normalized: -1 + 256 = 255, tileY should be decremented: 100 - 1 = 99
+            expect(result.x).toBe(128);
+            expect(result.tile.x).toBe(100);
+            expect(result.y).toBe(255);
+            expect(result.tile.y).toBe(99);
         });
     });
 });

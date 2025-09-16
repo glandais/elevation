@@ -1,51 +1,42 @@
 import { Tile } from './types';
 
-interface CanvasPool {
-    available: HTMLCanvasElement[];
-    idleSize: number;
-    idleTimeout: number;
-    idleTimer: ReturnType<typeof setTimeout> | null;
-    acquire(): HTMLCanvasElement;
-    release(canvas: HTMLCanvasElement): void;
-    _resetIdleTimer(): void;
-    _trim(): void;
-}
+class CanvasPool {
+    private available: HTMLCanvasElement[] = [];
+    private readonly idleSize: number = 5;
+    private readonly idleTimeout: number = 30000; // 30 seconds
+    private idleTimer: ReturnType<typeof setTimeout> | null = null;
 
-const _canvasPool: CanvasPool = {
-    available: [],
-    idleSize: 5,
-    idleTimeout: 30000, // 30 seconds
-    idleTimer: null,
-
-    acquire(): HTMLCanvasElement {
+    public acquire(): HTMLCanvasElement {
         let canvas = this.available.pop();
         if (!canvas) {
             canvas = document.createElement('canvas');
         }
         this._resetIdleTimer();
         return canvas;
-    },
+    }
 
-    release(canvas: HTMLCanvasElement): void {
+    public release(canvas: HTMLCanvasElement): void {
         if (canvas) {
             this.available.push(canvas);
             this._resetIdleTimer();
         }
-    },
+    }
 
-    _resetIdleTimer(): void {
+    private _resetIdleTimer(): void {
         if (this.idleTimer) {
             clearTimeout(this.idleTimer);
         }
         this.idleTimer = setTimeout(() => this._trim(), this.idleTimeout);
-    },
+    }
 
-    _trim(): void {
+    private _trim(): void {
         while (this.available.length > this.idleSize) {
             this.available.pop();
         }
-    },
-};
+    }
+}
+
+const _canvasPool = new CanvasPool();
 
 /**
  * HTTP client for fetching terrain RGB tiles with memory-efficient ImageBitmap

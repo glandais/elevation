@@ -9,15 +9,15 @@ const m = class m {
     if (!this.isValidZoomLevel(e))
       throw new Error(`Invalid zoom level: ${e}. Must be between 0 and 15`);
     const i = this.degToRad(t.latitude), a = Math.pow(2, e), s = (t.longitude + 180) / 360 * a, n = (1 - Math.log(Math.tan(i) + 1 / Math.cos(i)) / Math.PI) / 2 * a;
-    let r = Math.floor(s), l = Math.floor(n);
+    let r = Math.floor(s), o = Math.floor(n);
     const c = a - 1;
-    r = Math.max(0, Math.min(c, r)), l = Math.max(0, Math.min(c, l));
-    const d = Math.floor((s - r) * this.TILE_SIZE), g = Math.floor((n - l) * this.TILE_SIZE);
+    r = Math.max(0, Math.min(c, r)), o = Math.max(0, Math.min(c, o));
+    const d = Math.floor((s - r) * this.TILE_SIZE), g = Math.floor((n - o) * this.TILE_SIZE);
     return {
       tile: {
         z: e,
         x: r,
-        y: l
+        y: o
       },
       x: Math.max(0, Math.min(this.TILE_SIZE - 1, d)),
       y: Math.max(0, Math.min(this.TILE_SIZE - 1, g))
@@ -38,28 +38,27 @@ const m = class m {
 };
 m.TILE_SIZE = 256;
 let u = m;
-const w = {
-  available: [],
-  idleSize: 5,
-  idleTimeout: 3e4,
-  // 30 seconds
-  idleTimer: null,
+class p {
+  constructor() {
+    this.available = [], this.idleSize = 5, this.idleTimeout = 3e4, this.idleTimer = null;
+  }
   acquire() {
-    let o = this.available.pop();
-    return o || (o = document.createElement("canvas")), this._resetIdleTimer(), o;
-  },
-  release(o) {
-    o && (this.available.push(o), this._resetIdleTimer());
-  },
+    let t = this.available.pop();
+    return t || (t = document.createElement("canvas")), this._resetIdleTimer(), t;
+  }
+  release(t) {
+    t && (this.available.push(t), this._resetIdleTimer());
+  }
   _resetIdleTimer() {
     this.idleTimer && clearTimeout(this.idleTimer), this.idleTimer = setTimeout(() => this._trim(), this.idleTimeout);
-  },
+  }
   _trim() {
     for (; this.available.length > this.idleSize; )
       this.available.pop();
   }
-};
-class p {
+}
+const w = new p();
+class x {
   constructor(t = 5e3) {
     this.timeout = t;
   }
@@ -110,7 +109,7 @@ class p {
     }
   }
 }
-class x {
+class I {
   /**
    * Decode elevation from RGB values using Terrarium encoding
    * Formula: elevation = (red * 256 + green + blue / 256) - 32768
@@ -146,7 +145,7 @@ class x {
     return this.decodeElevation(i);
   }
 }
-class I {
+class T {
   constructor(t) {
     this.locks = /* @__PURE__ */ new Map(), this.loadingCount = 0, this.waitQueue = [], this.maxConcurrent = t;
   }
@@ -184,11 +183,11 @@ class I {
     return this.locks.size;
   }
 }
-class T {
+class y {
   constructor(t = 100, e, i, a) {
     if (this.head = null, this.tail = null, t <= 0)
       throw new Error("Cache size must be greater than 0");
-    this.maxSize = t, this.keyMapper = e, this.valueBuilder = i, this.cleanupFn = a, this.cache = /* @__PURE__ */ new Map(), this.lruOrder = /* @__PURE__ */ new Map(), this.lock = new I(t);
+    this.maxSize = t, this.keyMapper = e, this.valueBuilder = i, this.cleanupFn = a, this.cache = /* @__PURE__ */ new Map(), this.lruOrder = /* @__PURE__ */ new Map(), this.lock = new T(t);
   }
   /**
    * Get item from cache
@@ -297,18 +296,18 @@ class T {
     }
   }
 }
-const h = class h {
+const l = class l {
   constructor(t = {}) {
     this.config = {
       zoomLevel: t.zoomLevel ?? 12,
       cacheSize: t.cacheSize ?? 100,
       tileUrlTemplate: t.tileUrlTemplate ?? "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
       timeout: t.timeout ?? 5e3
-    }, this.validateConfig(), this.tileFetcher = new p(this.config.timeout);
+    }, this.validateConfig(), this.tileFetcher = new x(this.config.timeout);
     const e = (i) => {
       i.bitmap.close();
     };
-    this.cache = new T(
+    this.cache = new y(
       this.config.cacheSize,
       (i) => `${i.z}/${i.x}/${i.y}`,
       (i) => this.loadTile(i),
@@ -335,7 +334,7 @@ const h = class h {
   async getElevationPixel(t) {
     try {
       const i = (await this.cache.get(t.tile)).data;
-      return x.getElevationFromImageData(i, t);
+      return I.getElevationFromImageData(i, t);
     } catch (e) {
       throw e instanceof Error ? new Error(`Failed to get elevation: ${e.message}`) : new Error("Failed to get elevation: Unknown error");
     }
@@ -345,7 +344,7 @@ const h = class h {
     return await this.getInterpolatedElevationPixel(a);
   }
   async getInterpolatedElevationPixel(t) {
-    const e = Math.floor(t.x), i = Math.floor(t.y), a = e + 1, s = i + 1, n = t.x - e, r = t.y - i, l = await this.getElevationPixel(
+    const e = Math.floor(t.x), i = Math.floor(t.y), a = e + 1, s = i + 1, n = t.x - e, r = t.y - i, o = await this.getElevationPixel(
       this.normalizePixel({ tile: t.tile, x: e, y: i })
     ), c = await this.getElevationPixel(
       this.normalizePixel({ tile: t.tile, x: a, y: i })
@@ -353,7 +352,7 @@ const h = class h {
       this.normalizePixel({ tile: t.tile, x: e, y: s })
     ), g = await this.getElevationPixel(
       this.normalizePixel({ tile: t.tile, x: a, y: s })
-    ), f = l * (1 - n) + c * n, E = d * (1 - n) + g * n;
+    ), f = o * (1 - n) + c * n, E = d * (1 - n) + g * n;
     return f * (1 - r) + E * r;
   }
   normalizePixel(t) {
@@ -361,9 +360,9 @@ const h = class h {
     const a = t.tile;
     let s = a.x, n = a.y;
     const r = a.z;
-    e < 0 && (e += h.TILE_SIZE, s -= 1), e >= h.TILE_SIZE && (e -= h.TILE_SIZE, s += 1), i < 0 && (i += h.TILE_SIZE, n -= 1), i >= h.TILE_SIZE && (i -= h.TILE_SIZE, n += 1);
-    const l = Math.pow(2, r) - 1;
-    return s = Math.max(0, Math.min(l, s)), n = Math.max(0, Math.min(l, n)), { tile: { z: r, x: s, y: n }, x: e, y: i };
+    e < 0 && (e += l.TILE_SIZE, s -= 1), e >= l.TILE_SIZE && (e -= l.TILE_SIZE, s += 1), i < 0 && (i += l.TILE_SIZE, n -= 1), i >= l.TILE_SIZE && (i -= l.TILE_SIZE, n += 1);
+    const o = Math.pow(2, r) - 1;
+    return s = Math.max(0, Math.min(o, s)), n = Math.max(0, Math.min(o, n)), { tile: { z: r, x: s, y: n }, x: e, y: i };
   }
   async getInterpolatedElevations(t) {
     const e = (i) => this.getInterpolatedElevation(i.latitude, i.longitude);
@@ -428,8 +427,8 @@ const h = class h {
       throw new Error(`Invalid timeout: ${i}. Must be a positive integer`);
   }
 };
-h.TILE_SIZE = 256;
-let v = h;
+l.TILE_SIZE = 256;
+let v = l;
 export {
   v as ElevationProvider
 };

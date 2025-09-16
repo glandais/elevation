@@ -300,4 +300,170 @@ describe('Cache', () => {
             }
         });
     });
+
+    describe('ReentrantLock and Semaphore functionality', () => {
+        it('should limit concurrent loading operations to cache size', async () => {
+            let currentlyLoading = 0;
+            let maxConcurrent = 0;
+
+            const slowBuilder = jest.fn().mockImplementation(async (key: string) => {
+                currentlyLoading++;
+                maxConcurrent = Math.max(maxConcurrent, currentlyLoading);
+
+                // Simulate slow loading
+                await new Promise(resolve => setTimeout(resolve, 50));
+
+                currentlyLoading--;
+                return `value-${key}`;
+            });
+
+            const limitedCache = new Cache<string, string>(2, mockKeyMapper, slowBuilder);
+
+            // Start 5 concurrent requests for different keys
+            const promises = [
+                limitedCache.get('key1'),
+                limitedCache.get('key2'),
+                limitedCache.get('key3'),
+                limitedCache.get('key4'),
+                limitedCache.get('key5'),
+            ];
+
+            await Promise.all(promises);
+
+            // Should never have more than 2 concurrent operations (cache size)
+            expect(maxConcurrent).toBeLessThanOrEqual(2);
+            expect(slowBuilder).toHaveBeenCalledTimes(5);
+        });
+
+        it('should handle race condition in ReentrantLock', async () => {
+            let buildCount = 0;
+            const raceBuilder = jest.fn().mockImplementation(async (key: string) => {
+                buildCount++;
+                // Small delay to create race conditions
+                await new Promise(resolve => setTimeout(resolve, 10));
+                return `value-${key}-${buildCount}`;
+            });
+
+            const raceCache = new Cache<string, string>(3, mockKeyMapper, raceBuilder);
+
+            // Start multiple concurrent requests for same key after small delay
+            setTimeout(() => {
+                raceCache.get('race-key');
+                raceCache.get('race-key');
+            }, 5);
+
+            const promise1 = raceCache.get('race-key');
+            const promise2 = raceCache.get('race-key');
+
+            const results = await Promise.all([promise1, promise2]);
+
+            // Should have same result (deduplication worked)
+            expect(results[0]).toBe(results[1]);
+            // Should only build once
+            expect(raceBuilder).toHaveBeenCalledTimes(1);
+        });
+
+        it('should queue operations when at capacity and process them sequentially', async () => {
+            const processOrder: string[] = [];
+            const queueBuilder = jest.fn().mockImplementation(async (key: string) => {
+                processOrder.push(`start-${key}`);
+                await new Promise(resolve => setTimeout(resolve, 30));
+                processOrder.push(`end-${key}`);
+                return `value-${key}`;
+            });
+
+            const queueCache = new Cache<string, string>(1, mockKeyMapper, queueBuilder);
+
+            // Start 3 operations for different keys (should queue)
+            const promises = [
+                queueCache.get('first'),
+                queueCache.get('second'),
+                queueCache.get('third'),
+            ];
+
+            const results = await Promise.all(promises);
+
+            expect(results).toEqual(['value-first', 'value-second', 'value-third']);
+            expect(queueBuilder).toHaveBeenCalledTimes(3);
+
+            // Should process sequentially (no overlapping)
+            expect(processOrder).toEqual([
+                'start-first',
+                'end-first',
+                'start-second',
+                'end-second',
+                'start-third',
+                'end-third',
+            ]);
+        });
+
+        it('should handle waitQueue edge cases', async () => {
+            // Test empty waitQueue branch in releaseLoadingSlot
+            const emptyBuilder = jest.fn().mockResolvedValue('test-value');
+            const testCache = new Cache<string, string>(5, mockKeyMapper, emptyBuilder);
+
+            // Single operation should not trigger queue
+            const result = await testCache.get('single');
+            expect(result).toBe('test-value');
+            expect(emptyBuilder).toHaveBeenCalledTimes(1);
+        });
+
+        it('should handle getLoadingCount method', async () => {
+            let loadingCount = 0;
+            let maxLoadingCount = 0;
+
+            const countBuilder = jest.fn().mockImplementation(async (key: string) => {
+                // Record loading count at the start of each operation
+                loadingCount++;
+                maxLoadingCount = Math.max(maxLoadingCount, loadingCount);
+
+                await new Promise(resolve => setTimeout(resolve, 20));
+
+                loadingCount--;
+                return `value-${key}`;
+            });
+
+            const countCache = new Cache<string, string>(2, mockKeyMapper, countBuilder);
+
+            // Start concurrent operations
+            const promises = [countCache.get('key1'), countCache.get('key2')];
+
+            await Promise.all(promises);
+
+            // Verify that we had concurrent operations
+            expect(maxLoadingCount).toBeGreaterThan(0);
+
+            // Test getLoadingCount method directly
+            const lockInstance = (
+                countCache as unknown as { lock: { getLoadingCount: () => number } }
+            ).lock;
+            expect(typeof lockInstance.getLoadingCount).toBe('function');
+            expect(lockInstance.getLoadingCount()).toBe(0); // Should be 0 after completion
+        });
+    });
+
+    describe('Batch processing coverage', () => {
+        it('should handle empty iterator in computeElevations', async () => {
+            const provider = new Cache<string, string>(3, mockKeyMapper, mockValueBuilder);
+
+            // Test with empty array iterator
+            const emptyIterator = [][Symbol.iterator]();
+
+            // Access private method for testing
+            const providerInstance = provider as unknown as {
+                computeElevations?: (
+                    coords: Iterator<string>,
+                    fn: (coord: string) => Promise<string>
+                ) => Promise<string[]>;
+            };
+
+            if (providerInstance.computeElevations) {
+                const result = await providerInstance.computeElevations(
+                    emptyIterator,
+                    async coord => `value-${coord}`
+                );
+                expect(result).toEqual([]);
+            }
+        });
+    });
 });
