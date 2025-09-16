@@ -6,13 +6,13 @@
     "main": "./dist/index.umd.js",
     "module": "./dist/index.esm.js",
     "types": "./dist/index.d.ts",
-    "browser": "./dist/index.min.js",
+    "browser": "./dist/index.esm.js",
     "jsdelivr": "./dist/index.esm.js",
-    "unpkg": "./dist/index.min.js",
+    "unpkg": "./dist/index.esm.js",
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",
-            "browser": "./dist/index.min.js",
+            "browser": "./dist/index.esm.js",
             "import": "./dist/index.esm.js",
             "require": "./dist/index.umd.js",
             "default": "./dist/index.esm.js"
