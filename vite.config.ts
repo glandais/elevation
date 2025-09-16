@@ -31,6 +31,11 @@ export default defineConfig({
                 }
             },
         },
+        rollupOptions: {
+            output: {
+                exports: 'named',
+            },
+        },
         sourcemap: true,
     },
 });

@@ -950,6 +950,7 @@ class G {
   }
 }
 export {
-  G as ElevationProvider
+  G as ElevationProvider,
+  G as default
 };
 //# sourceMappingURL=index.esm.js.map

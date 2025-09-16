@@ -10,6 +10,13 @@
             }
         ],
         [
+            "semantic-release-plugin-update-version-in-files",
+            {
+                "files": ["README.md"],
+                "placeholder": "latest"
+            }
+        ],
+        [
             "@semantic-release/exec",
             {
                 "prepareCmd": "npm run build"

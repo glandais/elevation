@@ -82,10 +82,11 @@ https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png
 
 ## Important Constraints
 
-1. **Attribution Required**: Any usage must include attribution to data sources (SRTM, GMTED, NED, ETOPO1) and Mapzen/Tilezen processing
-2. **Browser-Only**: Library uses browser-native ImageData API, not compatible with Node.js
-3. **Coordinate Limits**: Latitude must be between -85.0511 and 85.0511 (Web Mercator bounds)
-4. **Memory Usage**: Each tile uses ~262KB (256×256×4 bytes)
+1. **Zero Runtime Dependencies**: This library must remain completely dependency-free. All functionality must be implemented using browser-native APIs only. Do not add any runtime dependencies to package.json.
+2. **Attribution Required**: Any usage must include attribution to data sources (SRTM, GMTED, NED, ETOPO1) and Mapzen/Tilezen processing
+3. **Browser-Only**: Library uses browser-native ImageData API, not compatible with Node.js
+4. **Coordinate Limits**: Latitude must be between -85.0511 and 85.0511 (Web Mercator bounds)
+5. **Memory Usage**: Each tile uses ~262KB (256×256×4 bytes)
 
 ## Testing Strategy
 

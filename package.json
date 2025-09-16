@@ -2,14 +2,20 @@
     "name": "@glandais/elevation",
     "version": "2.0.0",
     "description": "TypeScript library for retrieving elevation data from geographic coordinates using terrain RGB tiles",
-    "main": "./dist/index.js",
-    "module": "./dist/index.es.js",
+    "sideEffects": false,
+    "main": "./dist/index.umd.js",
+    "module": "./dist/index.esm.js",
     "types": "./dist/index.d.ts",
+    "browser": "./dist/index.min.js",
+    "jsdelivr": "./dist/index.esm.js",
+    "unpkg": "./dist/index.min.js",
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",
-            "import": "./dist/index.es.js",
-            "require": "./dist/index.js"
+            "browser": "./dist/index.min.js",
+            "import": "./dist/index.esm.js",
+            "require": "./dist/index.umd.js",
+            "default": "./dist/index.esm.js"
         }
     },
     "files": [
@@ -18,6 +24,9 @@
         "LICENSE"
     ],
     "scripts": {
+        "dev": "npm run build && npm run dev:serve",
+        "dev:watch": "vite build --watch",
+        "dev:serve": "serve . -l 3000",
         "build": "vite build",
         "check": "npm run lint:fix && npm run lint && npm run typecheck && npm run test && npm run test:browser",
         "test": "jest",
@@ -95,6 +104,7 @@
         "playwright": "^1.55.0",
         "prettier": "^3.6.2",
         "semantic-release": "^24.2.7",
+        "semantic-release-plugin-update-version-in-files": "^2.0.0",
         "serve": "^14.2.4",
         "ts-jest": "^29.4.1",
         "typescript": "^5.9.2",

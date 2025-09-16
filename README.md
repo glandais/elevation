@@ -10,6 +10,7 @@ A TypeScript library for retrieving elevation data from geographic coordinates u
 
 - 🚀 **[GitHub](https://github.com/glandais/elevation)**
 - 📦 **[npm package](https://www.npmjs.com/package/@glandais/elevation)**
+- 📦 **[jsdelivr](https://www.jsdelivr.com/package/npm/@glandais/elevation)**
 - 🌐 **[Live Demo](https://glandais.github.io/elevation/)**
 
 ## Features
@@ -26,22 +27,56 @@ A TypeScript library for retrieving elevation data from geographic coordinates u
 - 🎛️ **Distance-based smoothing** with configurable window sizes
 - 🔬 **Douglas-Peucker filtering** for elevation profile simplification
 
-## Quick Start
+## Installation
 
-### Installation
+### npm
 
 ```bash
 npm install @glandais/elevation
 ```
 
-### Basic Usage
+```javascript
+// ES6 import (recommended)
+import ElevationProvider, { Coordinates } from '@glandais/elevation';
+
+// CommonJS
+const { ElevationProvider } = require('@glandais/elevation');
+// or
+const ElevationProvider = require('@glandais/elevation').default;
+```
+
+### CDN
+
+```html
+<!-- Modern ES Module (recommended) -->
+<script
+    src="https://cdn.jsdelivr.net/npm/@glandais/elevation@2/dist/index.esm.js"
+    type="module"
+></script>
+
+<!-- UMD (browser global) -->
+<script src="https://cdn.jsdelivr.net/npm/@glandais/elevation@2/dist/index.umd.js"></script>
+
+<!-- Minified version -->
+<script src="https://cdn.jsdelivr.net/npm/@glandais/elevation@2/dist/index.min.js"></script>
+```
+
+### Local Download
+
+```html
+<!-- Download and host locally -->
+<!-- For production, use the minified version -->
+<script src="path/to/elevation.min.js"></script>
+
+<!-- Or use the UMD version -->
+<script src="path/to/elevation.umd.js"></script>
+```
+
+## Quick Start
+
+### Basic usage
 
 ```typescript
-import { ElevationProvider } from '@glandais/elevation';
-
-// Create elevation provider with default settings
-const elevationProvider = new ElevationProvider();
-
 // Get elevation at specific coordinates (with interpolation enabled by default)
 const elevation = await elevationProvider.getElevation(47.2, -1.5);
 console.log(`Elevation: ${elevation}m`);
@@ -51,12 +86,45 @@ const rawElevation = await elevationProvider.getElevation(47.2, -1.5, { interpol
 console.log(`Raw elevation: ${rawElevation}m`);
 ```
 
+### TypeScript
+
+Full TypeScript support with accurate type definitions:
+
+```typescript
+import ElevationProvider from '@glandais/elevation';
+
+// Create elevation elevationProvider with default settings
+const elevationProvider = new ElevationProvider();
+```
+
+### JavaScript (ES Module)
+
+```javascript
+// Modern ES Module import from jsdelivr (recommended for browsers)
+import ElevationProvider from 'https://cdn.jsdelivr.net/npm/@glandais/elevation@latest/+esm';
+
+// Or with a custom name (you can use any name you want)
+import MyElevation from 'https://cdn.jsdelivr.net/npm/@glandais/elevation@latest/+esm';
+
+// Direct file import (alternative)
+import ElevationProvider from 'https://cdn.jsdelivr.net/npm/@glandais/elevation@latest/dist/index.esm.js';
+
+// Create elevation provider with default settings
+const elevationProvider = new ElevationProvider();
+```
+
+### JavaScript (UMD/minified)
+
+```javascript
+// Create elevation elevationProvider with default settings
+const elevationProvider = new window.Elevation.ElevationProvider();
+```
+
 ### Advanced Configuration
 
 ```typescript
-import { ElevationProvider } from '@glandais/elevation';
-
-const provider = new ElevationProvider({
+// or new window.Elevation.ElevationProvider
+const elevationProvider = new ElevationProvider({
     zoomLevel: 12, // Tile zoom level (default: 12 for ~30m resolution)
     cacheSize: 100, // Maximum tiles in memory cache (default: 100)
     timeout: 5000, // Request timeout in milliseconds (default: 5000)
@@ -70,7 +138,7 @@ const coordinates = [
     { latitude: 51.5, longitude: -0.1 },
 ];
 
-const elevations = await provider.getElevationsFrom(coordinates);
+const elevations = await elevationProvider.getElevationsFrom(coordinates);
 console.log('Elevations:', elevations); // [elevation1, elevation2, elevation3]
 ```
 
@@ -78,7 +146,7 @@ console.log('Elevations:', elevations); // [elevation1, elevation2, elevation3]
 
 ```typescript
 // Clear cache when needed
-provider.clearCache();
+elevationProvider.clearCache();
 ```
 
 ### Elevation Profiling
@@ -89,7 +157,7 @@ The library provides advanced elevation profiling capabilities for analyzing ter
 
 ```typescript
 // Get elevation profile between two points using getElevationsAlong
-const profile = await provider.getElevationsAlong(
+const profile = await elevationProvider.getElevationsAlong(
     [
         { latitude: 47.2, longitude: -1.5 }, // Start point
         { latitude: 47.25, longitude: -1.45 }, // End point
@@ -115,7 +183,7 @@ const hikingTrail = [
 ];
 
 // Get detailed elevation profile with smoothing
-const trailProfile = await provider.getElevationsAlong(hikingTrail, {
+const trailProfile = await elevationProvider.getElevationsAlong(hikingTrail, {
     step: 10, // 10 meters between points
     smoothingOptions: {
         enabled: true,
@@ -175,10 +243,10 @@ Get elevation at specific coordinates.
 
 ```typescript
 // With default interpolation (enabled)
-const elevation = await provider.getElevation(47.2, -1.5);
+const elevation = await elevationProvider.getElevation(47.2, -1.5);
 
 // Without interpolation
-const rawElevation = await provider.getElevation(47.2, -1.5, { interpolation: false });
+const rawElevation = await elevationProvider.getElevation(47.2, -1.5, { interpolation: false });
 ```
 
 ##### `getElevationsFrom(coordinates: Iterable<Coordinates>, options?: GetElevationsFromOptions): Promise<number[]>`
@@ -186,13 +254,15 @@ const rawElevation = await provider.getElevation(47.2, -1.5, { interpolation: fa
 Batch get elevations for multiple coordinates from an iterable.
 
 ```typescript
-const elevations = await provider.getElevationsFrom([
+const elevations = await elevationProvider.getElevationsFrom([
     { latitude: 47.2, longitude: -1.5 },
     { latitude: 48.8, longitude: 2.3 },
 ]);
 
 // Without interpolation
-const rawElevations = await provider.getElevationsFrom(coordinates, { interpolation: false });
+const rawElevations = await elevationProvider.getElevationsFrom(coordinates, {
+    interpolation: false,
+});
 ```
 
 ##### `getElevationsAlong(path: Coordinates[], options?: GetElevationsAlongOptions): Promise<CoordinatesElevation[]>`
@@ -207,10 +277,10 @@ const path = [
 ];
 
 // Basic elevation profile
-const profile = await provider.getElevationsAlong(path, { step: 10 });
+const profile = await elevationProvider.getElevationsAlong(path, { step: 10 });
 
 // With smoothing and filtering
-const smoothedProfile = await provider.getElevationsAlong(path, {
+const smoothedProfile = await elevationProvider.getElevationsAlong(path, {
     step: 10,
     smoothingOptions: { enabled: true, windowSize: 50 },
     filterOptions: { enabled: true, tolerance: 5, zExaggeration: 3 },
@@ -222,7 +292,7 @@ const smoothedProfile = await provider.getElevationsAlong(path, {
 Clear the tile cache.
 
 ```typescript
-provider.clearCache();
+elevationProvider.clearCache();
 ```
 
 ##### `getConfig(): ElevationProviderConfig`
@@ -230,7 +300,7 @@ provider.clearCache();
 Get current configuration.
 
 ```typescript
-const config = provider.getConfig();
+const config = elevationProvider.getConfig();
 ```
 
 #### Static Methods
@@ -340,19 +410,19 @@ Each tile uses approximately 262KB of memory (256×256×4 bytes). With the defau
 ### Optimization Tips
 
 ```typescript
-// Good: Reuse provider instance
-const provider = new ElevationProvider();
-const elevation1 = await provider.getElevation(47.2, -1.5);
-const elevation2 = await provider.getElevation(47.3, -1.6);
+// Good: Reuse elevationProvider instance
+const elevationProvider = new ElevationProvider();
+const elevation1 = await elevationProvider.getElevation(47.2, -1.5);
+const elevation2 = await elevationProvider.getElevation(47.3, -1.6);
 
 // Better: Batch requests
-const elevations = await provider.getElevationsFrom([
+const elevations = await elevationProvider.getElevationsFrom([
     { latitude: 47.2, longitude: -1.5 },
     { latitude: 47.3, longitude: -1.6 },
 ]);
 
 // Best: Use elevation profiling for paths
-const profile = await provider.getElevationsAlong(
+const profile = await elevationProvider.getElevationsAlong(
     [
         { latitude: 47.2, longitude: -1.5 },
         { latitude: 47.3, longitude: -1.6 },
@@ -367,7 +437,7 @@ The library provides detailed error messages for common issues:
 
 ```typescript
 try {
-    const elevation = await provider.getElevation(90, 0); // Invalid latitude
+    const elevation = await elevationProvider.getElevation(90, 0); // Invalid latitude
 } catch (error) {
     console.error(error.message); // "Failed to get elevation: Invalid latitude: 90. Must be between -85.0511 and 85.0511"
 }
@@ -429,12 +499,38 @@ npm install
 npm run dev
 ```
 
+### Development Workflow
+
+The project includes an interactive demo that showcases library capabilities:
+
+```bash
+# Build and serve demo (one-time)
+npm run dev              # Builds library and starts server at http://localhost:3000
+
+# For active development (run in separate terminals):
+npm run dev:serve        # Serves demo at http://localhost:3000
+npm run dev:watch        # Watches and rebuilds library on changes
+```
+
+**Development Process:**
+
+1. Run `npm run dev` to build and start the demo server
+2. Open http://localhost:3000 to view the interactive demo
+3. In a separate terminal, run `npm run dev:watch` for auto-rebuilding
+4. Edit TypeScript files in `src/` - they'll automatically rebuild
+5. Refresh browser to see changes in the demo
+
 ### Scripts
 
 ```bash
+npm run check         # Verify all (lint, typecheck, test, build)
 npm run build         # Build library
+npm run dev           # Build and serve demo
+npm run dev:watch     # Watch and rebuild library
+npm run dev:serve     # Serve demo only
 npm run test          # Run tests
 npm run test:coverage # Run tests with coverage
+npm run test:browser  # Run browser integration tests
 npm run lint          # Lint code
 npm run format        # Format code
 npm run typecheck     # Type checking
@@ -447,6 +543,7 @@ The library includes comprehensive tests with >95% coverage:
 ```bash
 # Run all tests
 npm test
+npm test:browser
 
 # Run tests in watch mode
 npm run test:watch
