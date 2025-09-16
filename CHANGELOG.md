@@ -1,3 +1,10 @@
+## [2.0.2](https://github.com/glandais/elevation/compare/v2.0.1...v2.0.2) (2025-09-16)
+
+
+### Bug Fixes
+
+* improve CDN compatibility and default export for jsdelivr ([6e46c24](https://github.com/glandais/elevation/commit/6e46c2421ce7dfa9ad7eef0209267f61dc70b586))
+
 ## [2.0.1](https://github.com/glandais/elevation/compare/v2.0.0...v2.0.1) (2025-09-16)
 
 
