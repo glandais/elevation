@@ -1,4 +1,4 @@
-import { Cache } from '../src/Cache';
+import { Cache } from '../../../src/tile/cache/Cache';
 
 describe('Cache', () => {
     let cache: Cache<string, string>;
@@ -120,13 +120,80 @@ describe('Cache', () => {
             await cache.get('key2');
             await cache.get('key3');
 
-            // Access key1 to make it most recently used
-            await cache.get('key1');
+            // Reset mock to track only the next call
+            jest.clearAllMocks();
 
-            // Add key4 to trigger eviction (should evict key2)
+            // Access key1 again - this should hit moveToFront path
+            const result = await cache.get('key1');
+            expect(result).toBe('value-key1');
+
+            // Verify valueBuilder was NOT called again (item was cached)
+            expect(mockValueBuilder).not.toHaveBeenCalled();
+
+            // Add key4 to trigger eviction (should evict key2, not key1 since key1 was accessed)
             await cache.get('key4');
 
             expect(mockCleanupFn).toHaveBeenCalledWith('value-key2');
+        });
+
+        it('should trigger moveToFront when accessing existing cached item', async () => {
+            // Add initial item to cache
+            const result1 = await cache.get('testKey');
+            expect(result1).toBe('value-testKey');
+            expect(mockValueBuilder).toHaveBeenCalledTimes(1);
+
+            // Reset mocks to isolate the second call
+            jest.clearAllMocks();
+
+            // Access the same item again - should trigger moveToFront code path
+            const result2 = await cache.get('testKey');
+            expect(result2).toBe('value-testKey');
+
+            // Verify valueBuilder was NOT called (item was retrieved from cache)
+            expect(mockValueBuilder).not.toHaveBeenCalled();
+
+            // Verify cleanup was NOT called (item was not evicted)
+            expect(mockCleanupFn).not.toHaveBeenCalled();
+        });
+
+        it('should exercise double-check locking pattern in get method', async () => {
+            // This test targets the specific lines 75-76 in the double-check locking pattern
+            const specialBuilder = jest.fn(async (key: string) => {
+                // Add some async work to ensure we go through the lock path
+                await new Promise(resolve => setTimeout(resolve, 1));
+                return `special-${key}`;
+            });
+
+            const specialCache = new Cache<string, string>(3, mockKeyMapper, specialBuilder);
+
+            // Access the private cache to simulate a very specific race condition
+            const cacheInstance = specialCache as unknown as {
+                cache: Map<string, string>;
+                lock: { acquire: (key: string, fn: () => Promise<string>) => Promise<string> };
+            };
+
+            // Manually add an item to the internal cache to simulate the race condition
+            // where the sync check misses it but the locked check finds it
+            const key = 'test-key';
+            const mappedKey = mockKeyMapper(key);
+
+            // Mock the lock.acquire to simulate finding the item during the locked phase
+            const originalAcquire = cacheInstance.lock.acquire;
+            cacheInstance.lock.acquire = jest
+                .fn()
+                .mockImplementation(async (lockKey: string, fn: () => Promise<string>) => {
+                    // Simulate the item appearing in cache during lock acquisition
+                    cacheInstance.cache.set(mappedKey, 'race-value');
+                    return fn();
+                });
+
+            const result = await specialCache.get(key);
+
+            // Due to our manipulation, it should return the race value
+            expect(result).toBe('race-value');
+
+            // Restore the original lock
+            cacheInstance.lock.acquire = originalAcquire;
         });
 
         it('should handle valueBuilder errors', async () => {
@@ -290,7 +357,7 @@ describe('Cache', () => {
 
             // Test removeFromLRU with non-existent key (should not crash)
             if (cacheInstance.removeFromLRU) {
-                expect(() => cacheInstance.removeFromLRU('nonexistent')).not.toThrow();
+                expect(() => cacheInstance.removeFromLRU!('nonexistent')).not.toThrow();
             }
 
             // Test delete with non-existent key
@@ -464,6 +531,73 @@ describe('Cache', () => {
                 );
                 expect(result).toEqual([]);
             }
+        });
+    });
+
+    describe('Edge case coverage', () => {
+        it('should handle Cache eviction with empty tail', async () => {
+            // Test the uncovered branch in evictLeastRecentlyUsed (line 189)
+            const emptyCache = new Cache<string, string>(1, mockKeyMapper, mockValueBuilder);
+
+            // Access private method to test the edge case
+            const cacheInstance = emptyCache as unknown as {
+                evictLeastRecentlyUsed: () => void;
+                tail: string | null;
+            };
+
+            // Ensure tail is null
+            cacheInstance.tail = null;
+
+            // This should not throw and should handle the null tail gracefully
+            expect(() => cacheInstance.evictLeastRecentlyUsed()).not.toThrow();
+        });
+
+        it('should handle ReentrantLock queue edge case', async () => {
+            // Test the uncovered branch in ReentrantLock releaseLoadingSlot (line 99)
+            // This is difficult to trigger naturally, but we can test the defensive programming
+
+            const testCache = new Cache<string, string>(1, mockKeyMapper, mockValueBuilder);
+
+            // Access the lock instance
+            const lockInstance = (
+                testCache as unknown as {
+                    lock: {
+                        waitQueue: (() => void)[];
+                        releaseLoadingSlot: () => void;
+                    };
+                }
+            ).lock;
+
+            // Manually add undefined to queue to test the defensive check
+            lockInstance.waitQueue.push(undefined as unknown as () => void);
+
+            // This should handle the undefined callback gracefully
+            expect(() => lockInstance.releaseLoadingSlot()).not.toThrow();
+        });
+
+        it('should cover removeFromLRU when removing middle node', async () => {
+            // Test lines 253-254: removing a node that has a next node
+            const cache = new Cache<string, string>(3, mockKeyMapper, mockValueBuilder);
+
+            await cache.get('key1'); // Will be tail
+            await cache.get('key2'); // Will be middle
+            await cache.get('key3'); // Will be head
+
+            // Access private method to test specific removal case
+            const cacheInstance = cache as unknown as {
+                removeFromLRU: (key: string) => void;
+                lruOrder: Map<string, { prev: string | null; next: string | null }>;
+            };
+
+            // Remove middle node (has both prev and next)
+            cacheInstance.removeFromLRU('key2');
+
+            // Verify the links were updated correctly
+            const key3Node = cacheInstance.lruOrder.get('key3');
+            const key1Node = cacheInstance.lruOrder.get('key1');
+
+            expect(key3Node?.next).toBe('key1'); // key3 should now point to key1
+            expect(key1Node?.prev).toBe('key3'); // key1 should point back to key3
         });
     });
 });

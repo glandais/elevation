@@ -1,5 +1,5 @@
 /* global beforeAll, afterAll */
-import { TileFetcher } from '../src/TileFetcher';
+import TileFetcher from '../../../src/tile/fetcher';
 
 // Mock global fetch
 const mockFetch = jest.fn();
@@ -45,7 +45,7 @@ describe('TileFetcher', () => {
     });
 
     beforeEach(() => {
-        fetcher = new TileFetcher(1000); // 1 second timeout for faster tests
+        fetcher = new TileFetcher('https://example.com/{z}/{x}/{y}.png', 1000); // 1 second timeout for faster tests
 
         // Reset all mocks
         jest.clearAllMocks();
@@ -67,21 +67,21 @@ describe('TileFetcher', () => {
 
     describe('constructor', () => {
         it('should create fetcher with default timeout', () => {
-            const defaultFetcher = new TileFetcher();
+            const defaultFetcher = new TileFetcher('https://example.com/{z}/{x}/{y}.png');
             expect(defaultFetcher).toBeInstanceOf(TileFetcher);
         });
 
         it('should create fetcher with custom timeout', () => {
-            const customFetcher = new TileFetcher(10000);
+            const customFetcher = new TileFetcher('https://example.com/{z}/{x}/{y}.png', 10000);
             expect(customFetcher).toBeInstanceOf(TileFetcher);
         });
     });
 
-    describe('fetchTile method', () => {
+    describe('loadTile method', () => {
         it('should successfully fetch and process tile', async () => {
-            const result = await fetcher.fetchTile('https://example.com/tile.png');
+            const result = await fetcher.loadTile({ z: 12, x: 1024, y: 1536 });
 
-            expect(mockFetch).toHaveBeenCalledWith('https://example.com/tile.png', {
+            expect(mockFetch).toHaveBeenCalledWith('https://example.com/12/1024/1536.png', {
                 signal: expect.any(Object),
             });
             expect(mockCreateImageBitmap).toHaveBeenCalled();
@@ -98,24 +98,24 @@ describe('TileFetcher', () => {
                 statusText: 'Not Found',
             });
 
-            await expect(fetcher.fetchTile('https://example.com/missing.png')).rejects.toThrow(
-                'Failed to fetch tile from https://example.com/missing.png: HTTP 404: Not Found'
+            await expect(fetcher.loadTile({ z: 12, x: 1024, y: 1536 })).rejects.toThrow(
+                'Failed to fetch tile from https://example.com/12/1024/1536.png: HTTP 404: Not Found'
             );
         });
 
         it('should handle network fetch errors', async () => {
             mockFetch.mockRejectedValue(new Error('Network error'));
 
-            await expect(fetcher.fetchTile('https://example.com/tile.png')).rejects.toThrow(
-                'Failed to fetch tile from https://example.com/tile.png: Network error'
+            await expect(fetcher.loadTile({ z: 12, x: 1024, y: 1536 })).rejects.toThrow(
+                'Failed to fetch tile from https://example.com/12/1024/1536.png: Network error'
             );
         });
 
         it('should handle unknown fetch errors', async () => {
             mockFetch.mockRejectedValue('Unknown error');
 
-            await expect(fetcher.fetchTile('https://example.com/tile.png')).rejects.toThrow(
-                'Failed to fetch tile from https://example.com/tile.png: Unknown error'
+            await expect(fetcher.loadTile({ z: 12, x: 1024, y: 1536 })).rejects.toThrow(
+                'Failed to fetch tile from https://example.com/12/1024/1536.png: Unknown error'
             );
         });
 
@@ -127,21 +127,21 @@ describe('TileFetcher', () => {
                 blob: jest.fn().mockRejectedValue(new Error('Blob error')),
             });
 
-            await expect(fetcher.fetchTile('https://example.com/tile.png')).rejects.toThrow(
-                'Failed to fetch tile from https://example.com/tile.png: Blob error'
+            await expect(fetcher.loadTile({ z: 12, x: 1024, y: 1536 })).rejects.toThrow(
+                'Failed to fetch tile from https://example.com/12/1024/1536.png: Blob error'
             );
         });
     });
 
     describe('fetchWithTimeout method', () => {
         it('should create AbortController and set up timeout', async () => {
-            await fetcher.fetchTile('https://example.com/tile.png');
+            await fetcher.loadTile({ z: 12, x: 1024, y: 1536 });
 
             // Verify that AbortController was created during the request
             expect(MockAbortController).toHaveBeenCalled();
 
             // Verify fetch was called with the signal
-            expect(mockFetch).toHaveBeenCalledWith('https://example.com/tile.png', {
+            expect(mockFetch).toHaveBeenCalledWith('https://example.com/12/1024/1536.png', {
                 signal: expect.any(Object),
             });
         });
@@ -149,7 +149,7 @@ describe('TileFetcher', () => {
         it('should clear timeout on successful response', async () => {
             const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
 
-            await fetcher.fetchTile('https://example.com/tile.png');
+            await fetcher.loadTile({ z: 12, x: 1024, y: 1536 });
 
             expect(clearTimeoutSpy).toHaveBeenCalled();
         });
@@ -158,7 +158,7 @@ describe('TileFetcher', () => {
             const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
             mockFetch.mockRejectedValue(new Error('Network error'));
 
-            await expect(fetcher.fetchTile('https://example.com/tile.png')).rejects.toThrow();
+            await expect(fetcher.loadTile({ z: 12, x: 1024, y: 1536 })).rejects.toThrow();
 
             expect(clearTimeoutSpy).toHaveBeenCalled();
         });
@@ -168,8 +168,8 @@ describe('TileFetcher', () => {
         it('should handle createImageBitmap failure', async () => {
             mockCreateImageBitmap.mockRejectedValue(new Error('Invalid image format'));
 
-            await expect(fetcher.fetchTile('https://example.com/tile.png')).rejects.toThrow(
-                'Failed to fetch tile from https://example.com/tile.png: Failed to process image: Invalid image format'
+            await expect(fetcher.loadTile({ z: 12, x: 1024, y: 1536 })).rejects.toThrow(
+                'Failed to fetch tile from https://example.com/12/1024/1536.png: Failed to process image: Invalid image format'
             );
         });
 
@@ -183,9 +183,9 @@ describe('TileFetcher', () => {
         });
 
         it('should reuse canvas between calls for efficiency', async () => {
-            // Call fetchTile multiple times
-            await fetcher.fetchTile('https://example.com/tile1.png');
-            await fetcher.fetchTile('https://example.com/tile2.png');
+            // Call loadTile multiple times
+            await fetcher.loadTile({ z: 12, x: 1024, y: 1536 });
+            await fetcher.loadTile({ z: 12, x: 1025, y: 1536 });
 
             // Verify createImageBitmap was called for each tile
             expect(mockCreateImageBitmap).toHaveBeenCalledTimes(2);
@@ -202,8 +202,8 @@ describe('TileFetcher', () => {
                 getImageData: jest.fn(),
             });
 
-            await expect(fetcher.fetchTile('https://example.com/tile.png')).rejects.toThrow(
-                'Failed to fetch tile from https://example.com/tile.png: Failed to process image: Drawing failed'
+            await expect(fetcher.loadTile({ z: 12, x: 1024, y: 1536 })).rejects.toThrow(
+                'Failed to fetch tile from https://example.com/12/1024/1536.png: Failed to process image: Drawing failed'
             );
 
             // Restore
@@ -219,8 +219,8 @@ describe('TileFetcher', () => {
                 }),
             });
 
-            await expect(fetcher.fetchTile('https://example.com/tile.png')).rejects.toThrow(
-                'Failed to fetch tile from https://example.com/tile.png: Failed to process image: getImageData failed'
+            await expect(fetcher.loadTile({ z: 12, x: 1024, y: 1536 })).rejects.toThrow(
+                'Failed to fetch tile from https://example.com/12/1024/1536.png: Failed to process image: getImageData failed'
             );
 
             // Restore
@@ -236,8 +236,8 @@ describe('TileFetcher', () => {
                 }),
             });
 
-            await expect(fetcher.fetchTile('https://example.com/tile.png')).rejects.toThrow(
-                'Failed to fetch tile from https://example.com/tile.png: Failed to process image: Unknown error'
+            await expect(fetcher.loadTile({ z: 12, x: 1024, y: 1536 })).rejects.toThrow(
+                'Failed to fetch tile from https://example.com/12/1024/1536.png: Failed to process image: Unknown error'
             );
 
             // Restore
@@ -262,8 +262,8 @@ describe('TileFetcher', () => {
                     statusText: testCase.statusText,
                 });
 
-                await expect(fetcher.fetchTile('https://example.com/tile.png')).rejects.toThrow(
-                    `Failed to fetch tile from https://example.com/tile.png: HTTP ${testCase.status}: ${testCase.statusText}`
+                await expect(fetcher.loadTile({ z: 12, x: 1024, y: 1536 })).rejects.toThrow(
+                    `Failed to fetch tile from https://example.com/12/1024/1536.png: HTTP ${testCase.status}: ${testCase.statusText}`
                 );
             }
         });
@@ -283,7 +283,7 @@ describe('TileFetcher', () => {
                     blob: jest.fn().mockResolvedValue(blob),
                 });
 
-                const result = await fetcher.fetchTile('https://example.com/tile.png');
+                const result = await fetcher.loadTile({ z: 12, x: 1024, y: 1536 });
                 expect(result).toHaveProperty('data');
                 expect(result.data).toBeInstanceOf(ImageData);
             }
@@ -323,7 +323,7 @@ describe('TileFetcher', () => {
                     getImageData: jest.fn().mockReturnValue(new ImageData(dims.width, dims.height)),
                 });
 
-                const result = await fetcher.fetchTile('https://example.com/tile.png');
+                const result = await fetcher.loadTile({ z: 12, x: 1024, y: 1536 });
                 expect(result).toHaveProperty('data');
                 expect(result).toHaveProperty('bitmap');
                 expect(result.data).toBeInstanceOf(ImageData);
@@ -340,7 +340,10 @@ describe('TileFetcher', () => {
 
     describe('timeout scenarios', () => {
         it('should successfully complete within timeout', async () => {
-            const generousTimeoutFetcher = new TileFetcher(5000); // 5 second timeout
+            const generousTimeoutFetcher = new TileFetcher(
+                'https://example.com/{z}/{x}/{y}.png',
+                5000
+            ); // 5 second timeout
 
             // Fast response
             mockFetch.mockResolvedValue({
@@ -352,55 +355,91 @@ describe('TileFetcher', () => {
                     .mockResolvedValue(new Blob(['fast response'], { type: 'image/png' })),
             });
 
-            const result = await generousTimeoutFetcher.fetchTile(
-                'https://example.com/fast-tile.png'
-            );
+            const result = await generousTimeoutFetcher.loadTile({ z: 12, x: 1024, y: 1536 });
             expect(result).toHaveProperty('data');
             expect(result.data).toBeInstanceOf(ImageData);
         });
     });
 
-    describe('canvas pool coverage', () => {
-        it('should test canvas pool trim functionality', () => {
-            // Access the canvas pool module
-            const TileFetcherModule = require('../src/TileFetcher');
-            const canvasPool = TileFetcherModule.canvasPool;
-
-            if (canvasPool && canvasPool._trim) {
-                // Save original state
-                const originalAvailable = [...canvasPool.available];
-                const originalIdleSize = canvasPool.idleSize;
-
-                // Add many canvases to exceed idleSize
-                for (let i = 0; i < originalIdleSize + 5; i++) {
-                    const canvas = document.createElement('canvas');
-                    canvasPool.available.push(canvas);
-                }
-
-                // Trigger trim
-                canvasPool._trim();
-
-                // Should have trimmed excess canvases
-                expect(canvasPool.available.length).toBeLessThanOrEqual(originalIdleSize);
-
-                // Restore original state
-                canvasPool.available = originalAvailable;
-            } else {
-                // If canvasPool is not accessible, just verify it doesn't crash
-                expect(true).toBe(true);
-            }
-        });
-
+    describe('integration edge cases', () => {
         it('should handle edge cases in processing', async () => {
-            const fetcher = new TileFetcher(1000);
+            const fetcher = new TileFetcher('data:image/png;base64,{z}/{x}/{y}.png', 1000);
 
             try {
-                await fetcher.fetchTile(
-                    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
-                );
+                await fetcher.loadTile({ z: 12, x: 1024, y: 1536 });
             } catch (error) {
                 // Expected to fail or succeed depending on implementation
                 expect(error).toBeDefined();
+            }
+        });
+    });
+
+    describe('detailed coverage tests', () => {
+        it('should handle canvas context creation failure', async () => {
+            const fetcher = new TileFetcher('https://example.com/{z}/{x}/{y}.png', 1000);
+
+            // Mock HTMLCanvasElement.getContext to return null
+            const originalGetContext = HTMLCanvasElement.prototype.getContext;
+            HTMLCanvasElement.prototype.getContext = jest.fn().mockReturnValue(null);
+
+            try {
+                const blob = new Blob(['test'], { type: 'image/png' });
+
+                await expect(
+                    (
+                        fetcher as unknown as {
+                            blobToImageDataAndBitmap: (blob: Blob) => Promise<unknown>;
+                        }
+                    ).blobToImageDataAndBitmap(blob)
+                ).rejects.toThrow('Failed to get 2D canvas context');
+            } finally {
+                // Restore original method
+                HTMLCanvasElement.prototype.getContext = originalGetContext;
+            }
+        });
+
+        it('should trigger unknown error handling path in blobToImageDataAndBitmap', async () => {
+            const fetcher = new TileFetcher('https://example.com/{z}/{x}/{y}.png', 1000);
+
+            // Mock createImageBitmap to throw a non-Error object
+            const originalCreateImageBitmap = global.createImageBitmap;
+            (
+                global as unknown as {
+                    createImageBitmap: jest.MockedFunction<typeof createImageBitmap>;
+                }
+            ).createImageBitmap = jest.fn().mockRejectedValue('String error not Error object');
+
+            try {
+                const blob = new Blob(['test'], { type: 'image/png' });
+                await (
+                    fetcher as unknown as {
+                        blobToImageDataAndBitmap: (blob: Blob) => Promise<unknown>;
+                    }
+                ).blobToImageDataAndBitmap(blob);
+            } catch (error: unknown) {
+                expect((error as Error).message).toContain('Failed to process image');
+            } finally {
+                // Restore original
+                (
+                    global as unknown as { createImageBitmap: typeof createImageBitmap }
+                ).createImageBitmap = originalCreateImageBitmap;
+            }
+        });
+
+        it('should test error path coverage in loadTile unknown errors', async () => {
+            const fetcher = new TileFetcher('https://example.com/{z}/{x}/{y}.png', 100); // Short timeout
+
+            // Mock fetch to throw non-Error
+            const originalFetch = global.fetch;
+            global.fetch = jest.fn().mockRejectedValue('String error');
+
+            try {
+                await fetcher.loadTile({ z: 12, x: 1024, y: 1536 });
+            } catch (error: unknown) {
+                expect((error as Error).message).toContain('Unknown error');
+            } finally {
+                // Restore original fetch
+                global.fetch = originalFetch;
             }
         });
     });

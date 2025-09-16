@@ -1,25 +1,18 @@
-import { CoordinateConverter } from './CoordinateConverter';
-import { TileFetcher } from './TileFetcher';
-import { ElevationDecoder } from './ElevationDecoder';
-import { Cache } from './Cache';
-import type {
-    Coordinates,
-    ElevationProviderConfig,
-    Attribution,
-    Tile,
-    TileCoordinates,
-    Pixel,
-} from './types';
+import { TileManager } from './tile/TileManager';
+import { ElevationCalculator } from './calculator/ElevationCalculator';
+import type { Coordinates, ElevationProviderConfig, Attribution } from './types';
 
 /**
  * Main API class for retrieving elevation data from geographic coordinates
  */
 export class ElevationProvider {
-    private static readonly TILE_SIZE = 256;
-
     private readonly config: Required<ElevationProviderConfig>;
-    private readonly tileFetcher: TileFetcher;
-    private readonly cache: Cache<TileCoordinates, Tile>;
+    private readonly tileManager: TileManager;
+    private readonly calculator: ElevationCalculator;
+
+    // ============================================================================
+    // CONSTRUCTOR & CONFIGURATION
+    // ============================================================================
 
     constructor(config: ElevationProviderConfig = {}) {
         this.config = {
@@ -32,148 +25,102 @@ export class ElevationProvider {
         };
 
         this.validateConfig();
-        this.tileFetcher = new TileFetcher(this.config.timeout);
-
-        // Create cache with cleanup function to close ImageBitmaps
-        const cleanupFunction = (cachedTile: Tile) => {
-            cachedTile.bitmap.close();
-        };
-        this.cache = new Cache<TileCoordinates, Tile>(
-            this.config.cacheSize,
-            tileCoords => `${tileCoords.z}/${tileCoords.x}/${tileCoords.y}`,
-            tileCoords => this.loadTile(tileCoords),
-            cleanupFunction
+        this.tileManager = new TileManager(
+            this.config.tileUrlTemplate,
+            this.config.timeout,
+            this.config.cacheSize
         );
+        this.calculator = new ElevationCalculator(this.tileManager);
     }
 
     /**
-     * Get tile URL from template
+     * Get current configuration
      */
-    private getTileUrl(tileCoords: TileCoordinates): string {
-        return this.config.tileUrlTemplate
-            .replace('{z}', tileCoords.z.toString())
-            .replace('{x}', tileCoords.x.toString())
-            .replace('{y}', tileCoords.y.toString());
+    public getConfig(): Readonly<Required<ElevationProviderConfig>> {
+        return { ...this.config };
     }
 
-    private async loadTile(tileCoords: TileCoordinates): Promise<Tile> {
-        const tileUrl = this.getTileUrl(tileCoords);
-        return await this.tileFetcher.fetchTile(tileUrl);
+    /**
+     * Get attribution information for elevation data
+     */
+    public static getAttribution(): Attribution {
+        return {
+            text: 'Elevation data from multiple sources including SRTM, GMTED, NED and ETOPO1. Data processing by Mapzen/Tilezen.',
+            url: 'https://github.com/tilezen/joerd',
+        };
     }
+
+    // ============================================================================
+    // PUBLIC API - SINGLE COORDINATE METHODS
+    // ============================================================================
 
     /**
      * Get elevation at specific coordinates
      */
     public async getElevation(latitude: number, longitude: number): Promise<number> {
         const coords: Coordinates = { latitude, longitude };
-        const pixel = CoordinateConverter.toPixel(coords, this.config.zoomLevel);
-        return await this.getElevationPixel(pixel);
+        return await this.calculator.getElevation(coords, this.config.zoomLevel);
     }
 
-    private async getElevationPixel(pixel: Pixel): Promise<number> {
-        try {
-            // Try to get tile from cache
-            const cachedTile = await this.cache.get(pixel.tile);
-            const imageData = cachedTile.data;
-            // Decode elevation from pixel data
-            const elevation = ElevationDecoder.getElevationFromImageData(imageData, pixel);
-            return elevation;
-        } catch (error) {
-            if (error instanceof Error) {
-                throw new Error(`Failed to get elevation: ${error.message}`);
-            }
-            throw new Error('Failed to get elevation: Unknown error');
-        }
-    }
-
+    /**
+     * Get interpolated elevation at specific coordinates (smoother results)
+     */
     public async getInterpolatedElevation(latitude: number, longitude: number): Promise<number> {
         const coords: Coordinates = { latitude, longitude };
-        const pixel = CoordinateConverter.toPixel(coords, this.config.zoomLevel);
-        return await this.getInterpolatedElevationPixel(pixel);
+        return await this.calculator.getInterpolatedElevation(coords, this.config.zoomLevel);
     }
 
-    private async getInterpolatedElevationPixel(pixelFloat: {
-        tile: Pixel['tile'];
-        x: number;
-        y: number;
-    }): Promise<number> {
-        const x0 = Math.floor(pixelFloat.x);
-        const y0 = Math.floor(pixelFloat.y);
-        const x1 = x0 + 1;
-        const y1 = y0 + 1;
+    // ============================================================================
+    // PUBLIC API - BULK COORDINATE METHODS
+    // ============================================================================
 
-        const dx = pixelFloat.x - x0;
-        const dy = pixelFloat.y - y0;
-
-        const p00 = await this.getElevationPixel(
-            this.normalizePixel({ tile: pixelFloat.tile, x: x0, y: y0 })
-        );
-        const p10 = await this.getElevationPixel(
-            this.normalizePixel({ tile: pixelFloat.tile, x: x1, y: y0 })
-        );
-        const p01 = await this.getElevationPixel(
-            this.normalizePixel({ tile: pixelFloat.tile, x: x0, y: y1 })
-        );
-        const p11 = await this.getElevationPixel(
-            this.normalizePixel({ tile: pixelFloat.tile, x: x1, y: y1 })
-        );
-
-        const top = p00 * (1 - dx) + p10 * dx;
-        const bottom = p01 * (1 - dx) + p11 * dx;
-        return top * (1 - dy) + bottom * dy;
+    /**
+     * Get elevations for multiple coordinates from an array
+     */
+    public async getElevationsFromArray(coordinates: Array<Coordinates>): Promise<number[]> {
+        return this.getElevationsFrom(coordinates.values());
     }
 
-    private normalizePixel(pixel: Pixel): Pixel {
-        let { x, y } = pixel;
-        const tile = pixel.tile;
-        let tileX = tile.x;
-        let tileY = tile.y;
-        const z = tile.z;
-
-        if (x < 0) {
-            x += ElevationProvider.TILE_SIZE;
-            tileX -= 1;
-        }
-        if (x >= ElevationProvider.TILE_SIZE) {
-            x -= ElevationProvider.TILE_SIZE;
-            tileX += 1;
-        }
-        if (y < 0) {
-            y += ElevationProvider.TILE_SIZE;
-            tileY -= 1;
-        }
-        if (y >= ElevationProvider.TILE_SIZE) {
-            y -= ElevationProvider.TILE_SIZE;
-            tileY += 1;
-        }
-
-        const maxTile = Math.pow(2, z) - 1;
-        tileX = Math.max(0, Math.min(maxTile, tileX));
-        tileY = Math.max(0, Math.min(maxTile, tileY));
-
-        return { tile: { z, x: tileX, y: tileY }, x, y };
-    }
-
-    public async getInterpolatedElevations(coordinates: Iterator<Coordinates>): Promise<number[]> {
-        const f = (coord: Coordinates) =>
-            this.getInterpolatedElevation(coord.latitude, coord.longitude);
+    /**
+     * Get elevations for multiple coordinates from an iterator
+     */
+    public async getElevationsFrom(coordinates: Iterator<Coordinates>): Promise<number[]> {
+        const f = (coord: Coordinates) => this.getElevation(coord.latitude, coord.longitude);
         return this.computeElevations(coordinates, f);
     }
 
+    /**
+     * Get interpolated elevations for multiple coordinates from an array
+     */
     public async getInterpolatedElevationsFromArray(
         coordinates: Array<Coordinates>
     ): Promise<number[]> {
         return this.getInterpolatedElevations(coordinates.values());
     }
 
-    public async getElevationsFrom(coordinates: Iterator<Coordinates>): Promise<number[]> {
-        const f = (coord: Coordinates) => this.getElevation(coord.latitude, coord.longitude);
+    /**
+     * Get interpolated elevations for multiple coordinates from an iterator
+     */
+    public async getInterpolatedElevations(coordinates: Iterator<Coordinates>): Promise<number[]> {
+        const f = (coord: Coordinates) =>
+            this.getInterpolatedElevation(coord.latitude, coord.longitude);
         return this.computeElevations(coordinates, f);
     }
 
-    public async getElevationsFromArray(coordinates: Array<Coordinates>): Promise<number[]> {
-        return this.getElevationsFrom(coordinates.values());
+    // ============================================================================
+    // PUBLIC API - CACHE MANAGEMENT
+    // ============================================================================
+
+    /**
+     * Clear tile cache
+     */
+    public clearCache(): void {
+        this.tileManager.clearCache();
     }
+
+    // ============================================================================
+    // PRIVATE - BATCH PROCESSING
+    // ============================================================================
 
     private async computeElevations(
         coordinates: Iterator<Coordinates>,
@@ -206,29 +153,9 @@ export class ElevationProvider {
         return allResults;
     }
 
-    /**
-     * Get current configuration
-     */
-    public getConfig(): Readonly<Required<ElevationProviderConfig>> {
-        return { ...this.config };
-    }
-
-    /**
-     * Clear tile cache
-     */
-    public clearCache(): void {
-        this.cache.clear();
-    }
-
-    /**
-     * Get attribution information for elevation data
-     */
-    public static getAttribution(): Attribution {
-        return {
-            text: 'Elevation data from multiple sources including SRTM, GMTED, NED and ETOPO1. Data processing by Mapzen/Tilezen.',
-            url: 'https://github.com/tilezen/joerd',
-        };
-    }
+    // ============================================================================
+    // PRIVATE - VALIDATION
+    // ============================================================================
 
     private validateConfig(): void {
         const { zoomLevel, cacheSize, timeout } = this.config;

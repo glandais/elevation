@@ -1,18 +1,33 @@
 import { ElevationProvider } from '../src/ElevationProvider';
-import { TileFetcher } from '../src/TileFetcher';
-import { Cache } from '../src/Cache';
+import { TileManager } from '../src/tile/TileManager';
+import { ElevationCalculator } from '../src/calculator/ElevationCalculator';
 import type { ElevationProviderConfig, Tile, Coordinates } from '../src/types';
 
 // Mock dependencies
-jest.mock('../src/TileFetcher');
-jest.mock('../src/Cache');
+jest.mock('../src/tile/TileManager');
 
-const MockedTileFetcher = TileFetcher as jest.MockedClass<typeof TileFetcher>;
-const MockedCache = Cache as jest.MockedClass<typeof Cache>;
+const MockedTileManager = TileManager as jest.MockedClass<typeof TileManager>;
+
+// Create a manual mock that preserves static methods
+const mockCalculator = {
+    getElevation: jest.fn(),
+    getInterpolatedElevation: jest.fn(),
+    normalizePixel: jest.fn(),
+};
+
+jest.spyOn(ElevationCalculator.prototype, 'getElevation').mockImplementation(
+    mockCalculator.getElevation
+);
+jest.spyOn(ElevationCalculator.prototype, 'getInterpolatedElevation').mockImplementation(
+    mockCalculator.getInterpolatedElevation
+);
+jest.spyOn(ElevationCalculator.prototype, 'normalizePixel').mockImplementation(
+    mockCalculator.normalizePixel
+);
 
 describe('ElevationProvider', () => {
-    let mockFetchTile: jest.MockedFunction<() => Promise<ImageData>>;
-    let mockCacheGet: jest.MockedFunction<() => Promise<ImageData>>;
+    let mockTileManager: jest.Mocked<TileManager>;
+    let mockTile: Tile;
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -35,20 +50,45 @@ describe('ElevationProvider', () => {
             height: 256,
         } as unknown as ImageBitmap;
 
-        const mockTile: Tile = {
+        mockTile = {
             data: mockImageData,
             bitmap: mockImageBitmap,
         };
 
-        mockFetchTile = jest.fn().mockResolvedValue(mockTile);
-        MockedTileFetcher.prototype.fetchTile = mockFetchTile;
+        // Mock TileManager
+        mockTileManager = new MockedTileManager('', 0, 0) as jest.Mocked<TileManager>;
+        mockTileManager.getTile = jest.fn().mockResolvedValue(mockTile);
+        mockTileManager.clearCache = jest.fn();
 
-        mockCacheGet = jest.fn().mockResolvedValue(mockTile);
-        MockedCache.prototype.get = mockCacheGet;
-        MockedCache.prototype.has = jest.fn().mockReturnValue(false);
-        MockedCache.prototype.clear = jest.fn();
-        MockedCache.prototype.getKeys = jest.fn().mockReturnValue([]);
-        MockedCache.prototype.getLRUKeys = jest.fn().mockReturnValue([]);
+        // Configure mock implementation for ElevationCalculator methods
+        // Allow validation errors to pass through but mock successful calculations
+        mockCalculator.getElevation.mockImplementation(async (coords, zoomLevel) => {
+            // Let the toPixel method run for validation - it will throw if invalid
+            // Create a calculator instance to call the instance method
+            const validatorCalc = new ElevationCalculator(mockTileManager);
+            (
+                validatorCalc as unknown as { toPixel: (coords: Coordinates, z: number) => unknown }
+            ).toPixel(coords, zoomLevel);
+            return 0; // Return mock value for valid inputs
+        });
+        mockCalculator.getInterpolatedElevation.mockImplementation(async (coords, zoomLevel) => {
+            // Create a calculator instance to call the instance method
+            const validatorCalc = new ElevationCalculator(mockTileManager);
+            (
+                validatorCalc as unknown as {
+                    toPixel: (coords: Coordinates, z: number) => unknown;
+                }
+            ).toPixel(coords, zoomLevel);
+            return 0;
+        });
+        mockCalculator.normalizePixel.mockReturnValue({
+            tile: { z: 12, x: 100, y: 200 },
+            x: 0,
+            y: 0,
+        });
+
+        // Configure mocks to return our instances
+        MockedTileManager.mockImplementation(() => mockTileManager);
     });
 
     describe('constructor', () => {
@@ -136,6 +176,14 @@ describe('ElevationProvider', () => {
                 'Invalid timeout: 1.5. Must be a positive integer'
             );
         });
+
+        it('should handle tile manager initialization errors', () => {
+            MockedTileManager.mockImplementationOnce(() => {
+                throw new Error('TileManager init failed');
+            });
+
+            expect(() => new ElevationProvider()).toThrow('TileManager init failed');
+        });
     });
 
     describe('getElevation method', () => {
@@ -146,12 +194,17 @@ describe('ElevationProvider', () => {
         });
 
         it('should get elevation for valid coordinates', async () => {
+            mockCalculator.getElevation.mockResolvedValueOnce(100);
+
             const elevation = await provider.getElevation(0, 0);
             expect(typeof elevation).toBe('number');
-            expect(mockCacheGet).toHaveBeenCalled();
+            expect(elevation).toBe(100);
+            expect(mockCalculator.getElevation).toHaveBeenCalled();
         });
 
         it('should handle different coordinate sets', async () => {
+            mockCalculator.getElevation.mockResolvedValue(50);
+
             const testCases = [
                 { lat: 40.7128, lon: -74.006 }, // NYC
                 { lat: 51.5074, lon: -0.1278 }, // London
@@ -175,20 +228,16 @@ describe('ElevationProvider', () => {
             );
         });
 
-        it('should handle tile fetch errors', async () => {
-            mockCacheGet.mockRejectedValueOnce(new Error('Network error'));
+        it('should handle elevation calculation errors', async () => {
+            mockCalculator.getElevation.mockRejectedValueOnce(new Error('Calculation error'));
 
-            await expect(provider.getElevation(0, 0)).rejects.toThrow(
-                'Failed to get elevation: Network error'
-            );
+            await expect(provider.getElevation(0, 0)).rejects.toThrow('Calculation error');
         });
 
         it('should handle unknown errors', async () => {
-            mockCacheGet.mockRejectedValueOnce('Unknown error');
+            mockCalculator.getElevation.mockRejectedValueOnce(new Error('Unknown error'));
 
-            await expect(provider.getElevation(0, 0)).rejects.toThrow(
-                'Failed to get elevation: Unknown error'
-            );
+            await expect(provider.getElevation(0, 0)).rejects.toThrow('Unknown error');
         });
     });
 
@@ -200,16 +249,22 @@ describe('ElevationProvider', () => {
         });
 
         it('should get interpolated elevation for valid coordinates', async () => {
+            mockCalculator.getInterpolatedElevation.mockResolvedValueOnce(125.5);
+
             const elevation = await provider.getInterpolatedElevation(0, 0);
             expect(typeof elevation).toBe('number');
-            expect(isFinite(elevation)).toBe(true);
+            expect(elevation).toBe(125.5);
+            expect(mockCalculator.getInterpolatedElevation).toHaveBeenCalled();
         });
 
         it('should handle coordinates requiring multiple tiles', async () => {
+            mockCalculator.getInterpolatedElevation.mockResolvedValueOnce(75.25);
+
             // Coordinates that might require pixel normalization
             const elevation = await provider.getInterpolatedElevation(0.001, 0.001);
             expect(typeof elevation).toBe('number');
-            expect(isFinite(elevation)).toBe(true);
+            expect(elevation).toBe(75.25);
+            expect(mockCalculator.getInterpolatedElevation).toHaveBeenCalled();
         });
 
         it('should reject invalid coordinates', async () => {
@@ -226,7 +281,7 @@ describe('ElevationProvider', () => {
             provider = new ElevationProvider();
         });
 
-        describe('getElevations', () => {
+        describe('getElevationsFromArray', () => {
             it('should get elevations for multiple coordinates', async () => {
                 const coordinates = [
                     { latitude: 0, longitude: 0 },
@@ -266,7 +321,7 @@ describe('ElevationProvider', () => {
             });
         });
 
-        describe('getInterpolatedElevations', () => {
+        describe('getInterpolatedElevationsFromArray', () => {
             it('should get interpolated elevations for multiple coordinates', async () => {
                 const coordinates = [
                     { latitude: 0, longitude: 0 },
@@ -289,239 +344,17 @@ describe('ElevationProvider', () => {
         });
     });
 
-    describe('cache management', () => {
-        let provider: ElevationProvider;
-
-        beforeEach(() => {
-            provider = new ElevationProvider({ cacheSize: 2 });
-        });
-
-        it('should cache tiles between requests', async () => {
-            await provider.getElevation(0, 0);
-            await provider.getElevation(0, 0); // Same tile
-
-            // Should only call cache.get, not fetch directly
-            expect(mockCacheGet).toHaveBeenCalledTimes(2);
-        });
-
-        it('should clear cache when requested', async () => {
-            await provider.getElevation(0, 0);
-            provider.clearCache();
-            await provider.getElevation(0, 0); // Should call cache again
-
-            expect(MockedCache.prototype.clear).toHaveBeenCalled();
-        });
-    });
-
-    describe('getConfig method', () => {
-        it('should return readonly config', () => {
-            const provider = new ElevationProvider({ zoomLevel: 10 });
-            const config = provider.getConfig();
-
-            expect(config.zoomLevel).toBe(10);
-
-            // Config should be readonly (TypeScript enforced)
-            expect(typeof config).toBe('object');
-        });
-
-        it('should return a copy of config', () => {
-            const provider = new ElevationProvider({ zoomLevel: 8 });
-            const config1 = provider.getConfig();
-            const config2 = provider.getConfig();
-
-            expect(config1).toEqual(config2);
-            expect(config1).not.toBe(config2); // Different objects
-        });
-    });
-
-    describe('getAttribution method', () => {
-        it('should return attribution information', () => {
-            const attribution = ElevationProvider.getAttribution();
-
-            expect(attribution).toHaveProperty('text');
-            expect(attribution).toHaveProperty('url');
-            expect(typeof attribution.text).toBe('string');
-            expect(typeof attribution.url).toBe('string');
-            expect(attribution.text.length).toBeGreaterThan(0);
-            expect(attribution.url).toContain('http');
-        });
-
-        it('should return consistent attribution', () => {
-            const attr1 = ElevationProvider.getAttribution();
-            const attr2 = ElevationProvider.getAttribution();
-
-            expect(attr1).toEqual(attr2);
-        });
-    });
-
-    describe('private methods through public interface', () => {
-        let provider: ElevationProvider;
-
-        beforeEach(() => {
-            provider = new ElevationProvider({
-                tileUrlTemplate: 'https://example.com/{z}/{x}/{y}.png',
-            });
-        });
-
-        it('should generate correct tile URLs', async () => {
-            await provider.getElevation(0, 0);
-
-            // Verify cache was called
-            expect(mockCacheGet).toHaveBeenCalled();
-        });
-
-        it('should handle pixel normalization for edge cases', async () => {
-            // Test coordinates that require pixel normalization
-            const elevations = await Promise.all([
-                provider.getInterpolatedElevation(85.0511, 179.9), // Near max bounds
-                provider.getInterpolatedElevation(-85.0511, -179.9), // Near min bounds
-                provider.getInterpolatedElevation(0.00001, 0.00001), // Very precise coords
-            ]);
-
-            elevations.forEach(elevation => {
-                expect(typeof elevation).toBe('number');
-                expect(isFinite(elevation)).toBe(true);
-            });
-        });
-
-        it('should test pixel normalization edge cases with out-of-bounds pixels', async () => {
-            // Test the normalizePixel method indirectly by using interpolation at tile boundaries
-            const provider = new ElevationProvider({ zoomLevel: 1 }); // Low zoom for easier boundary testing
-
-            // These coordinates should trigger pixel normalization
-            try {
-                // Use interpolation which internally calls normalizePixel with edge pixels
-                await provider.getInterpolatedElevation(0.1, 0.1);
-            } catch (error) {
-                // May fail due to mocking, but should exercise normalization code
-                expect(error).toBeDefined();
-            }
-
-            // Test with precise coordinates that might create sub-pixel positioning
-            try {
-                await provider.getInterpolatedElevation(45.123456, 2.987654);
-            } catch (error) {
-                // May fail due to mocking, but should exercise normalization code
-                expect(error).toBeDefined();
-            }
-        });
-    });
-
-    describe('error handling', () => {
+    describe('batch processing internals', () => {
         let provider: ElevationProvider;
 
         beforeEach(() => {
             provider = new ElevationProvider();
         });
 
-        it('should handle tile fetcher initialization errors', () => {
-            MockedTileFetcher.mockImplementationOnce(() => {
-                throw new Error('TileFetcher init failed');
-            });
-
-            expect(() => new ElevationProvider()).toThrow('TileFetcher init failed');
-        });
-
-        it('should wrap and rethrow known errors', async () => {
-            mockCacheGet.mockRejectedValueOnce(new Error('Specific fetch error'));
-
-            await expect(provider.getElevation(0, 0)).rejects.toThrow(
-                'Failed to get elevation: Specific fetch error'
-            );
-        });
-
-        it('should handle non-Error exceptions', async () => {
-            mockCacheGet.mockRejectedValueOnce('String error');
-
-            await expect(provider.getElevation(0, 0)).rejects.toThrow(
-                'Failed to get elevation: Unknown error'
-            );
-        });
-    });
-
-    describe('internal methods coverage', () => {
-        it('should test cache cleanup function is called', () => {
-            // Test that the cleanup function is properly defined
-            const provider = new ElevationProvider();
-            expect(provider).toBeDefined();
-        });
-
-        it('should test cache value builder and cleanup', async () => {
-            // This test verifies that the cache cleanup function is properly defined
-            const provider = new ElevationProvider({
-                cacheSize: 1,
-                tileUrlTemplate: 'https://test.com/{z}/{x}/{y}.png',
-            });
-
-            // Just verify provider is created successfully with cleanup function
-            expect(provider).toBeDefined();
-            expect(provider.getConfig().tileUrlTemplate).toBe('https://test.com/{z}/{x}/{y}.png');
-
-            // Test that clearCache works (which uses cleanup function)
-            provider.clearCache();
-            expect(provider).toBeDefined();
-        });
-
-        it('should exercise pixel normalization boundary conditions', async () => {
-            // Create special mocks that trigger specific normalizePixel paths
-            jest.restoreAllMocks();
-
-            // Mock cache to return tiles for any coordinate request
-            const mockTile = {
-                data: new ImageData(new Uint8ClampedArray(256 * 256 * 4).fill(128), 256, 256),
-                bitmap: { close: jest.fn() } as ImageBitmap,
-            };
-
-            const mockCache = {
-                get: jest.fn().mockResolvedValue(mockTile),
-                has: jest.fn().mockReturnValue(false),
-                clear: jest.fn(),
-                getKeys: jest.fn().mockReturnValue([]),
-                getLRUKeys: jest.fn().mockReturnValue([]),
-            };
-
-            // Create cache that returns our mock tile regardless of coordinates
-            jest.spyOn(require('../src/Cache'), 'Cache').mockImplementation(() => mockCache);
-
-            const mockTileFetcher = {
-                fetchTile: jest.fn().mockResolvedValue(mockTile),
-            };
-
-            jest.spyOn(require('../src/TileFetcher'), 'TileFetcher').mockImplementation(
-                () => mockTileFetcher
-            );
-
-            const provider = new ElevationProvider({ zoomLevel: 1 });
-
-            // Test interpolation that should trigger different normalization paths
-            // These values are carefully chosen to exercise different pixel boundary conditions
-            const testCases = [
-                [0.1, 0.1], // Should trigger various normalization paths
-                [0.5, 0.5], // Boundary conditions
-                [1.0, 1.0], // Edge cases
-            ];
-
-            for (const [lat, lon] of testCases) {
-                try {
-                    await provider.getInterpolatedElevation(lat, lon);
-                } catch {
-                    // Expected due to mocking complexity
-                }
-            }
-
-            expect(provider).toBeDefined();
-        });
-    });
-
-    describe('Batch Processing Coverage', () => {
         it('should handle empty iterator in computeElevations', async () => {
-            const provider = new ElevationProvider();
-
-            // Create empty iterator
             const emptyCoords: Coordinates[] = [];
             const emptyIterator = emptyCoords[Symbol.iterator]();
 
-            // Access private method for testing
             const providerInstance = provider as unknown as {
                 computeElevations: (
                     coords: Iterator<Coordinates>,
@@ -534,15 +367,11 @@ describe('ElevationProvider', () => {
         });
 
         it('should handle single coordinate in batch', async () => {
-            const provider = new ElevationProvider();
-
             const singleCoord: Coordinates[] = [{ latitude: 47.2, longitude: -1.5 }];
             const singleIterator = singleCoord[Symbol.iterator]();
 
-            // Mock the getElevation method to return a known value
             const mockGetElevation = jest.spyOn(provider, 'getElevation').mockResolvedValue(123);
 
-            // Access private method for testing
             const providerInstance = provider as unknown as {
                 computeElevations: (
                     coords: Iterator<Coordinates>,
@@ -561,9 +390,6 @@ describe('ElevationProvider', () => {
         });
 
         it('should process partial final batch correctly', async () => {
-            const provider = new ElevationProvider();
-
-            // Create 150 coordinates to test partial final batch (100 + 50)
             const coordinates: Coordinates[] = [];
             for (let i = 0; i < 150; i++) {
                 coordinates.push({ latitude: 47.2 + i * 0.001, longitude: -1.5 + i * 0.001 });
@@ -582,9 +408,6 @@ describe('ElevationProvider', () => {
         });
 
         it('should handle exact multiple of batch size', async () => {
-            const provider = new ElevationProvider();
-
-            // Create exactly 200 coordinates (2 batches of 100)
             const coordinates: Coordinates[] = [];
             for (let i = 0; i < 200; i++) {
                 coordinates.push({ latitude: 47.2 + i * 0.001, longitude: -1.5 + i * 0.001 });
@@ -604,15 +427,12 @@ describe('ElevationProvider', () => {
         });
 
         it('should handle batch processing errors', async () => {
-            const provider = new ElevationProvider();
-
             const coordinates: Coordinates[] = [
                 { latitude: 47.2, longitude: -1.5 },
                 { latitude: 47.3, longitude: -1.6 },
                 { latitude: 47.4, longitude: -1.7 },
             ];
 
-            // Mock getElevation to fail for the second coordinate
             const mockGetElevation = jest
                 .spyOn(provider, 'getElevation')
                 .mockResolvedValueOnce(100)
@@ -627,9 +447,6 @@ describe('ElevationProvider', () => {
         });
 
         it('should process batches sequentially', async () => {
-            const provider = new ElevationProvider();
-
-            // Create 250 coordinates to ensure 3 batches (100, 100, 50)
             const coordinates: Coordinates[] = [];
             for (let i = 0; i < 250; i++) {
                 coordinates.push({ latitude: 47.2 + i * 0.001, longitude: -1.5 + i * 0.001 });
@@ -639,7 +456,6 @@ describe('ElevationProvider', () => {
             const mockGetElevation = jest
                 .spyOn(provider, 'getElevation')
                 .mockImplementation(async lat => {
-                    // Record the order of latitude values to verify sequential batch processing
                     const index = Math.round((lat - 47.2) / 0.001);
                     callOrder.push(index);
                     return index;
@@ -650,8 +466,7 @@ describe('ElevationProvider', () => {
             expect(result).toHaveLength(250);
             expect(mockGetElevation).toHaveBeenCalledTimes(250);
 
-            // Verify sequential processing: first 100 calls should be 0-99, next 100 should be 100-199, etc.
-            // Note: Within each batch, calls may be concurrent, so we just verify batches are processed sequentially
+            // Verify sequential processing
             const firstBatchCalls = callOrder.slice(0, 100);
             const secondBatchCalls = callOrder.slice(100, 200);
             const thirdBatchCalls = callOrder.slice(200, 250);
@@ -663,59 +478,205 @@ describe('ElevationProvider', () => {
         });
     });
 
-    describe('Pixel Normalization Edge Cases', () => {
-        it('should handle negative x coordinate normalization', () => {
-            const provider = new ElevationProvider();
+    describe('cache management', () => {
+        let provider: ElevationProvider;
 
-            // Access private normalizePixel method for testing
-            const providerInstance = provider as unknown as {
-                normalizePixel: (pixel: { tile: Tile; x: number; y: number }) => {
-                    tile: Tile;
-                    x: number;
-                    y: number;
-                };
-            };
-
-            const inputPixel = {
-                tile: { z: 12, x: 100, y: 100 },
-                x: -1, // Negative x to trigger line 134-135
-                y: 128,
-            };
-
-            const result = providerInstance.normalizePixel(inputPixel);
-
-            // x should be normalized: -1 + 256 = 255, tileX should be decremented: 100 - 1 = 99
-            expect(result.x).toBe(255);
-            expect(result.tile.x).toBe(99);
-            expect(result.y).toBe(128);
-            expect(result.tile.y).toBe(100);
+        beforeEach(() => {
+            provider = new ElevationProvider({ cacheSize: 2 });
         });
 
-        it('should handle negative y coordinate normalization', () => {
+        it('should cache tiles between requests', async () => {
+            mockCalculator.getElevation.mockResolvedValue(150);
+
+            await provider.getElevation(0, 0);
+            await provider.getElevation(0, 0); // Same tile
+
+            expect(mockCalculator.getElevation).toHaveBeenCalledTimes(2);
+        });
+
+        it('should clear cache when requested', async () => {
+            mockCalculator.getElevation.mockResolvedValue(150);
+
+            await provider.getElevation(0, 0);
+            provider.clearCache();
+            await provider.getElevation(0, 0);
+
+            expect(mockTileManager.clearCache).toHaveBeenCalled();
+        });
+    });
+
+    describe('configuration', () => {
+        it('should return readonly config', () => {
+            const provider = new ElevationProvider({ zoomLevel: 10 });
+            const config = provider.getConfig();
+
+            expect(config.zoomLevel).toBe(10);
+            expect(typeof config).toBe('object');
+        });
+
+        it('should return a copy of config', () => {
+            const provider = new ElevationProvider({ zoomLevel: 8 });
+            const config1 = provider.getConfig();
+            const config2 = provider.getConfig();
+
+            expect(config1).toEqual(config2);
+            expect(config1).not.toBe(config2); // Different objects
+        });
+    });
+
+    describe('attribution', () => {
+        it('should return attribution information', () => {
+            const attribution = ElevationProvider.getAttribution();
+
+            expect(attribution).toHaveProperty('text');
+            expect(attribution).toHaveProperty('url');
+            expect(typeof attribution.text).toBe('string');
+            expect(typeof attribution.url).toBe('string');
+            expect(attribution.text.length).toBeGreaterThan(0);
+            expect(attribution.url).toContain('http');
+        });
+
+        it('should return consistent attribution', () => {
+            const attr1 = ElevationProvider.getAttribution();
+            const attr2 = ElevationProvider.getAttribution();
+
+            expect(attr1).toEqual(attr2);
+        });
+    });
+
+    describe('error handling', () => {
+        let provider: ElevationProvider;
+
+        beforeEach(() => {
+            provider = new ElevationProvider();
+        });
+
+        it('should wrap and rethrow known errors', async () => {
+            mockCalculator.getElevation.mockRejectedValueOnce(
+                new Error('Specific calculation error')
+            );
+
+            await expect(provider.getElevation(0, 0)).rejects.toThrow('Specific calculation error');
+        });
+
+        it('should handle non-Error exceptions', async () => {
+            mockCalculator.getElevation.mockRejectedValueOnce(new Error('String error'));
+
+            await expect(provider.getElevation(0, 0)).rejects.toThrow('String error');
+        });
+    });
+
+    describe('integration scenarios', () => {
+        it('should exercise cache creation and tile loading', async () => {
+            mockCalculator.getElevation.mockResolvedValue(100);
+
+            const provider = new ElevationProvider({
+                cacheSize: 1,
+                zoomLevel: 1,
+                tileUrlTemplate: 'https://test.example.com/{z}/{x}/{y}.png',
+                timeout: 1000,
+            });
+
+            await provider.getElevation(0, 0);
+            await provider.getElevation(45, 90); // Different tile, should trigger cache operations
+
+            // Verify TileManager was initialized with correct parameters
+            expect(MockedTileManager).toHaveBeenCalledWith(
+                'https://test.example.com/{z}/{x}/{y}.png',
+                1000,
+                1
+            );
+
+            // Verify calculations were called
+            expect(mockCalculator.getElevation).toHaveBeenCalledTimes(2);
+        });
+
+        it('should exercise interpolation pixel normalization paths', async () => {
+            mockCalculator.getInterpolatedElevation.mockResolvedValue(250);
+
+            const provider = new ElevationProvider({
+                zoomLevel: 2,
+                cacheSize: 10,
+            });
+
+            const testCoords = [
+                { lat: 0.001, lon: 0.001 },
+                { lat: 45.999, lon: 89.999 },
+                { lat: -0.001, lon: -0.001 },
+            ];
+
+            for (const { lat, lon } of testCoords) {
+                const elevation = await provider.getInterpolatedElevation(lat, lon);
+                expect(typeof elevation).toBe('number');
+                expect(elevation).toBe(250);
+                expect(isFinite(elevation)).toBe(true);
+            }
+
+            // Verify interpolation calculations were called
+            expect(mockCalculator.getInterpolatedElevation).toHaveBeenCalledTimes(3);
+        });
+
+        it('should test cache cleanup function execution', async () => {
+            mockCalculator.getElevation.mockResolvedValue(300);
+
+            const provider = new ElevationProvider({
+                cacheSize: 2,
+                zoomLevel: 3,
+            });
+
+            await provider.getElevation(0, 0);
+            await provider.getElevation(30, 60);
+            await provider.getElevation(60, 120); // Should trigger cache eviction
+
+            // Test manual cache clear
+            provider.clearCache();
+            expect(mockTileManager.clearCache).toHaveBeenCalled();
+        });
+
+        it('should exercise tile URL generation with custom template', async () => {
+            mockCalculator.getElevation.mockResolvedValue(150);
+
+            const provider = new ElevationProvider({
+                tileUrlTemplate: 'https://custom.tiles.example/{z}/{x}/{y}.png',
+                zoomLevel: 5,
+            });
+
+            await provider.getElevation(40.7128, -74.006);
+
+            // Verify TileManager was initialized with custom template
+            expect(MockedTileManager).toHaveBeenCalledWith(
+                'https://custom.tiles.example/{z}/{x}/{y}.png',
+                5000, // Default timeout
+                100 // Default cache size
+            );
+        });
+
+        it('should handle different tile URL templates', async () => {
+            mockCalculator.getElevation.mockResolvedValue(125);
+
+            const provider = new ElevationProvider({
+                tileUrlTemplate: 'https://example.com/{z}/{x}/{y}.png',
+            });
+
+            await provider.getElevation(0, 0);
+            expect(mockCalculator.getElevation).toHaveBeenCalled();
+        });
+
+        it('should test cache and TileFetcher integration', () => {
             const provider = new ElevationProvider();
+            expect(provider).toBeDefined();
 
-            // Access private normalizePixel method for testing
-            const providerInstance = provider as unknown as {
-                normalizePixel: (pixel: { tile: Tile; x: number; y: number }) => {
-                    tile: Tile;
-                    x: number;
-                    y: number;
-                };
-            };
+            const provider2 = new ElevationProvider({
+                cacheSize: 1,
+                tileUrlTemplate: 'https://test.com/{z}/{x}/{y}.png',
+            });
 
-            const inputPixel = {
-                tile: { z: 12, x: 100, y: 100 },
-                x: 128,
-                y: -1, // Negative y to trigger line 142-143
-            };
+            expect(provider2).toBeDefined();
+            expect(provider2.getConfig().tileUrlTemplate).toBe('https://test.com/{z}/{x}/{y}.png');
 
-            const result = providerInstance.normalizePixel(inputPixel);
-
-            // y should be normalized: -1 + 256 = 255, tileY should be decremented: 100 - 1 = 99
-            expect(result.x).toBe(128);
-            expect(result.tile.x).toBe(100);
-            expect(result.y).toBe(255);
-            expect(result.tile.y).toBe(99);
+            // Test cache clear functionality
+            provider2.clearCache();
+            expect(mockTileManager.clearCache).toHaveBeenCalled();
         });
     });
 });

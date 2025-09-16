@@ -1,72 +1,17 @@
-class ReentrantLock<T> {
-    private readonly locks = new Map<string, Promise<T>>();
-    private readonly maxConcurrent: number;
-    private loadingCount: number = 0;
-    private readonly waitQueue: Array<() => void> = [];
+import { ReentrantLock } from './ReentrantLock';
 
-    constructor(maxConcurrent: number) {
-        this.maxConcurrent = maxConcurrent;
-    }
-
-    public async acquire(key: string, fn: () => Promise<T>): Promise<T> {
-        // First check if we already have this key being loaded (deduplication)
-        if (this.locks.has(key)) {
-            return this.locks.get(key)!;
-        }
-
-        // Wait for a loading slot for this new unique operation
-        await this.acquireLoadingSlot();
-
-        // Double-check after acquiring slot (race condition protection)
-        if (this.locks.has(key)) {
-            this.releaseLoadingSlot();
-            return this.locks.get(key)!;
-        }
-
-        // Create the promise with proper cleanup
-        const promise = (async () => {
-            try {
-                return await fn();
-            } finally {
-                this.locks.delete(key);
-                this.releaseLoadingSlot();
-            }
-        })();
-
-        this.locks.set(key, promise);
-        return promise;
-    }
-
-    private async acquireLoadingSlot(): Promise<void> {
-        if (this.loadingCount < this.maxConcurrent) {
-            this.loadingCount++;
-            return;
-        }
-
-        // Wait until a slot becomes available
-        return new Promise<void>((resolve: () => void) => {
-            this.waitQueue.push(resolve);
-        });
-    }
-
-    private releaseLoadingSlot(): void {
-        if (this.waitQueue.length > 0) {
-            const next = this.waitQueue.shift();
-            if (next) {
-                next();
-            }
-        } else {
-            this.loadingCount--;
-        }
-    }
-
-    public getLoadingCount(): number {
-        return this.locks.size;
-    }
-}
+// ============================================================================
+// LRU CACHE - Memory-Efficient Caching with Concurrency Control
+// ============================================================================
 
 /**
  * LRU (Least Recently Used) cache with performance optimizations and cleanup support
+ * Features:
+ * - O(1) LRU operations using doubly-linked list structure
+ * - Automatic eviction when capacity exceeded
+ * - Concurrent loading with deduplication via ReentrantLock
+ * - Optional cleanup function for resource management
+ * - Thread-safe operations with proper error handling
  */
 export class Cache<K, T> {
     private readonly maxSize: number;
@@ -74,14 +19,21 @@ export class Cache<K, T> {
     private readonly keyMapper: (key: K) => string;
     private readonly valueBuilder: (key: K) => Promise<T>;
     private readonly cleanupFn?: (value: T) => void;
+
     // Using LinkedList-like structure for true O(1) LRU operations
     private readonly lruOrder: Map<string, { prev: string | null; next: string | null }>;
     private head: string | null = null;
     private tail: string | null = null;
+
+    // Concurrency control
     private readonly lock: ReentrantLock<T>;
 
+    // ========================================================================
+    // CONSTRUCTOR & VALIDATION
+    // ========================================================================
+
     constructor(
-        maxSize: number = 100,
+        maxSize: number,
         keyMapper: (key: K) => string,
         valueBuilder: (key: K) => Promise<T>,
         cleanupFn?: (value: T) => void
@@ -99,8 +51,14 @@ export class Cache<K, T> {
         this.lock = new ReentrantLock<T>(maxSize);
     }
 
+    // ========================================================================
+    // PUBLIC API - CACHE OPERATIONS
+    // ========================================================================
+
     /**
-     * Get item from cache
+     * Get item from cache or build if not present
+     * @param k - Key to retrieve
+     * @returns Promise resolving to cached or newly built value
      */
     public async get(k: K): Promise<T> {
         const key = this.keyMapper(k);
@@ -125,45 +83,13 @@ export class Cache<K, T> {
     }
 
     /**
-     * Store item in cache
-     */
-    private set(key: string, value: T): void {
-        // If cache is full, remove least recently used item
-        if (this.cache.size >= this.maxSize) {
-            this.evictLeastRecentlyUsed();
-        }
-
-        // Add new item
-        this.cache.set(key, value);
-        this.addToFront(key);
-    }
-
-    /**
      * Check if item exists in cache
+     * @param k - Key to check
+     * @returns True if key exists in cache
      */
     public has(k: K): boolean {
         const key = this.keyMapper(k);
         return this.cache.has(key);
-    }
-
-    /**
-     * Remove item from cache
-     */
-    private delete(key: string): boolean {
-        if (!this.cache.has(key)) {
-            return false;
-        }
-
-        const value = this.cache.get(key);
-        this.cache.delete(key);
-        this.removeFromLRU(key);
-
-        // Call cleanup function if provided
-        if (value && this.cleanupFn) {
-            this.cleanupFn(value);
-        }
-
-        return true;
     }
 
     /**
@@ -183,8 +109,13 @@ export class Cache<K, T> {
         this.tail = null;
     }
 
+    // ========================================================================
+    // PUBLIC API - INSPECTION METHODS
+    // ========================================================================
+
     /**
      * Get all cached keys
+     * @returns Array of all cached keys
      */
     public getKeys(): string[] {
         return Array.from(this.cache.keys());
@@ -192,6 +123,8 @@ export class Cache<K, T> {
 
     /**
      * Get the least recently used keys in order
+     * @param count - Maximum number of keys to return
+     * @returns Array of LRU keys from least to most recently used
      */
     public getLRUKeys(count: number = 10): string[] {
         const result: string[] = [];
@@ -206,8 +139,50 @@ export class Cache<K, T> {
         return result;
     }
 
+    // ========================================================================
+    // PRIVATE - CACHE STORAGE OPERATIONS
+    // ========================================================================
+
     /**
-     * Remove the least recently used item
+     * Store item in cache with automatic eviction
+     */
+    private set(key: string, value: T): void {
+        // If cache is full, remove least recently used item
+        if (this.cache.size >= this.maxSize) {
+            this.evictLeastRecentlyUsed();
+        }
+
+        // Add new item
+        this.cache.set(key, value);
+        this.addToFront(key);
+    }
+
+    /**
+     * Remove item from cache with cleanup
+     */
+    private delete(key: string): boolean {
+        if (!this.cache.has(key)) {
+            return false;
+        }
+
+        const value = this.cache.get(key);
+        this.cache.delete(key);
+        this.removeFromLRU(key);
+
+        // Call cleanup function if provided
+        if (value && this.cleanupFn) {
+            this.cleanupFn(value);
+        }
+
+        return true;
+    }
+
+    // ========================================================================
+    // PRIVATE - LRU EVICTION OPERATIONS
+    // ========================================================================
+
+    /**
+     * Remove the least recently used item to make space
      */
     private evictLeastRecentlyUsed(): void {
         if (!this.tail) {
@@ -218,6 +193,10 @@ export class Cache<K, T> {
         this.delete(lruKey);
     }
 
+    // ========================================================================
+    // PRIVATE - LRU LINKED LIST OPERATIONS
+    // ========================================================================
+
     /**
      * Add a key to the front of the LRU list (most recently used)
      */
@@ -226,10 +205,8 @@ export class Cache<K, T> {
         this.lruOrder.set(key, node);
 
         if (this.head) {
-            const headNode = this.lruOrder.get(this.head);
-            if (headNode) {
-                headNode.prev = key;
-            }
+            const headNode = this.lruOrder.get(this.head)!;
+            headNode.prev = key;
         } else {
             // First node
             this.tail = key;
@@ -254,7 +231,7 @@ export class Cache<K, T> {
     }
 
     /**
-     * Remove a key from the LRU list
+     * Remove a key from the LRU doubly-linked list
      */
     private removeFromLRU(key: string): void {
         const node = this.lruOrder.get(key);
@@ -264,10 +241,8 @@ export class Cache<K, T> {
 
         // Update previous node's next pointer
         if (node.prev) {
-            const prevNode = this.lruOrder.get(node.prev);
-            if (prevNode) {
-                prevNode.next = node.next;
-            }
+            const prevNode = this.lruOrder.get(node.prev)!;
+            prevNode.next = node.next;
         } else {
             // This was the head
             this.head = node.next;
@@ -275,10 +250,8 @@ export class Cache<K, T> {
 
         // Update next node's prev pointer
         if (node.next) {
-            const nextNode = this.lruOrder.get(node.next);
-            if (nextNode) {
-                nextNode.prev = node.prev;
-            }
+            const nextNode = this.lruOrder.get(node.next)!;
+            nextNode.prev = node.prev;
         } else {
             // This was the tail
             this.tail = node.prev;

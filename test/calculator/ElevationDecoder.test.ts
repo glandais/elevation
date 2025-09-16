@@ -1,5 +1,5 @@
-import { ElevationDecoder } from '../src/ElevationDecoder';
-import type { RGBColor, Pixel } from '../src/types';
+import { ElevationDecoder } from '../../src/calculator/ElevationDecoder';
+import type { RGBColor, Pixel } from '../../src/types';
 
 describe('ElevationDecoder', () => {
     describe('decodeElevation method', () => {
