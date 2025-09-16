@@ -1,4 +1,4 @@
-import { Coordinates, ElevationProviderConfig, Attribution } from './types';
+import { Coordinates, CoordinatesElevation, ElevationProviderConfig, Attribution } from './types';
 /**
  * Main API class for retrieving elevation data from geographic coordinates
  */
@@ -24,17 +24,26 @@ export declare class ElevationProvider {
      */
     getElevation(latitude: number, longitude: number, interpolation?: boolean): Promise<number>;
     /**
-     * Get elevations for multiple coordinates from an array
-     * @param coordinates - Array of coordinates
+     * Get elevations for multiple coordinates from an interable
+     * @param coordinates - Iteratable of coordinates
      * @param interpolation - Use bilinear interpolation for smoother results (default: true)
      */
-    getElevationsFromArray(coordinates: Array<Coordinates>, interpolation?: boolean): Promise<number[]>;
+    getElevationsFrom(coordinates: Iterable<Coordinates>, interpolation?: boolean): Promise<number[]>;
     /**
-     * Get elevations for multiple coordinates from an iterator
-     * @param coordinates - Iterator of coordinates
+     * Get elevations between two coordinates at regular intervals
+     * @param coordinate1 - Start coordinate
+     * @param coordinate2 - End coordinate
+     * @param step - Distance between elevation points in meters
      * @param interpolation - Use bilinear interpolation for smoother results (default: true)
      */
-    getElevationsFrom(coordinates: Iterator<Coordinates>, interpolation?: boolean): Promise<number[]>;
+    getElevationsBetween(coordinate1: Coordinates, coordinate2: Coordinates, step: number, interpolation?: boolean): Promise<CoordinatesElevation[]>;
+    /**
+     * Get elevations along a path defined by multiple coordinates
+     * @param path - Array of coordinates defining the path
+     * @param step - Distance between elevation points in meters
+     * @param interpolation - Use bilinear interpolation for smoother results (default: true)
+     */
+    getElevationsAlong(path: Coordinates[], step: number, interpolation?: boolean): Promise<CoordinatesElevation[]>;
     /**
      * Clear tile cache
      */

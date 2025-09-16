@@ -1,4 +1,4 @@
-class p {
+class T {
   constructor() {
     this.available = [], this.idleSize = 5, this.idleTimeout = 3e4, this.idleTimer = null;
   }
@@ -29,12 +29,12 @@ class p {
       this.available.pop();
   }
 }
-class E {
+class I {
   // ========================================================================
   // CONSTRUCTOR
   // ========================================================================
   constructor(t, e = 5e3) {
-    this.tileUrlTemplate = t, this.timeout = e, this.canvasPool = new p();
+    this.tileUrlTemplate = t, this.timeout = e, this.canvasPool = new T();
   }
   // ========================================================================
   // PUBLIC API
@@ -106,7 +106,7 @@ class E {
     }
   }
 }
-class T {
+class y {
   // ========================================================================
   // CONSTRUCTOR
   // ========================================================================
@@ -169,14 +169,14 @@ class T {
       this.loadingCount--;
   }
 }
-class I {
+class p {
   // ========================================================================
   // CONSTRUCTOR & VALIDATION
   // ========================================================================
   constructor(t, e, i, a) {
     if (this.head = null, this.tail = null, t <= 0)
       throw new Error("Cache size must be greater than 0");
-    this.maxSize = t, this.keyMapper = e, this.valueBuilder = i, this.cleanupFn = a, this.cache = /* @__PURE__ */ new Map(), this.lruOrder = /* @__PURE__ */ new Map(), this.lock = new T(t);
+    this.maxSize = t, this.keyMapper = e, this.valueBuilder = i, this.cleanupFn = a, this.cache = /* @__PURE__ */ new Map(), this.lruOrder = /* @__PURE__ */ new Map(), this.lock = new y(t);
   }
   // ========================================================================
   // PUBLIC API - CACHE OPERATIONS
@@ -192,8 +192,8 @@ class I {
       const a = this.cache.get(e);
       if (a)
         return this.moveToFront(e), a;
-      const r = await this.valueBuilder(t);
-      return this.set(e, r), r;
+      const n = await this.valueBuilder(t);
+      return this.set(e, n), n;
     });
   }
   /**
@@ -307,16 +307,16 @@ class I {
     }
   }
 }
-class y {
+class b {
   constructor(t, e, i) {
-    this.tileFetcher = new E(t, e);
-    const a = (r) => {
-      r.bitmap.close();
+    this.tileFetcher = new I(t, e);
+    const a = (n) => {
+      n.bitmap.close();
     };
-    this.cache = new I(
+    this.cache = new p(
       i,
-      (r) => `${r.z}/${r.x}/${r.y}`,
-      (r) => this.tileFetcher.loadTile(r),
+      (n) => `${n.z}/${n.x}/${n.y}`,
+      (n) => this.tileFetcher.loadTile(n),
       a
     );
   }
@@ -327,7 +327,7 @@ class y {
     this.cache.clear();
   }
 }
-class M {
+class F {
   // ========================================================================
   // PUBLIC API - ELEVATION DECODING
   // ========================================================================
@@ -378,7 +378,7 @@ class M {
     };
   }
 }
-const o = class o {
+const h = class h {
   constructor(t) {
     this.tileManager = t;
   }
@@ -402,16 +402,16 @@ const o = class o {
       tile: i.tile,
       x: i.x,
       y: i.y
-    }, r = Math.floor(a.x), s = Math.floor(a.y), n = r + 1, l = s + 1, h = a.x - r, u = a.y - s, d = await this.getElevationFromPixel(
-      this.normalizePixel({ tile: a.tile, x: r, y: s })
-    ), m = await this.getElevationFromPixel(
+    }, n = Math.floor(a.x), s = Math.floor(a.y), r = n + 1, o = s + 1, l = a.x - n, u = a.y - s, g = await this.getElevationFromPixel(
       this.normalizePixel({ tile: a.tile, x: n, y: s })
-    ), w = await this.getElevationFromPixel(
-      this.normalizePixel({ tile: a.tile, x: r, y: l })
+    ), f = await this.getElevationFromPixel(
+      this.normalizePixel({ tile: a.tile, x: r, y: s })
     ), v = await this.getElevationFromPixel(
-      this.normalizePixel({ tile: a.tile, x: n, y: l })
-    ), f = d * (1 - h) + m * h, x = w * (1 - h) + v * h;
-    return f * (1 - u) + x * u;
+      this.normalizePixel({ tile: a.tile, x: n, y: o })
+    ), E = await this.getElevationFromPixel(
+      this.normalizePixel({ tile: a.tile, x: r, y: o })
+    ), x = g * (1 - l) + f * l, M = v * (1 - l) + E * l;
+    return x * (1 - u) + M * u;
   }
   // ========================================================================
   // PRIVATE - HELPER METHODS
@@ -431,19 +431,19 @@ const o = class o {
       throw new Error(`Invalid longitude: ${t.longitude}. Must be between -180 and 180`);
     if (!this.isValidZoomLevel(e))
       throw new Error(`Invalid zoom level: ${e}. Must be between 0 and 15`);
-    const i = this.degToRad(t.latitude), a = Math.pow(2, e), r = (t.longitude + 180) / 360 * a, s = (1 - Math.log(Math.tan(i) + 1 / Math.cos(i)) / Math.PI) / 2 * a;
-    let n = Math.floor(r), l = Math.floor(s);
-    const h = a - 1;
-    n = Math.max(0, Math.min(h, n)), l = Math.max(0, Math.min(h, l));
-    const u = Math.floor((r - n) * o.TILE_SIZE), d = Math.floor((s - l) * o.TILE_SIZE);
+    const i = this.degToRad(t.latitude), a = Math.pow(2, e), n = (t.longitude + 180) / 360 * a, s = (1 - Math.log(Math.tan(i) + 1 / Math.cos(i)) / Math.PI) / 2 * a;
+    let r = Math.floor(n), o = Math.floor(s);
+    const l = a - 1;
+    r = Math.max(0, Math.min(l, r)), o = Math.max(0, Math.min(l, o));
+    const u = Math.floor((n - r) * h.TILE_SIZE), g = Math.floor((s - o) * h.TILE_SIZE);
     return {
       tile: {
         z: e,
-        x: n,
-        y: l
+        x: r,
+        y: o
       },
-      x: Math.max(0, Math.min(o.TILE_SIZE - 1, u)),
-      y: Math.max(0, Math.min(o.TILE_SIZE - 1, d))
+      x: Math.max(0, Math.min(h.TILE_SIZE - 1, u)),
+      y: Math.max(0, Math.min(h.TILE_SIZE - 1, g))
     };
   }
   /**
@@ -451,16 +451,16 @@ const o = class o {
    */
   async getElevationFromPixel(t) {
     const e = await this.tileManager.getTile(t.tile);
-    return M.getElevationFromImageData(e.data, t);
+    return F.getElevationFromImageData(e.data, t);
   }
   normalizePixel(t) {
     let { x: e, y: i } = t;
     const a = t.tile;
-    let r = a.x, s = a.y;
-    const n = a.z;
-    e < 0 && (e += o.TILE_SIZE, r -= 1), e >= o.TILE_SIZE && (e -= o.TILE_SIZE, r += 1), i < 0 && (i += o.TILE_SIZE, s -= 1), i >= o.TILE_SIZE && (i -= o.TILE_SIZE, s += 1);
-    const l = Math.pow(2, n) - 1;
-    return r = Math.max(0, Math.min(l, r)), s = Math.max(0, Math.min(l, s)), { tile: { z: n, x: r, y: s }, x: e, y: i };
+    let n = a.x, s = a.y;
+    const r = a.z;
+    e < 0 && (e += h.TILE_SIZE, n -= 1), e >= h.TILE_SIZE && (e -= h.TILE_SIZE, n += 1), i < 0 && (i += h.TILE_SIZE, s -= 1), i >= h.TILE_SIZE && (i -= h.TILE_SIZE, s += 1);
+    const o = Math.pow(2, r) - 1;
+    return n = Math.max(0, Math.min(o, n)), s = Math.max(0, Math.min(o, s)), { tile: { z: r, x: n, y: s }, x: e, y: i };
   }
   // ========================================================================
   // PRIVATE - UTILITY FUNCTIONS
@@ -493,40 +493,137 @@ const o = class o {
     return Number.isInteger(t) && t >= 0 && t <= 15;
   }
 };
-o.TILE_SIZE = 256;
-let g = o;
-class b {
+h.TILE_SIZE = 256;
+let m = h;
+const d = class d {
+  // meters
   constructor(t) {
     this.elevationCalculator = t;
   }
   /**
-   * Get elevations for multiple coordinates from an iterator
-   * @param coordinates - Iterator of coordinates
+   * Get elevations for multiple coordinates from an iterable
+   * @param coordinates - Iterable of coordinates (array, generator, etc.)
+   * @param zoomLevel - Tile zoom level (0-15)
    * @param interpolation - Use bilinear interpolation for smoother results (default: true)
    */
   async getElevationsFrom(t, e, i = !0) {
-    const r = [];
-    let s = [], n = t.next();
-    for (; !n.done; ) {
-      const l = this.elevationCalculator.getElevation(
-        n.value,
+    const n = [];
+    let s = [];
+    for (const r of t) {
+      const o = this.elevationCalculator.getElevation(
+        r,
         e,
         i
       );
-      if (s.push(l), s.length >= 100) {
-        const h = await Promise.all(s);
-        r.push(...h), s = [];
+      if (s.push(o), s.length >= 100) {
+        const l = await Promise.all(s);
+        n.push(...l), s = [];
       }
-      n = t.next();
     }
     if (s.length > 0) {
-      const l = await Promise.all(s);
-      r.push(...l);
+      const r = await Promise.all(s);
+      n.push(...r);
     }
-    return r;
+    return n;
   }
-}
-class F {
+  /**
+   * Calculate distance between two coordinates using Haversine formula
+   * @param coord1 - First coordinate
+   * @param coord2 - Second coordinate
+   * @returns Distance in meters
+   */
+  distance(t, e) {
+    const a = t.latitude * Math.PI / 180, n = e.latitude * Math.PI / 180, s = (e.latitude - t.latitude) * Math.PI / 180, r = (e.longitude - t.longitude) * Math.PI / 180, o = Math.sin(s / 2) * Math.sin(s / 2) + Math.cos(a) * Math.cos(n) * Math.sin(r / 2) * Math.sin(r / 2);
+    return 6371e3 * (2 * Math.atan2(Math.sqrt(o), Math.sqrt(1 - o)));
+  }
+  /**
+   * Generate coordinates between two points at regular intervals
+   * @param coordinate1 - Start coordinate
+   * @param coordinate2 - End coordinate
+   * @param step - Distance between points in meters
+   */
+  *generateCoordinatesBetween(t, e, i) {
+    const a = this.distance(t, e);
+    if (yield t, a <= i) {
+      yield e;
+      return;
+    }
+    const n = Math.floor(a / i), s = e.latitude - t.latitude, r = e.longitude - t.longitude;
+    for (let o = 1; o <= n; o++) {
+      const l = o * i / a;
+      yield {
+        latitude: t.latitude + s * l,
+        longitude: t.longitude + r * l
+      };
+    }
+    yield e;
+  }
+  /**
+   * Get elevations between two coordinates at regular intervals
+   * @param coordinate1 - Start coordinate
+   * @param coordinate2 - End coordinate
+   * @param zoomLevel - Tile zoom level (0-15)
+   * @param step - Distance between elevation points in meters
+   * @param interpolation - Use bilinear interpolation for smoother results (default: true)
+   */
+  async getElevationsBetween(t, e, i, a, n = !0) {
+    const s = this.distance(t, e);
+    if (s >= 1e4)
+      throw new Error(`Points are too far from each other: ${s.toFixed(0)} meters`);
+    if (a <= 1)
+      throw new Error(`Step is too small: ${a} meters`);
+    const r = Array.from(
+      this.generateCoordinatesBetween(t, e, a)
+    ), o = await this.getElevationsFrom(r, i, n);
+    return r.map((l, u) => ({
+      ...l,
+      elevation: o[u]
+    }));
+  }
+  /**
+   * Generate coordinates along a path with multiple waypoints
+   * @param path - Array of coordinates defining the path
+   * @param step - Distance between points in meters
+   */
+  *generateCoordinatesAlong(t, e) {
+    if (!(t.length < 2)) {
+      yield t[0];
+      for (let i = 0; i < t.length - 1; i++) {
+        if (this.distance(t[i], t[i + 1]) < d.MIN_SEGMENT_DISTANCE)
+          continue;
+        let n = !0;
+        for (const s of this.generateCoordinatesBetween(t[i], t[i + 1], e)) {
+          if (n) {
+            n = !1;
+            continue;
+          }
+          yield s;
+        }
+      }
+    }
+  }
+  /**
+   * Get elevations along a path defined by multiple coordinates
+   * @param path - Array of coordinates defining the path
+   * @param zoomLevel - Tile zoom level (0-15)
+   * @param step - Distance between elevation points in meters
+   * @param interpolation - Use bilinear interpolation for smoother results (default: true)
+   */
+  async getElevationsAlong(t, e, i, a = !0) {
+    if (t.length < 2)
+      throw new Error("Path must contain at least 2 coordinates");
+    if (i <= 1)
+      throw new Error(`Step is too small: ${i} meters`);
+    const n = Array.from(this.generateCoordinatesAlong(t, i)), s = await this.getElevationsFrom(n, e, a);
+    return n.map((r, o) => ({
+      ...r,
+      elevation: s[o]
+    }));
+  }
+};
+d.MIN_SEGMENT_DISTANCE = 1;
+let w = d;
+class L {
   // ============================================================================
   // CONSTRUCTOR & CONFIGURATION
   // ============================================================================
@@ -536,11 +633,11 @@ class F {
       cacheSize: t.cacheSize ?? 100,
       tileUrlTemplate: t.tileUrlTemplate ?? "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
       timeout: t.timeout ?? 5e3
-    }, this.validateConfig(), this.tileManager = new y(
+    }, this.validateConfig(), this.tileManager = new b(
       this.config.tileUrlTemplate,
       this.config.timeout,
       this.config.cacheSize
-    ), this.calculator = new g(this.tileManager), this.batchCalculator = new b(this.calculator);
+    ), this.calculator = new m(this.tileManager), this.batchCalculator = new w(this.calculator);
   }
   /**
    * Get current configuration
@@ -574,16 +671,8 @@ class F {
   // PUBLIC API - BULK COORDINATE METHODS
   // ============================================================================
   /**
-   * Get elevations for multiple coordinates from an array
-   * @param coordinates - Array of coordinates
-   * @param interpolation - Use bilinear interpolation for smoother results (default: true)
-   */
-  async getElevationsFromArray(t, e = !0) {
-    return this.getElevationsFrom(t.values(), e);
-  }
-  /**
-   * Get elevations for multiple coordinates from an iterator
-   * @param coordinates - Iterator of coordinates
+   * Get elevations for multiple coordinates from an interable
+   * @param coordinates - Iteratable of coordinates
    * @param interpolation - Use bilinear interpolation for smoother results (default: true)
    */
   async getElevationsFrom(t, e = !0) {
@@ -591,6 +680,36 @@ class F {
       t,
       this.config.zoomLevel,
       e
+    );
+  }
+  /**
+   * Get elevations between two coordinates at regular intervals
+   * @param coordinate1 - Start coordinate
+   * @param coordinate2 - End coordinate
+   * @param step - Distance between elevation points in meters
+   * @param interpolation - Use bilinear interpolation for smoother results (default: true)
+   */
+  async getElevationsBetween(t, e, i, a = !0) {
+    return this.batchCalculator.getElevationsBetween(
+      t,
+      e,
+      this.config.zoomLevel,
+      i,
+      a
+    );
+  }
+  /**
+   * Get elevations along a path defined by multiple coordinates
+   * @param path - Array of coordinates defining the path
+   * @param step - Distance between elevation points in meters
+   * @param interpolation - Use bilinear interpolation for smoother results (default: true)
+   */
+  async getElevationsAlong(t, e, i = !0) {
+    return this.batchCalculator.getElevationsAlong(
+      t,
+      this.config.zoomLevel,
+      e,
+      i
     );
   }
   // ============================================================================
@@ -618,6 +737,6 @@ class F {
   }
 }
 export {
-  F as ElevationProvider
+  L as ElevationProvider
 };
 //# sourceMappingURL=index.esm.js.map

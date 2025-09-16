@@ -6,6 +6,12 @@ export interface Coordinates {
     readonly longitude: number;
 }
 /**
+ * Geographic coordinates in WGS84
+ */
+export interface CoordinatesElevation extends Coordinates {
+    readonly elevation: number;
+}
+/**
  * Tile coordinates in Web Mercator projection
  */
 export interface TileCoordinates {

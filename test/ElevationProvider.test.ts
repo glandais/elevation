@@ -239,7 +239,7 @@ describe('ElevationProvider', () => {
             provider = new ElevationProvider();
         });
 
-        describe('getElevationsFromArray', () => {
+        describe('getElevationsFrom', () => {
             it('should get elevations for multiple coordinates', async () => {
                 const coordinates = [
                     { latitude: 0, longitude: 0 },
@@ -247,7 +247,7 @@ describe('ElevationProvider', () => {
                     { latitude: -1, longitude: -1 },
                 ];
 
-                const elevations = await provider.getElevationsFromArray(coordinates);
+                const elevations = await provider.getElevationsFrom(coordinates);
 
                 expect(elevations).toHaveLength(3);
                 elevations.forEach(elevation => {
@@ -257,13 +257,13 @@ describe('ElevationProvider', () => {
             });
 
             it('should handle empty array', async () => {
-                const elevations = await provider.getElevationsFromArray([], true);
+                const elevations = await provider.getElevationsFrom([], true);
                 expect(elevations).toEqual([]);
             });
 
             it('should handle single coordinate', async () => {
                 const coordinates = [{ latitude: 0, longitude: 0 }];
-                const elevations = await provider.getElevationsFromArray(coordinates, false);
+                const elevations = await provider.getElevationsFrom(coordinates, false);
 
                 expect(elevations).toHaveLength(1);
                 expect(typeof elevations[0]).toBe('number');
@@ -287,7 +287,7 @@ describe('ElevationProvider', () => {
 
                 mockCalculator.getElevation.mockResolvedValue(100);
 
-                const elevations = await provider.getElevationsFromArray(coordinates);
+                const elevations = await provider.getElevationsFrom(coordinates);
 
                 expect(elevations).toHaveLength(150);
                 elevations.forEach(elevation => {
@@ -308,7 +308,7 @@ describe('ElevationProvider', () => {
 
                 mockCalculator.getElevation.mockResolvedValue(200);
 
-                const elevations = await provider.getElevationsFromArray(coordinates);
+                const elevations = await provider.getElevationsFrom(coordinates);
 
                 expect(elevations).toHaveLength(105);
                 elevations.forEach(elevation => {
@@ -317,6 +317,172 @@ describe('ElevationProvider', () => {
                 });
 
                 expect(mockCalculator.getElevation).toHaveBeenCalledTimes(105);
+            });
+        });
+
+        describe('getElevationsBetween', () => {
+            it('should get elevations between two coordinates', async () => {
+                const coord1 = { latitude: 45.0, longitude: 0.0 };
+                const coord2 = { latitude: 45.001, longitude: 0.001 };
+                mockCalculator.getElevation.mockResolvedValue(100);
+
+                const result = await provider.getElevationsBetween(coord1, coord2, 50, true);
+
+                expect(result.length).toBeGreaterThan(2);
+                expect(result[0]).toEqual(
+                    expect.objectContaining({
+                        latitude: 45.0,
+                        longitude: 0.0,
+                        elevation: 100,
+                    })
+                );
+                expect(result[result.length - 1].latitude).toBeCloseTo(45.001, 6);
+                expect(result[result.length - 1].longitude).toBeCloseTo(0.001, 6);
+            });
+
+            it('should pass interpolation flag correctly', async () => {
+                const coord1 = { latitude: 45.0, longitude: 0.0 };
+                const coord2 = { latitude: 45.001, longitude: 0.001 };
+                mockCalculator.getElevation.mockResolvedValue(100);
+
+                await provider.getElevationsBetween(coord1, coord2, 50, false);
+
+                // Check that getElevation was called with interpolation = false
+                expect(mockCalculator.getElevation).toHaveBeenCalledWith(
+                    expect.any(Object),
+                    expect.any(Number),
+                    false
+                );
+            });
+
+            it('should throw error for points too far apart', async () => {
+                const coord1 = { latitude: 45.0, longitude: 0.0 };
+                const coord2 = { latitude: 46.0, longitude: 1.0 };
+
+                await expect(
+                    provider.getElevationsBetween(coord1, coord2, 50, true)
+                ).rejects.toThrow('Points are too far from each other');
+            });
+
+            it('should throw error for step too small', async () => {
+                const coord1 = { latitude: 45.0, longitude: 0.0 };
+                const coord2 = { latitude: 45.001, longitude: 0.001 };
+
+                await expect(
+                    provider.getElevationsBetween(coord1, coord2, 0.5, true)
+                ).rejects.toThrow('Step is too small');
+            });
+
+            it('should handle points closer than step size', async () => {
+                const coord1 = { latitude: 45.0, longitude: 0.0 };
+                const coord2 = { latitude: 45.0001, longitude: 0.0001 };
+                mockCalculator.getElevation.mockResolvedValue(150);
+
+                const result = await provider.getElevationsBetween(coord1, coord2, 50, true);
+
+                expect(result).toHaveLength(2); // Only start and end
+                expect(result[0].elevation).toBe(150);
+                expect(result[1].elevation).toBe(150);
+            });
+        });
+
+        describe('getElevationsAlong', () => {
+            it('should get elevations along a path', async () => {
+                const path: Coordinates[] = [
+                    { latitude: 45.0, longitude: 0.0 },
+                    { latitude: 45.001, longitude: 0.001 },
+                    { latitude: 45.002, longitude: 0.002 },
+                ];
+                mockCalculator.getElevation.mockResolvedValue(100);
+
+                const result = await provider.getElevationsAlong(path, 50, true);
+
+                expect(result.length).toBeGreaterThan(3);
+                expect(result[0]).toEqual(
+                    expect.objectContaining({
+                        latitude: 45.0,
+                        longitude: 0.0,
+                        elevation: 100,
+                    })
+                );
+            });
+
+            it('should skip segments shorter than 1 meter', async () => {
+                const path: Coordinates[] = [
+                    { latitude: 45.0, longitude: 0.0 },
+                    { latitude: 45.000001, longitude: 0.000001 }, // <1m
+                    { latitude: 45.001, longitude: 0.001 },
+                ];
+                mockCalculator.getElevation.mockResolvedValue(100);
+
+                const result = await provider.getElevationsAlong(path, 50, true);
+
+                // First point always included
+                expect(result[0]).toEqual(
+                    expect.objectContaining({
+                        latitude: 45.0,
+                        longitude: 0.0,
+                        elevation: 100,
+                    })
+                );
+                // Should have points from the longer segment
+                expect(result.length).toBeGreaterThanOrEqual(4);
+            });
+
+            it('should throw error for path with less than 2 coordinates', async () => {
+                await expect(
+                    provider.getElevationsAlong([{ latitude: 45.0, longitude: 0.0 }], 50, true)
+                ).rejects.toThrow('Path must contain at least 2 coordinates');
+
+                await expect(provider.getElevationsAlong([], 50, true)).rejects.toThrow(
+                    'Path must contain at least 2 coordinates'
+                );
+            });
+
+            it('should throw error for step too small', async () => {
+                const path: Coordinates[] = [
+                    { latitude: 45.0, longitude: 0.0 },
+                    { latitude: 45.001, longitude: 0.001 },
+                ];
+
+                await expect(provider.getElevationsAlong(path, 0.5, true)).rejects.toThrow(
+                    'Step is too small'
+                );
+            });
+
+            it('should pass interpolation flag correctly', async () => {
+                const path: Coordinates[] = [
+                    { latitude: 45.0, longitude: 0.0 },
+                    { latitude: 45.001, longitude: 0.001 },
+                ];
+                mockCalculator.getElevation.mockResolvedValue(100);
+
+                await provider.getElevationsAlong(path, 50, false);
+
+                expect(mockCalculator.getElevation).toHaveBeenCalledWith(
+                    expect.any(Object),
+                    expect.any(Number),
+                    false
+                );
+            });
+
+            it('should handle complex path with varying segment lengths', async () => {
+                const path: Coordinates[] = [
+                    { latitude: 45.0, longitude: 0.0 },
+                    { latitude: 45.0000005, longitude: 0.0000005 }, // <1m, skip
+                    { latitude: 45.002, longitude: 0.002 }, // ~314m, interpolate
+                    { latitude: 45.0021, longitude: 0.0021 }, // ~15m
+                    { latitude: 45.005, longitude: 0.005 }, // ~471m, interpolate
+                ];
+                mockCalculator.getElevation.mockResolvedValue(100);
+
+                const result = await provider.getElevationsAlong(path, 100, true);
+
+                // Should have many points due to interpolation
+                expect(result.length).toBeGreaterThan(5);
+                // First and last points should match
+                expect(result[0].latitude).toBeCloseTo(45.0, 6);
+                expect(result[result.length - 1].latitude).toBeCloseTo(45.005, 6);
             });
         });
     });

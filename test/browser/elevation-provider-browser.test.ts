@@ -139,7 +139,7 @@ test.describe('ElevationProvider Browser Tests', () => {
 
                 console.log(`Created array with ${array.length} coordinates`);
 
-                const elevations = await elevationProvider.getElevationsFromArray(array, true);
+                const elevations = await elevationProvider.getElevationsFrom(array, true);
                 return {
                     success: true,
                     elevations,
@@ -163,5 +163,149 @@ test.describe('ElevationProvider Browser Tests', () => {
             'getElevationsFromArray with interpolation executed successfully:',
             `${readmeExampleResult.coordinateCount} coordinates processed, got ${readmeExampleResult.elevations?.length} elevations`
         );
+    });
+
+    test('should getElevationsBetween two coordinates', async ({ page }) => {
+        const result = await page.evaluate(async () => {
+            try {
+                const elevationProvider: ElevationProvider =
+                    new window.Elevation.ElevationProvider();
+
+                // Test coordinates in France (relatively close)
+                const coord1 = { latitude: 47.0, longitude: -1.0 };
+                const coord2 = { latitude: 47.01, longitude: -0.99 }; // ~1.5km apart
+
+                const elevations = await elevationProvider.getElevationsBetween(
+                    coord1,
+                    coord2,
+                    50, // 50m step
+                    true // interpolation
+                );
+
+                return {
+                    success: true,
+                    elevations,
+                    count: elevations.length,
+                    firstPoint: elevations[0],
+                    lastPoint: elevations[elevations.length - 1],
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    error: error instanceof Error ? error.message : String(error),
+                };
+            }
+        });
+
+        expect(result.success).toBe(true);
+        expect(result.elevations).toBeDefined();
+        expect(Array.isArray(result.elevations)).toBe(true);
+        expect(result.count).toBeGreaterThan(2); // Should have intermediate points
+
+        // Check that each point has latitude, longitude, and elevation
+        expect(result.firstPoint).toBeDefined();
+        expect(result.firstPoint).toHaveProperty('latitude');
+        expect(result.firstPoint).toHaveProperty('longitude');
+        expect(result.firstPoint).toHaveProperty('elevation');
+        expect(typeof result.firstPoint!.elevation).toBe('number');
+
+        console.log(
+            'getElevationsBetween executed successfully:',
+            `${result.count} points generated between coordinates`
+        );
+    });
+
+    test('should getElevationsAlong a multi-point path', async ({ page }) => {
+        const result = await page.evaluate(async () => {
+            try {
+                const elevationProvider: ElevationProvider =
+                    new window.Elevation.ElevationProvider();
+
+                // Create a path through France
+                const path = [
+                    { latitude: 47.0, longitude: -1.0 }, // Western France
+                    { latitude: 47.005, longitude: -0.995 }, // ~700m northeast
+                    { latitude: 47.01, longitude: -0.99 }, // ~700m northeast
+                    { latitude: 47.015, longitude: -0.985 }, // ~700m northeast
+                ];
+
+                const elevations = await elevationProvider.getElevationsAlong(
+                    path,
+                    50, // 50m step
+                    true // interpolation
+                );
+
+                return {
+                    success: true,
+                    elevations,
+                    count: elevations.length,
+                    pathLength: path.length,
+                    firstPoint: elevations[0],
+                    lastPoint: elevations[elevations.length - 1],
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    error: error instanceof Error ? error.message : String(error),
+                };
+            }
+        });
+
+        expect(result.success).toBe(true);
+        expect(result.elevations).toBeDefined();
+        expect(Array.isArray(result.elevations)).toBe(true);
+        expect(result.count).toBeGreaterThan(result.pathLength!); // Should have interpolated points
+
+        // Check that each point has latitude, longitude, and elevation
+        expect(result.firstPoint).toBeDefined();
+        expect(result.firstPoint).toHaveProperty('latitude');
+        expect(result.firstPoint).toHaveProperty('longitude');
+        expect(result.firstPoint).toHaveProperty('elevation');
+        expect(typeof result.firstPoint!.elevation).toBe('number');
+
+        expect(result.lastPoint).toBeDefined();
+        expect(result.lastPoint).toHaveProperty('latitude');
+        expect(result.lastPoint).toHaveProperty('longitude');
+        expect(result.lastPoint).toHaveProperty('elevation');
+        expect(typeof result.lastPoint!.elevation).toBe('number');
+
+        console.log(
+            'getElevationsAlong executed successfully:',
+            `${result.count} points generated along ${result.pathLength}-point path`
+        );
+    });
+
+    test('should handle errors in getElevationsBetween for points too far apart', async ({
+        page,
+    }) => {
+        const result = await page.evaluate(async () => {
+            try {
+                const elevationProvider: ElevationProvider =
+                    new window.Elevation.ElevationProvider();
+
+                // Points very far apart (should trigger error)
+                const coord1 = { latitude: 47.0, longitude: -1.0 }; // France
+                const coord2 = { latitude: 40.7, longitude: -74.0 }; // New York
+
+                await elevationProvider.getElevationsBetween(coord1, coord2, 50, true);
+
+                return {
+                    success: false,
+                    error: 'Expected error but none was thrown',
+                };
+            } catch (error) {
+                return {
+                    success: true,
+                    errorThrown: true,
+                    errorMessage: error instanceof Error ? error.message : String(error),
+                };
+            }
+        });
+
+        expect(result.success).toBe(true);
+        expect(result.errorThrown).toBe(true);
+        expect(result.errorMessage).toContain('too far');
+
+        console.log('getElevationsBetween error handling verified:', result.errorMessage);
     });
 });

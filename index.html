@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Elevation Library Demo</title>
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <style>
             body {
                 margin: 0;
@@ -79,20 +80,162 @@
             .info a:hover {
                 text-decoration: underline;
             }
+
+            .controls {
+                background: #f0f8ff;
+                padding: 15px;
+                border-radius: 8px;
+                border: 1px solid #ddd;
+                margin-bottom: 20px;
+            }
+
+            .controls h3 {
+                margin: 0 0 10px 0;
+                color: #333;
+            }
+
+            .button-group {
+                display: flex;
+                gap: 10px;
+                flex-wrap: wrap;
+                margin-bottom: 10px;
+            }
+
+            button {
+                padding: 8px 16px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 500;
+                transition: background-color 0.2s;
+            }
+
+            button.primary {
+                background: #2c5aa0;
+                color: white;
+            }
+
+            button.primary:hover {
+                background: #1a4480;
+            }
+
+            button.secondary {
+                background: #666;
+                color: white;
+            }
+
+            button.secondary:hover {
+                background: #444;
+            }
+
+            button.danger {
+                background: #f44336;
+                color: white;
+            }
+
+            button.danger:hover {
+                background: #d32f2f;
+            }
+
+            button:disabled {
+                background: #ccc;
+                cursor: not-allowed;
+            }
+
+            .mode-info {
+                font-size: 12px;
+                color: #666;
+                margin-top: 10px;
+                font-style: italic;
+            }
+
+            #chart-container {
+                background: white;
+                padding: 20px;
+                border-radius: 8px;
+                border: 1px solid #ddd;
+                margin-bottom: 20px;
+                display: none;
+            }
+
+            #chart-container h3 {
+                margin: 0 0 15px 0;
+                color: #333;
+            }
+
+            #elevation-chart {
+                max-height: 400px;
+            }
+
+            .chart-info {
+                margin-top: 15px;
+                padding: 10px;
+                background: #f9f9f9;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+
+            .stats {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 10px;
+                margin-top: 10px;
+            }
+
+            .stat {
+                text-align: center;
+                padding: 10px;
+                background: white;
+                border-radius: 4px;
+                border: 1px solid #e0e0e0;
+            }
+
+            .stat-value {
+                font-size: 18px;
+                font-weight: bold;
+                color: #2c5aa0;
+            }
+
+            .stat-label {
+                font-size: 12px;
+                color: #666;
+                margin-top: 2px;
+            }
         </style>
     </head>
     <body>
         <div class="container">
             <h1>@glandais/elevation Demo</h1>
             <p class="info">
-                Click anywhere on the map to get elevation data for that location
+                Interactive elevation demo with path profiling and chart visualization
                 <br />
                 <a href="https://github.com/glandais/elevation" target="_blank" rel="noopener">
                     🚀 View on GitHub
                 </a>
             </p>
 
+            <div class="controls">
+                <h3>📊 Elevation Tools</h3>
+                <div class="button-group">
+                    <button id="point-mode" class="primary">📍 Point Mode</button>
+                    <button id="path-mode" class="secondary">🛤️ Path Mode</button>
+                    <button id="clear-path" class="danger" disabled>🗑️ Clear Path</button>
+                </div>
+                <div class="mode-info" id="mode-info">
+                    Point Mode: Click anywhere to get elevation at that location
+                </div>
+            </div>
+
             <div id="map"></div>
+
+            <div id="chart-container">
+                <h3>📈 Elevation Profile</h3>
+                <canvas id="elevation-chart"></canvas>
+                <div class="chart-info">
+                    <div class="stats" id="elevation-stats"></div>
+                </div>
+            </div>
 
             <div class="elevation-info">
                 <div id="elevation-display" class="elevation-display">
@@ -106,7 +249,7 @@
         <script src="dist/index.min.js"></script>
         <script>
             // Initialize the map
-            const map = L.map('map').setView([45.5017, -73.5673], 10); // Montreal, Canada
+            const map = L.map('map').setView([47.2, -1.5], 12); // France (Nantes area)
 
             // Add OpenStreetMap tile layer
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -116,28 +259,228 @@
             // Initialize elevation provider
             const elevationProvider = new window.Elevation.ElevationProvider();
 
-            // Elements for displaying results
+            // Elements
             const elevationDisplay = document.getElementById('elevation-display');
             const coordinatesDisplay = document.getElementById('coordinates');
+            const chartContainer = document.getElementById('chart-container');
+            const elevationStats = document.getElementById('elevation-stats');
+            const modeInfo = document.getElementById('mode-info');
 
-            // Current marker
+            // Buttons
+            const pointModeBtn = document.getElementById('point-mode');
+            const pathModeBtn = document.getElementById('path-mode');
+            const clearPathBtn = document.getElementById('clear-path');
+
+            // State
+            let currentMode = 'point'; // 'point' or 'path'
             let currentMarker = null;
+            let pathPoints = [];
+            let pathPolyline = null;
+            let pathMarkers = [];
+            let elevationChart = null;
 
-            // Function to format elevation
+            // Utility functions
             function formatElevation(elevation) {
                 if (elevation === null || elevation === undefined) {
                     return 'No data available';
                 }
-                return `${Math.round(elevation)} meters`;
+                return `${Math.round(elevation)} m`;
             }
 
-            // Function to format coordinates
             function formatCoordinates(lat, lng) {
                 return `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`;
             }
 
-            // Handle map clicks
-            map.on('click', async function (e) {
+            function formatDistance(meters) {
+                if (meters < 1000) {
+                    return `${Math.round(meters)} m`;
+                }
+                return `${(meters / 1000).toFixed(2)} km`;
+            }
+
+            // Mode switching
+            function setMode(mode) {
+                currentMode = mode;
+
+                if (mode === 'point') {
+                    pointModeBtn.className = 'primary';
+                    pathModeBtn.className = 'secondary';
+                    modeInfo.textContent = 'Point Mode: Click anywhere to get elevation at that location';
+                    clearPath();
+                } else {
+                    pointModeBtn.className = 'secondary';
+                    pathModeBtn.className = 'primary';
+                    modeInfo.textContent = 'Path Mode: Click to add points to path, chart will show when you have 2+ points';
+                }
+            }
+
+            // Clear path
+            function clearPath() {
+                pathPoints = [];
+
+                // Remove polyline
+                if (pathPolyline) {
+                    map.removeLayer(pathPolyline);
+                    pathPolyline = null;
+                }
+
+                // Remove markers
+                pathMarkers.forEach(marker => map.removeLayer(marker));
+                pathMarkers = [];
+
+                // Hide chart
+                chartContainer.style.display = 'none';
+
+                // Update button state
+                clearPathBtn.disabled = true;
+
+                // Clear display
+                if (currentMode === 'path') {
+                    elevationDisplay.textContent = 'Click on the map to start creating a path';
+                    coordinatesDisplay.textContent = 'Path coordinates will appear here';
+                }
+            }
+
+            // Calculate elevation profile statistics
+            function calculateStats(elevationProfile) {
+                const elevations = elevationProfile.map(p => p.elevation);
+                const minElevation = Math.min(...elevations);
+                const maxElevation = Math.max(...elevations);
+                const totalDistance = elevationProfile.reduce((total, point, index) => {
+                    if (index === 0) return 0;
+                    const prev = elevationProfile[index - 1];
+                    const dlat = point.latitude - prev.latitude;
+                    const dlng = point.longitude - prev.longitude;
+                    const distance = Math.sqrt(dlat * dlat + dlng * dlng) * 111000; // Rough conversion
+                    return total + distance;
+                }, 0);
+
+                // Calculate total ascent/descent
+                let totalAscent = 0;
+                let totalDescent = 0;
+                for (let i = 1; i < elevations.length; i++) {
+                    const diff = elevations[i] - elevations[i - 1];
+                    if (diff > 0) totalAscent += diff;
+                    else totalDescent += Math.abs(diff);
+                }
+
+                return {
+                    minElevation,
+                    maxElevation,
+                    elevationGain: maxElevation - minElevation,
+                    totalDistance,
+                    totalAscent,
+                    totalDescent,
+                    pointCount: elevations.length
+                };
+            }
+
+            // Create elevation chart
+            function createElevationChart(elevationProfile) {
+                const ctx = document.getElementById('elevation-chart').getContext('2d');
+
+                // Destroy existing chart
+                if (elevationChart) {
+                    elevationChart.destroy();
+                }
+
+                // Calculate distances for x-axis
+                let cumulativeDistance = 0;
+                const chartData = elevationProfile.map((point, index) => {
+                    if (index > 0) {
+                        const prev = elevationProfile[index - 1];
+                        const dlat = point.latitude - prev.latitude;
+                        const dlng = point.longitude - prev.longitude;
+                        const distance = Math.sqrt(dlat * dlat + dlng * dlng) * 111000; // Rough conversion
+                        cumulativeDistance += distance;
+                    }
+                    return {
+                        x: cumulativeDistance,
+                        y: point.elevation
+                    };
+                });
+
+                elevationChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: 'Elevation (m)',
+                            data: chartData,
+                            borderColor: '#2c5aa0',
+                            backgroundColor: 'rgba(44, 90, 160, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: {
+                                type: 'linear',
+                                title: {
+                                    display: true,
+                                    text: 'Distance (m)'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return formatDistance(value);
+                                    }
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Elevation (m)'
+                                }
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `Elevation: ${Math.round(context.parsed.y)}m at ${formatDistance(context.parsed.x)}`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Calculate and display stats
+                const stats = calculateStats(elevationProfile);
+                elevationStats.innerHTML = `
+                    <div class="stat">
+                        <div class="stat-value">${formatDistance(stats.totalDistance)}</div>
+                        <div class="stat-label">Total Distance</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">${stats.pointCount}</div>
+                        <div class="stat-label">Data Points</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">${formatElevation(stats.minElevation)}</div>
+                        <div class="stat-label">Min Elevation</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">${formatElevation(stats.maxElevation)}</div>
+                        <div class="stat-label">Max Elevation</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">${formatElevation(stats.totalAscent)}</div>
+                        <div class="stat-label">Total Ascent</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">${formatElevation(stats.totalDescent)}</div>
+                        <div class="stat-label">Total Descent</div>
+                    </div>
+                `;
+
+                chartContainer.style.display = 'block';
+            }
+
+            // Handle point mode click
+            async function handlePointClick(e) {
                 const lat = e.latlng.lat;
                 const lng = e.latlng.lng;
 
@@ -158,36 +501,114 @@
                 elevationDisplay.className = 'elevation-display loading';
 
                 try {
-                    // Get elevation data
                     const elevation = await elevationProvider.getElevation(lat, lng);
-
-                    // Update display with results
                     elevationDisplay.textContent = `Elevation: ${formatElevation(elevation)}`;
                     elevationDisplay.className = 'elevation-display success';
-
-                    // Update marker popup
                     currentMarker.setPopupContent(`
-                    <strong>Elevation: ${formatElevation(elevation)}</strong><br>
-                    ${formatCoordinates(lat, lng)}
-                `);
+                        <strong>Elevation: ${formatElevation(elevation)}</strong><br>
+                        ${formatCoordinates(lat, lng)}
+                    `);
                 } catch (error) {
                     console.error('Error getting elevation:', error);
-
-                    // Update display with error
                     elevationDisplay.textContent = `Error: ${error.message}`;
                     elevationDisplay.className = 'elevation-display error';
-
-                    // Update marker popup
                     currentMarker.setPopupContent(`
-                    <strong>Error getting elevation</strong><br>
-                    ${formatCoordinates(lat, lng)}
-                `);
+                        <strong>Error getting elevation</strong><br>
+                        ${formatCoordinates(lat, lng)}
+                    `);
+                }
+            }
+
+            // Handle path mode click
+            async function handlePathClick(e) {
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+
+                // Add point to path
+                pathPoints.push({ latitude: lat, longitude: lng });
+
+                // Add marker
+                const marker = L.marker([lat, lng])
+                    .addTo(map)
+                    .bindPopup(`Point ${pathPoints.length}: Getting elevation...`, { autoClose: false });
+                pathMarkers.push(marker);
+
+                // Update polyline
+                if (pathPolyline) {
+                    map.removeLayer(pathPolyline);
+                }
+                pathPolyline = L.polyline(pathPoints.map(p => [p.latitude, p.longitude]), {
+                    color: '#2c5aa0',
+                    weight: 3
+                }).addTo(map);
+
+                // Enable clear button
+                clearPathBtn.disabled = false;
+
+                // Update display
+                coordinatesDisplay.textContent = `Path with ${pathPoints.length} points`;
+                elevationDisplay.textContent = 'Calculating elevation profile...';
+                elevationDisplay.className = 'elevation-display loading';
+
+                try {
+                    // Get elevation for this point
+                    const elevation = await elevationProvider.getElevation(lat, lng);
+                    marker.setPopupContent(`
+                        <strong>Point ${pathPoints.length}</strong><br>
+                        Elevation: ${formatElevation(elevation)}<br>
+                        ${formatCoordinates(lat, lng)}
+                    `);
+
+                    // If we have 2+ points, generate elevation profile
+                    if (pathPoints.length >= 2) {
+                        const elevationProfile = await elevationProvider.getElevationsAlong(
+                            pathPoints,
+                            25, // 25m step
+                            true // interpolation
+                        );
+
+                        elevationDisplay.textContent = `Elevation profile: ${elevationProfile.length} points`;
+                        elevationDisplay.className = 'elevation-display success';
+
+                        // Create chart
+                        createElevationChart(elevationProfile);
+                    } else {
+                        elevationDisplay.textContent = `Point ${pathPoints.length} added - add more points to see elevation profile`;
+                        elevationDisplay.className = 'elevation-display success';
+                    }
+                } catch (error) {
+                    console.error('Error getting elevation:', error);
+                    elevationDisplay.textContent = `Error: ${error.message}`;
+                    elevationDisplay.className = 'elevation-display error';
+                    marker.setPopupContent(`
+                        <strong>Point ${pathPoints.length} - Error</strong><br>
+                        ${formatCoordinates(lat, lng)}
+                    `);
+                }
+            }
+
+            // Event listeners
+            pointModeBtn.addEventListener('click', () => setMode('point'));
+            pathModeBtn.addEventListener('click', () => setMode('path'));
+            clearPathBtn.addEventListener('click', clearPath);
+
+            // Map click handler
+            map.on('click', function(e) {
+                if (currentMode === 'point') {
+                    handlePointClick(e);
+                } else {
+                    handlePathClick(e);
                 }
             });
 
-            // Add some initial information
+            // Initialize
+            setMode('point');
             console.log('Elevation Library Demo loaded');
             console.log('ElevationProvider available:', typeof elevationProvider);
+            console.log('New methods available:', {
+                getElevationsBetween: typeof elevationProvider.getElevationsBetween,
+                getElevationsAlong: typeof elevationProvider.getElevationsAlong
+            });
         </script>
     </body>
 </html>
