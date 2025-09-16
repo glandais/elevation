@@ -7,7 +7,7 @@ jest.mock('../src/TileFetcher');
 const MockedTileFetcher = TileFetcher as jest.MockedClass<typeof TileFetcher>;
 
 describe('ElevationProvider Integration Tests', () => {
-    let mockTile: any;
+    let mockTile: ImageData;
 
     beforeEach(() => {
         jest.clearAllMocks();

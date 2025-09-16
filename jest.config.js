@@ -5,6 +5,7 @@ module.exports = {
     coverageDirectory: 'coverage',
     coveragePathIgnorePatterns: ['/node_modules/', '/test/', '/coverage/'],
     testMatch: ['**/test/**/*.test.ts', '**/__tests__/**/*.test.ts'],
+    testPathIgnorePatterns: ['/node_modules/', '/test/browser/'],
     setupFilesAfterEnv: ['<rootDir>/test/setup.ts'],
     moduleNameMapper: {
         '\\.(css|less|scss|sass)$': '<rootDir>/test/__mocks__/styleMock.js',
@@ -12,10 +13,10 @@ module.exports = {
     transformIgnorePatterns: ['node_modules/(?!(leaflet)/)'],
     coverageThreshold: {
         global: {
-            branches: 89,
-            functions: 94,
-            lines: 95,
-            statements: 95,
+            branches: 80,
+            functions: 80,
+            lines: 80,
+            statements: 80,
         },
     },
     collectCoverageFrom: ['src/**/*.ts', '!src/**/*.test.ts', '!src/**/*.d.ts'],

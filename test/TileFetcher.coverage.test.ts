@@ -3,7 +3,7 @@ import { TileFetcher } from '../src/TileFetcher';
 describe('TileFetcher Coverage Tests', () => {
     beforeEach(() => {
         // Reset canvas pool state
-        (global as any).fetch = jest.fn();
+        (global as unknown as { fetch: jest.MockedFunction<typeof fetch> }).fetch = jest.fn();
     });
 
     it('should test canvas pool trim functionality', async () => {
@@ -41,18 +41,24 @@ describe('TileFetcher Coverage Tests', () => {
 
         // Mock createImageBitmap to throw a non-Error object (line 109)
         const originalCreateImageBitmap = global.createImageBitmap;
-        (global as any).createImageBitmap = jest
-            .fn()
-            .mockRejectedValue('String error not Error object');
+        (
+            global as unknown as {
+                createImageBitmap: jest.MockedFunction<typeof createImageBitmap>;
+            }
+        ).createImageBitmap = jest.fn().mockRejectedValue('String error not Error object');
 
         try {
             const blob = new Blob(['test'], { type: 'image/png' });
-            await (fetcher as any).blobToImageDataAndBitmap(blob);
+            await (
+                fetcher as unknown as { blobToImageDataAndBitmap: (blob: Blob) => Promise<unknown> }
+            ).blobToImageDataAndBitmap(blob);
         } catch (error: unknown) {
             expect((error as Error).message).toContain('Failed to process image');
         } finally {
             // Restore original
-            (global as any).createImageBitmap = originalCreateImageBitmap;
+            (
+                global as unknown as { createImageBitmap: typeof createImageBitmap }
+            ).createImageBitmap = originalCreateImageBitmap;
         }
     });
 

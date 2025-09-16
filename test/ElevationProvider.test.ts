@@ -11,8 +11,8 @@ const MockedTileFetcher = TileFetcher as jest.MockedClass<typeof TileFetcher>;
 const MockedCache = Cache as jest.MockedClass<typeof Cache>;
 
 describe('ElevationProvider', () => {
-    let mockFetchTile: jest.MockedFunction<any>;
-    let mockCacheGet: jest.MockedFunction<any>;
+    let mockFetchTile: jest.MockedFunction<() => Promise<ImageData>>;
+    let mockCacheGet: jest.MockedFunction<() => Promise<ImageData>>;
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -469,7 +469,7 @@ describe('ElevationProvider', () => {
             // Mock cache to return tiles for any coordinate request
             const mockTile = {
                 data: new ImageData(new Uint8ClampedArray(256 * 256 * 4).fill(128), 256, 256),
-                bitmap: { close: jest.fn() } as any,
+                bitmap: { close: jest.fn() } as ImageBitmap,
             };
 
             const mockCache = {

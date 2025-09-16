@@ -283,7 +283,10 @@ describe('Cache', () => {
 
         it('should handle missing node removal', () => {
             // Try to access private methods if possible for coverage
-            const cacheInstance = cache as any;
+            const cacheInstance = cache as unknown as {
+                removeFromLRU?: (key: string) => void;
+                delete?: (key: string) => boolean;
+            };
 
             // Test removeFromLRU with non-existent key (should not crash)
             if (cacheInstance.removeFromLRU) {
