@@ -9,13 +9,24 @@
         <style>
             body {
                 margin: 0;
-                padding: 20px;
+                padding: 10px;
                 font-family: Arial, sans-serif;
             }
 
             .container {
                 max-width: 1200px;
                 margin: 0 auto;
+                padding: 0 10px;
+            }
+
+            @media (max-width: 768px) {
+                body {
+                    padding: 5px;
+                }
+
+                .container {
+                    padding: 0 5px;
+                }
             }
 
             h1 {
@@ -31,12 +42,47 @@
                 font-size: 14px;
             }
 
+            @media (max-width: 768px) {
+                h1 {
+                    font-size: 1.5em;
+                    margin-bottom: 8px;
+                }
+
+                .info {
+                    font-size: 13px;
+                    margin-bottom: 15px;
+                }
+            }
+
+            @media (max-width: 480px) {
+                h1 {
+                    font-size: 1.3em;
+                }
+
+                .info {
+                    font-size: 12px;
+                }
+            }
+
             #map {
                 height: 500px;
                 width: 100%;
                 border: 2px solid #ddd;
                 border-radius: 8px;
                 margin-bottom: 20px;
+            }
+
+            @media (max-width: 768px) {
+                #map {
+                    height: 400px;
+                    margin-bottom: 15px;
+                }
+            }
+
+            @media (max-width: 480px) {
+                #map {
+                    height: 300px;
+                }
             }
 
             .elevation-info {
@@ -56,6 +102,35 @@
             .coordinates {
                 color: #666;
                 font-size: 14px;
+            }
+
+            @media (max-width: 768px) {
+                .elevation-info {
+                    padding: 12px;
+                }
+
+                .elevation-display {
+                    font-size: 16px;
+                }
+
+                .coordinates {
+                    font-size: 13px;
+                }
+            }
+
+            @media (max-width: 480px) {
+                .elevation-info {
+                    padding: 10px;
+                }
+
+                .elevation-display {
+                    font-size: 15px;
+                    margin-bottom: 8px;
+                }
+
+                .coordinates {
+                    font-size: 12px;
+                }
             }
 
             .loading {
@@ -89,9 +164,120 @@
                 margin-bottom: 20px;
             }
 
+            .filter-controls {
+                background: #fff5f5;
+                padding: 15px;
+                border-radius: 8px;
+                border: 1px solid #ddd;
+                margin-bottom: 20px;
+            }
+
+            .filter-group {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 15px;
+                margin-bottom: 15px;
+            }
+
+            .filter-option {
+                display: flex;
+                flex-direction: column;
+                gap: 5px;
+            }
+
+            .filter-option label {
+                font-size: 14px;
+                font-weight: 500;
+                color: #333;
+            }
+
+            .filter-option input[type="range"] {
+                width: 100%;
+                height: 6px;
+                background: #ddd;
+                border-radius: 3px;
+                outline: none;
+            }
+
+            .filter-option input[type="range"]::-webkit-slider-thumb {
+                appearance: none;
+                width: 18px;
+                height: 18px;
+                background: #2c5aa0;
+                border-radius: 50%;
+                cursor: pointer;
+            }
+
+            .filter-option input[type="range"]::-moz-range-thumb {
+                width: 18px;
+                height: 18px;
+                background: #2c5aa0;
+                border-radius: 50%;
+                border: none;
+                cursor: pointer;
+            }
+
+            .filter-value {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .filter-value input[type="number"] {
+                width: 80px;
+                padding: 4px 8px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+
+            .filter-checkbox {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 10px;
+            }
+
+            .filter-checkbox input[type="checkbox"] {
+                width: 18px;
+                height: 18px;
+                cursor: pointer;
+            }
+
+            .filter-stats {
+                background: #f9f9f9;
+                padding: 10px;
+                border-radius: 4px;
+                margin-top: 10px;
+                font-size: 13px;
+                color: #666;
+            }
+
             .controls h3 {
                 margin: 0 0 10px 0;
                 color: #333;
+            }
+
+            @media (max-width: 768px) {
+                .controls {
+                    padding: 12px;
+                    margin-bottom: 15px;
+                }
+
+                .controls h3 {
+                    font-size: 1.1em;
+                    margin-bottom: 8px;
+                }
+            }
+
+            @media (max-width: 480px) {
+                .controls {
+                    padding: 10px;
+                }
+
+                .controls h3 {
+                    font-size: 1em;
+                }
             }
 
             .button-group {
@@ -99,6 +285,17 @@
                 gap: 10px;
                 flex-wrap: wrap;
                 margin-bottom: 10px;
+            }
+
+            @media (max-width: 480px) {
+                .button-group {
+                    flex-direction: column;
+                    gap: 8px;
+                }
+
+                button {
+                    width: 100%;
+                }
             }
 
             button {
@@ -168,6 +365,37 @@
                 max-height: 400px;
             }
 
+            @media (max-width: 768px) {
+                #chart-container {
+                    padding: 15px;
+                    margin-bottom: 15px;
+                }
+
+                #chart-container h3 {
+                    font-size: 1.1em;
+                    margin-bottom: 12px;
+                }
+
+                #elevation-chart {
+                    max-height: 300px;
+                }
+            }
+
+            @media (max-width: 480px) {
+                #chart-container {
+                    padding: 10px;
+                }
+
+                #chart-container h3 {
+                    font-size: 1em;
+                    margin-bottom: 10px;
+                }
+
+                #elevation-chart {
+                    max-height: 250px;
+                }
+            }
+
             .chart-info {
                 margin-top: 15px;
                 padding: 10px;
@@ -181,6 +409,28 @@
                 grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
                 gap: 10px;
                 margin-top: 10px;
+            }
+
+            @media (max-width: 768px) {
+                .stats {
+                    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+                    gap: 8px;
+                }
+            }
+
+            @media (max-width: 480px) {
+                .stats {
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 6px;
+                }
+
+                .stat-value {
+                    font-size: 16px;
+                }
+
+                .stat-label {
+                    font-size: 11px;
+                }
             }
 
             .stat {
@@ -227,6 +477,35 @@
                 </div>
             </div>
 
+            <div class="filter-controls">
+                <h3>🔧 Douglas-Peucker Filtering (Path Mode Only)</h3>
+                <div class="filter-checkbox">
+                    <input type="checkbox" id="enable-filtering" />
+                    <label for="enable-filtering">Enable 3D Filtering (reduces point count while preserving terrain shape)</label>
+                </div>
+                <div class="filter-group">
+                    <div class="filter-option">
+                        <label for="tolerance-slider">Tolerance (meters)</label>
+                        <div class="filter-value">
+                            <input type="range" id="tolerance-slider" min="1" max="100" value="10" step="1" />
+                            <input type="number" id="tolerance-input" min="1" max="100" value="10" step="1" />m
+                        </div>
+                    </div>
+                    <div class="filter-option">
+                        <label for="z-exaggeration-slider">Z Exaggeration</label>
+                        <div class="filter-value">
+                            <input type="range" id="z-exaggeration-slider" min="1" max="10" value="3" step="0.5" />
+                            <input type="number" id="z-exaggeration-input" min="1" max="10" value="3" step="0.5" />x
+                        </div>
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button id="smart-tolerance" class="secondary">🎯 Smart Tolerance</button>
+                    <button id="apply-filtering" class="primary" disabled>📈 Apply Filtering</button>
+                </div>
+                <div class="filter-stats" id="filter-stats" style="display: none;"></div>
+            </div>
+
             <div id="map"></div>
 
             <div id="chart-container">
@@ -271,6 +550,16 @@
             const pathModeBtn = document.getElementById('path-mode');
             const clearPathBtn = document.getElementById('clear-path');
 
+            // Filter controls
+            const enableFilteringCheckbox = document.getElementById('enable-filtering');
+            const toleranceSlider = document.getElementById('tolerance-slider');
+            const toleranceInput = document.getElementById('tolerance-input');
+            const zExaggerationSlider = document.getElementById('z-exaggeration-slider');
+            const zExaggerationInput = document.getElementById('z-exaggeration-input');
+            const smartToleranceBtn = document.getElementById('smart-tolerance');
+            const applyFilteringBtn = document.getElementById('apply-filtering');
+            const filterStats = document.getElementById('filter-stats');
+
             // State
             let currentMode = 'point'; // 'point' or 'path'
             let currentMarker = null;
@@ -278,6 +567,8 @@
             let pathPolyline = null;
             let pathMarkers = [];
             let elevationChart = null;
+            let originalElevationProfile = null;
+            let filteredElevationProfile = null;
 
             // Utility functions
             function formatElevation(elevation) {
@@ -296,6 +587,92 @@
                     return `${Math.round(meters)} m`;
                 }
                 return `${(meters / 1000).toFixed(2)} km`;
+            }
+
+            // Filter control functions
+            function syncSliderAndInput(slider, input) {
+                slider.value = input.value;
+            }
+
+            function syncInputAndSlider(input, slider) {
+                input.value = slider.value;
+            }
+
+            function updateFilterStats(original, filtered) {
+                if (!original || !filtered) {
+                    filterStats.style.display = 'none';
+                    return;
+                }
+
+                const reduction = ((original.length - filtered.length) / original.length * 100).toFixed(1);
+                filterStats.innerHTML = `
+                    <strong>Filtering Results:</strong>
+                    ${original.length} → ${filtered.length} points (${reduction}% reduction)
+                `;
+                filterStats.style.display = 'block';
+            }
+
+            function getFilterOptions() {
+                return {
+                    enabled: enableFilteringCheckbox.checked,
+                    tolerance: parseFloat(toleranceInput.value),
+                    zExaggeration: parseFloat(zExaggerationInput.value)
+                };
+            }
+
+            async function applySmartTolerance() {
+                if (!originalElevationProfile || originalElevationProfile.length < 3) {
+                    alert('Please create a path with 2+ points first');
+                    return;
+                }
+
+                try {
+                    const estimatedTolerance = window.Elevation.DouglasPeucker.estimateTolerance(originalElevationProfile);
+                    toleranceSlider.value = estimatedTolerance;
+                    toleranceInput.value = estimatedTolerance;
+
+                    // Auto-apply filtering if enabled
+                    if (enableFilteringCheckbox.checked) {
+                        await applyFiltering();
+                    }
+                } catch (error) {
+                    console.error('Error estimating tolerance:', error);
+                    alert('Error estimating tolerance: ' + error.message);
+                }
+            }
+
+            async function applyFiltering() {
+                if (!originalElevationProfile || originalElevationProfile.length < 3) {
+                    return;
+                }
+
+                try {
+                    const filterOptions = getFilterOptions();
+
+                    if (!filterOptions.enabled) {
+                        // Show original data
+                        createElevationChart(originalElevationProfile);
+                        updateFilterStats(null, null);
+                        return;
+                    }
+
+                    // Apply filtering to original data
+                    const filtered = await elevationProvider.getElevationsAlong(
+                        pathPoints,
+                        25, // 25m step
+                        true, // interpolation
+                        filterOptions
+                    );
+
+                    filteredElevationProfile = filtered;
+                    createElevationChart(filtered);
+                    updateFilterStats(originalElevationProfile, filtered);
+
+                } catch (error) {
+                    console.error('Error applying filtering:', error);
+                    elevationDisplay.textContent = `Filtering error: ${error.message}`;
+                    elevationDisplay.className = 'elevation-display error';
+                }
             }
 
             // Mode switching
@@ -317,6 +694,8 @@
             // Clear path
             function clearPath() {
                 pathPoints = [];
+                originalElevationProfile = null;
+                filteredElevationProfile = null;
 
                 // Remove polyline
                 if (pathPolyline) {
@@ -331,8 +710,13 @@
                 // Hide chart
                 chartContainer.style.display = 'none';
 
-                // Update button state
+                // Hide filter stats
+                filterStats.style.display = 'none';
+
+                // Update button states
                 clearPathBtn.disabled = true;
+                applyFilteringBtn.disabled = true;
+                smartToleranceBtn.disabled = true;
 
                 // Clear display
                 if (currentMode === 'path') {
@@ -567,11 +951,18 @@
                             true // interpolation
                         );
 
+                        // Store original profile for filtering
+                        originalElevationProfile = elevationProfile;
+
+                        // Enable filtering controls
+                        applyFilteringBtn.disabled = false;
+                        smartToleranceBtn.disabled = false;
+
                         elevationDisplay.textContent = `Elevation profile: ${elevationProfile.length} points`;
                         elevationDisplay.className = 'elevation-display success';
 
-                        // Create chart
-                        createElevationChart(elevationProfile);
+                        // Create chart (will be filtered if filtering is enabled)
+                        await applyFiltering();
                     } else {
                         elevationDisplay.textContent = `Point ${pathPoints.length} added - add more points to see elevation profile`;
                         elevationDisplay.className = 'elevation-display success';
@@ -591,6 +982,26 @@
             pointModeBtn.addEventListener('click', () => setMode('point'));
             pathModeBtn.addEventListener('click', () => setMode('path'));
             clearPathBtn.addEventListener('click', clearPath);
+
+            // Filter control event listeners
+            enableFilteringCheckbox.addEventListener('change', applyFiltering);
+
+            toleranceSlider.addEventListener('input', () => {
+                syncInputAndSlider(toleranceInput, toleranceSlider);
+            });
+            toleranceInput.addEventListener('input', () => {
+                syncSliderAndInput(toleranceSlider, toleranceInput);
+            });
+
+            zExaggerationSlider.addEventListener('input', () => {
+                syncInputAndSlider(zExaggerationInput, zExaggerationSlider);
+            });
+            zExaggerationInput.addEventListener('input', () => {
+                syncSliderAndInput(zExaggerationSlider, zExaggerationInput);
+            });
+
+            smartToleranceBtn.addEventListener('click', applySmartTolerance);
+            applyFilteringBtn.addEventListener('click', applyFiltering);
 
             // Map click handler
             map.on('click', function(e) {

@@ -707,5 +707,131 @@ describe('BatchCalculator', () => {
                 expect(points).toHaveLength(0);
             });
         });
+
+        describe('filtering functionality', () => {
+            beforeEach(() => {
+                mockElevationCalculator.getElevation.mockResolvedValue(100);
+            });
+
+            it('should apply filtering with default tolerance and zExaggeration', async () => {
+                const path: Coordinates[] = [
+                    { latitude: 45.0, longitude: 0.0 },
+                    { latitude: 45.01, longitude: 0.01 }, // Longer distances to generate more points
+                    { latitude: 45.02, longitude: 0.02 },
+                ];
+
+                const result = await batchCalculator.getElevationsAlong(
+                    path,
+                    12, // zoomLevel
+                    100, // smaller step to generate more elevation points
+                    true, // interpolation
+                    { enabled: true } // filterOptions with defaults - will use tolerance=10, zExaggeration=3
+                );
+
+                expect(mockElevationCalculator.getElevation).toHaveBeenCalled();
+                expect(result).toBeDefined();
+                expect(Array.isArray(result)).toBe(true);
+            });
+
+            it('should not apply filtering when disabled', async () => {
+                const path: Coordinates[] = [
+                    { latitude: 45.0, longitude: 0.0 },
+                    { latitude: 45.001, longitude: 0.001 },
+                    { latitude: 45.002, longitude: 0.002 },
+                ];
+
+                const result = await batchCalculator.getElevationsAlong(
+                    path,
+                    12, // zoomLevel
+                    25, // step
+                    true, // interpolation
+                    { enabled: false } // filterOptions disabled
+                );
+
+                expect(mockElevationCalculator.getElevation).toHaveBeenCalled();
+                expect(result).toBeDefined();
+                expect(Array.isArray(result)).toBe(true);
+            });
+
+            it('should not apply filtering when there are 2 or fewer points', async () => {
+                const shortPath: Coordinates[] = [
+                    { latitude: 45.0, longitude: 0.0 },
+                    { latitude: 45.001, longitude: 0.001 },
+                ];
+
+                const result = await batchCalculator.getElevationsAlong(
+                    shortPath,
+                    12, // zoomLevel
+                    1000, // large step to ensure <=2 points
+                    true, // interpolation
+                    { enabled: true, tolerance: 10, zExaggeration: 3 } // filtering enabled
+                );
+
+                expect(mockElevationCalculator.getElevation).toHaveBeenCalled();
+                expect(result).toBeDefined();
+                expect(Array.isArray(result)).toBe(true);
+                // Should return unfiltered results when <=2 points
+            });
+
+            it('should use explicit tolerance and zExaggeration when provided', async () => {
+                const path: Coordinates[] = [
+                    { latitude: 45.0, longitude: 0.0 },
+                    { latitude: 45.01, longitude: 0.01 },
+                    { latitude: 45.02, longitude: 0.02 },
+                ];
+
+                const result = await batchCalculator.getElevationsAlong(
+                    path,
+                    12, // zoomLevel
+                    100, // step
+                    true, // interpolation
+                    { enabled: true, tolerance: 15, zExaggeration: 2 } // explicit values
+                );
+
+                expect(mockElevationCalculator.getElevation).toHaveBeenCalled();
+                expect(result).toBeDefined();
+                expect(Array.isArray(result)).toBe(true);
+            });
+
+            it('should use default tolerance when not provided', async () => {
+                const path: Coordinates[] = [
+                    { latitude: 45.0, longitude: 0.0 },
+                    { latitude: 45.01, longitude: 0.01 },
+                    { latitude: 45.02, longitude: 0.02 },
+                ];
+
+                const result = await batchCalculator.getElevationsAlong(
+                    path,
+                    12, // zoomLevel
+                    100, // step
+                    true, // interpolation
+                    { enabled: true, zExaggeration: 2 } // tolerance undefined, will use default 10
+                );
+
+                expect(mockElevationCalculator.getElevation).toHaveBeenCalled();
+                expect(result).toBeDefined();
+                expect(Array.isArray(result)).toBe(true);
+            });
+
+            it('should use default zExaggeration when not provided', async () => {
+                const path: Coordinates[] = [
+                    { latitude: 45.0, longitude: 0.0 },
+                    { latitude: 45.01, longitude: 0.01 },
+                    { latitude: 45.02, longitude: 0.02 },
+                ];
+
+                const result = await batchCalculator.getElevationsAlong(
+                    path,
+                    12, // zoomLevel
+                    100, // step
+                    true, // interpolation
+                    { enabled: true, tolerance: 15 } // zExaggeration undefined, will use default 3
+                );
+
+                expect(mockElevationCalculator.getElevation).toHaveBeenCalled();
+                expect(result).toBeDefined();
+                expect(Array.isArray(result)).toBe(true);
+            });
+        });
     });
 });

@@ -1,4 +1,4 @@
-import { Coordinates, CoordinatesElevation } from 'src/types';
+import { Coordinates, CoordinatesElevation, FilterOptions } from '../types';
 import { ElevationCalculator } from './ElevationCalculator';
 export declare class BatchCalculator {
     private readonly elevationCalculator;
@@ -46,7 +46,8 @@ export declare class BatchCalculator {
      * @param zoomLevel - Tile zoom level (0-15)
      * @param step - Distance between elevation points in meters
      * @param interpolation - Use bilinear interpolation for smoother results (default: true)
+     * @param filterOptions - Optional filtering options using Douglas-Peucker algorithm
      */
-    getElevationsAlong(path: Coordinates[], zoomLevel: number, step: number, interpolation?: boolean): Promise<CoordinatesElevation[]>;
+    getElevationsAlong(path: Coordinates[], zoomLevel: number, step: number, interpolation?: boolean, filterOptions?: FilterOptions): Promise<CoordinatesElevation[]>;
 }
 //# sourceMappingURL=BatchCalculator.d.ts.map

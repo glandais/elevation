@@ -80,3 +80,36 @@ export interface Attribution {
     readonly text: string;
     readonly url?: string;
 }
+
+/**
+ * Options for Douglas-Peucker filtering of elevation profiles
+ */
+export interface FilterOptions {
+    /**
+     * Maximum allowed perpendicular distance from simplified line in meters
+     * Default: 10 meters
+     */
+    readonly tolerance?: number;
+
+    /**
+     * Elevation exaggeration factor for ECEF coordinate conversion
+     * Higher values emphasize elevation differences more
+     * Default: 3
+     */
+    readonly zExaggeration?: number;
+
+    /**
+     * Whether filtering is enabled
+     * Default: false
+     */
+    readonly enabled?: boolean;
+}
+
+/**
+ * 3D vector in ECEF (Earth-Centered, Earth-Fixed) coordinates
+ */
+export interface Vector3D {
+    readonly x: number;
+    readonly y: number;
+    readonly z: number;
+}

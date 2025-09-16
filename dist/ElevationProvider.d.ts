@@ -1,4 +1,4 @@
-import { Coordinates, CoordinatesElevation, ElevationProviderConfig, Attribution } from './types';
+import { Coordinates, CoordinatesElevation, ElevationProviderConfig, Attribution, FilterOptions } from './types';
 /**
  * Main API class for retrieving elevation data from geographic coordinates
  */
@@ -42,8 +42,9 @@ export declare class ElevationProvider {
      * @param path - Array of coordinates defining the path
      * @param step - Distance between elevation points in meters
      * @param interpolation - Use bilinear interpolation for smoother results (default: true)
+     * @param filterOptions - Optional Douglas-Peucker filtering options
      */
-    getElevationsAlong(path: Coordinates[], step: number, interpolation?: boolean): Promise<CoordinatesElevation[]>;
+    getElevationsAlong(path: Coordinates[], step: number, interpolation?: boolean, filterOptions?: FilterOptions): Promise<CoordinatesElevation[]>;
     /**
      * Clear tile cache
      */

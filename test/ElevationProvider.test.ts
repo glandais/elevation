@@ -373,6 +373,21 @@ describe('ElevationProvider', () => {
                 ).rejects.toThrow('Step is too small');
             });
 
+            it('should use default interpolation parameter', async () => {
+                const coord1 = { latitude: 45.0, longitude: 0.0 };
+                const coord2 = { latitude: 45.001, longitude: 0.001 };
+                mockCalculator.getElevation.mockResolvedValue(100);
+
+                // Test default interpolation (should be true)
+                await provider.getElevationsBetween(coord1, coord2, 50);
+
+                expect(mockCalculator.getElevation).toHaveBeenCalledWith(
+                    expect.any(Object),
+                    expect.any(Number),
+                    true // default interpolation
+                );
+            });
+
             it('should handle points closer than step size', async () => {
                 const coord1 = { latitude: 45.0, longitude: 0.0 };
                 const coord2 = { latitude: 45.0001, longitude: 0.0001 };
@@ -447,6 +462,23 @@ describe('ElevationProvider', () => {
 
                 await expect(provider.getElevationsAlong(path, 0.5, true)).rejects.toThrow(
                     'Step is too small'
+                );
+            });
+
+            it('should use default interpolation parameter', async () => {
+                const path: Coordinates[] = [
+                    { latitude: 45.0, longitude: 0.0 },
+                    { latitude: 45.001, longitude: 0.001 },
+                ];
+                mockCalculator.getElevation.mockResolvedValue(100);
+
+                // Test default interpolation (should be true)
+                await provider.getElevationsAlong(path, 50);
+
+                expect(mockCalculator.getElevation).toHaveBeenCalledWith(
+                    expect.any(Object),
+                    expect.any(Number),
+                    true // default interpolation
                 );
             });
 

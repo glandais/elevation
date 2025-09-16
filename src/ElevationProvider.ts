@@ -5,6 +5,7 @@ import type {
     CoordinatesElevation,
     ElevationProviderConfig,
     Attribution,
+    FilterOptions,
 } from './types';
 
 /**
@@ -123,17 +124,20 @@ export class ElevationProvider {
      * @param path - Array of coordinates defining the path
      * @param step - Distance between elevation points in meters
      * @param interpolation - Use bilinear interpolation for smoother results (default: true)
+     * @param filterOptions - Optional Douglas-Peucker filtering options
      */
     public async getElevationsAlong(
         path: Coordinates[],
         step: number,
-        interpolation: boolean = true
+        interpolation: boolean = true,
+        filterOptions?: FilterOptions
     ): Promise<CoordinatesElevation[]> {
         return this.batchCalculator.getElevationsAlong(
             path,
             this.config.zoomLevel,
             step,
-            interpolation
+            interpolation,
+            filterOptions
         );
     }
 

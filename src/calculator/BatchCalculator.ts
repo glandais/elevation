@@ -1,5 +1,6 @@
-import { Coordinates, CoordinatesElevation } from 'src/types';
+import { Coordinates, CoordinatesElevation, FilterOptions } from '../types';
 import { ElevationCalculator } from './ElevationCalculator';
+import { DouglasPeucker } from '../utils/DouglasPeucker';
 
 export class BatchCalculator {
     private readonly elevationCalculator: ElevationCalculator;
@@ -193,12 +194,14 @@ export class BatchCalculator {
      * @param zoomLevel - Tile zoom level (0-15)
      * @param step - Distance between elevation points in meters
      * @param interpolation - Use bilinear interpolation for smoother results (default: true)
+     * @param filterOptions - Optional filtering options using Douglas-Peucker algorithm
      */
     public async getElevationsAlong(
         path: Coordinates[],
         zoomLevel: number,
         step: number,
-        interpolation: boolean = true
+        interpolation: boolean = true,
+        filterOptions?: FilterOptions
     ): Promise<CoordinatesElevation[]> {
         // Validate inputs
         if (path.length < 2) {
@@ -215,9 +218,19 @@ export class BatchCalculator {
         const elevations = await this.getElevationsFrom(coordinates, zoomLevel, interpolation);
 
         // Combine coordinates with elevations
-        return coordinates.map((coord, index) => ({
+        const coordinatesWithElevation = coordinates.map((coord, index) => ({
             ...coord,
             elevation: elevations[index],
         }));
+
+        // Apply filtering if explicitly enabled
+        if (filterOptions?.enabled === true && coordinatesWithElevation.length > 2) {
+            const tolerance = filterOptions?.tolerance ?? 10;
+            const zExaggeration = filterOptions?.zExaggeration ?? 3;
+
+            return DouglasPeucker.simplify(coordinatesWithElevation, tolerance, zExaggeration);
+        }
+
+        return coordinatesWithElevation;
     }
 }
