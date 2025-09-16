@@ -1,6 +1,7 @@
 import { ElevationCalculator } from '../../src/calculator/ElevationCalculator';
 import { TileManager } from '../../src/tile/TileManager';
-import type { Pixel, Tile, Coordinates } from '../../src/types';
+import * as ElevationFunctions from '../../src/calculator/ElevationFunctions';
+import type { Tile, Coordinates } from '../../src/types';
 
 // Mock TileManager
 jest.mock('../../src/tile/TileManager');
@@ -144,9 +145,8 @@ describe('ElevationCalculator', () => {
             const coords: Coordinates = { latitude: 0, longitude: 0 };
             const zoomLevel = 12;
 
-            // Spy on the private methods to verify the correct execution path
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const toPixelSpy = jest.spyOn(calculator as any, 'toPixel').mockReturnValue({
+            // Spy on the exported toPixel function to verify the correct execution path
+            const toPixelSpy = jest.spyOn(ElevationFunctions, 'toPixel').mockReturnValue({
                 tile: { z: 12, x: 2048, y: 2048 },
                 x: 128,
                 y: 128,
@@ -206,154 +206,6 @@ describe('ElevationCalculator', () => {
             // Clean up spies
             getInterpolatedElevationInternalSpy.mockRestore();
             getElevationFromPixelSpy.mockRestore();
-        });
-    });
-
-    describe('normalizePixel', () => {
-        it('should handle normal pixel coordinates', () => {
-            const pixel: Pixel = {
-                tile: { z: 12, x: 100, y: 200 },
-                x: 128,
-                y: 64,
-            };
-
-            const result = calculator.normalizePixel(pixel);
-
-            expect(result).toEqual({
-                tile: { z: 12, x: 100, y: 200 },
-                x: 128,
-                y: 64,
-            });
-        });
-
-        it('should handle negative x coordinate', () => {
-            const pixel: Pixel = {
-                tile: { z: 12, x: 100, y: 200 },
-                x: -1,
-                y: 128,
-            };
-
-            const result = calculator.normalizePixel(pixel);
-
-            expect(result.x).toBe(255);
-            expect(result.tile.x).toBe(99);
-            expect(result.y).toBe(128);
-            expect(result.tile.y).toBe(200);
-        });
-
-        it('should handle negative y coordinate', () => {
-            const pixel: Pixel = {
-                tile: { z: 12, x: 100, y: 200 },
-                x: 128,
-                y: -1,
-            };
-
-            const result = calculator.normalizePixel(pixel);
-
-            expect(result.x).toBe(128);
-            expect(result.tile.x).toBe(100);
-            expect(result.y).toBe(255);
-            expect(result.tile.y).toBe(199);
-        });
-
-        it('should handle x coordinate >= TILE_SIZE', () => {
-            const pixel: Pixel = {
-                tile: { z: 12, x: 100, y: 200 },
-                x: 256,
-                y: 128,
-            };
-
-            const result = calculator.normalizePixel(pixel);
-
-            expect(result.x).toBe(0);
-            expect(result.tile.x).toBe(101);
-            expect(result.y).toBe(128);
-            expect(result.tile.y).toBe(200);
-        });
-
-        it('should handle y coordinate >= TILE_SIZE', () => {
-            const pixel: Pixel = {
-                tile: { z: 12, x: 100, y: 200 },
-                x: 128,
-                y: 256,
-            };
-
-            const result = calculator.normalizePixel(pixel);
-
-            expect(result.x).toBe(128);
-            expect(result.tile.x).toBe(100);
-            expect(result.y).toBe(0);
-            expect(result.tile.y).toBe(201);
-        });
-
-        it('should clamp tile coordinates to valid range', () => {
-            const pixel: Pixel = {
-                tile: { z: 2, x: 0, y: 0 }, // z=2 means max tile is 3 (2^2 - 1)
-                x: -10,
-                y: -10,
-            };
-
-            const result = calculator.normalizePixel(pixel);
-
-            expect(result.tile.x).toBe(0); // Clamped to minimum
-            expect(result.tile.y).toBe(0); // Clamped to minimum
-            expect(result.tile.z).toBe(2);
-        });
-
-        it('should clamp tile coordinates to maximum range', () => {
-            const pixel: Pixel = {
-                tile: { z: 2, x: 3, y: 3 }, // z=2 means max tile is 3
-                x: 300, // Will cause tile x to exceed bounds
-                y: 300, // Will cause tile y to exceed bounds
-            };
-
-            const result = calculator.normalizePixel(pixel);
-
-            expect(result.tile.x).toBe(3); // Clamped to maximum (2^2 - 1 = 3)
-            expect(result.tile.y).toBe(3); // Clamped to maximum
-            expect(result.tile.z).toBe(2);
-        });
-
-        it('should handle multiple adjustments', () => {
-            const pixel: Pixel = {
-                tile: { z: 4, x: 8, y: 8 }, // z=4 means max tile is 15
-                x: -10,
-                y: 300,
-            };
-
-            const result = calculator.normalizePixel(pixel);
-
-            // x: -10 → 246, tileX: 8-1 = 7
-            expect(result.x).toBe(246);
-            expect(result.tile.x).toBe(7);
-
-            // y: 300 → 44, tileY: 8+1 = 9
-            expect(result.y).toBe(44);
-            expect(result.tile.y).toBe(9);
-        });
-
-        it('should handle edge cases at zoom level boundaries', () => {
-            // Test at zoom level 0 (only one tile: 0,0)
-            const pixel0: Pixel = {
-                tile: { z: 0, x: 0, y: 0 },
-                x: -1,
-                y: -1,
-            };
-
-            const result0 = calculator.normalizePixel(pixel0);
-            expect(result0.tile.x).toBe(0); // Clamped to valid range
-            expect(result0.tile.y).toBe(0); // Clamped to valid range
-
-            // Test at zoom level 15 (max zoom)
-            const pixel15: Pixel = {
-                tile: { z: 15, x: 32767, y: 32767 }, // 2^15 - 1 = 32767
-                x: 256,
-                y: 256,
-            };
-
-            const result15 = calculator.normalizePixel(pixel15);
-            expect(result15.tile.x).toBe(32767); // Should remain at max
-            expect(result15.tile.y).toBe(32767); // Should remain at max
         });
     });
 

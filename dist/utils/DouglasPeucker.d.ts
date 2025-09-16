@@ -22,19 +22,5 @@ export declare class DouglasPeucker {
      * @returns Array of points to include in simplified path
      */
     private static simplifyRecursive;
-    /**
-     * Calculate reduction percentage after simplification
-     * @param originalCount - Original number of points
-     * @param simplifiedCount - Number of points after simplification
-     * @returns Reduction percentage (0-100)
-     */
-    static calculateReduction(originalCount: number, simplifiedCount: number): number;
-    /**
-     * Estimate appropriate tolerance based on path characteristics
-     * @param points - Array of coordinates with elevation
-     * @param targetReduction - Desired reduction percentage (0-100, default: 50)
-     * @returns Suggested tolerance in meters
-     */
-    static estimateTolerance(points: CoordinatesElevation[], targetReduction?: number): number;
 }
 //# sourceMappingURL=DouglasPeucker.d.ts.map

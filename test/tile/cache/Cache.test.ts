@@ -1,5 +1,58 @@
 import { Cache } from '../../../src/tile/cache/Cache';
 
+// Extended class for testing protected methods
+class CacheExtended<K, T> extends Cache<K, T> {
+    public has(k: K): boolean {
+        return super.has(k);
+    }
+
+    public getKeys(): string[] {
+        return super.getKeys();
+    }
+
+    public getLRUKeys(count?: number): string[] {
+        return super.getLRUKeys(count);
+    }
+
+    // Expose private methods for testing with different names to avoid conflicts
+    public callRemoveFromLRU(key: string): void {
+        const parent = Object.getPrototypeOf(Object.getPrototypeOf(this));
+        return parent.removeFromLRU.call(this, key);
+    }
+
+    public callDelete(key: string): boolean {
+        const parent = Object.getPrototypeOf(Object.getPrototypeOf(this));
+        return parent.delete.call(this, key);
+    }
+
+    public callEvictLeastRecentlyUsed(): void {
+        const parent = Object.getPrototypeOf(Object.getPrototypeOf(this));
+        return parent.evictLeastRecentlyUsed.call(this);
+    }
+
+    // Expose private properties for testing
+    public getTail(): string | null {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return (this as any).tail;
+    }
+
+    public setTail(value: string | null): void {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (this as any).tail = value;
+    }
+
+    public getLruOrder(): Map<string, { prev: string | null; next: string | null }> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return (this as any).lruOrder;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    public getLock(): any {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return (this as any).lock;
+    }
+}
+
 describe('Cache', () => {
     let cache: Cache<string, string>;
     const mockKeyMapper = (key: string) => key;
@@ -206,34 +259,58 @@ describe('Cache', () => {
 
     describe('has method', () => {
         it('should return false for non-existent key', () => {
-            expect(cache.has('nonexistent')).toBe(false);
+            const extendedCache = new CacheExtended<string, string>(
+                3,
+                mockKeyMapper,
+                mockValueBuilder,
+                mockCleanupFn
+            );
+            expect(extendedCache.has('nonexistent')).toBe(false);
         });
 
         it('should return true for cached key', async () => {
-            await cache.get('key1');
-            expect(cache.has('key1')).toBe(true);
+            const extendedCache = new CacheExtended<string, string>(
+                3,
+                mockKeyMapper,
+                mockValueBuilder,
+                mockCleanupFn
+            );
+            await extendedCache.get('key1');
+            expect(extendedCache.has('key1')).toBe(true);
         });
 
         it('should return false after eviction', async () => {
-            await cache.get('key1');
-            await cache.get('key2');
-            await cache.get('key3');
-            await cache.get('key4'); // Evicts key1
+            const extendedCache = new CacheExtended<string, string>(
+                3,
+                mockKeyMapper,
+                mockValueBuilder,
+                mockCleanupFn
+            );
+            await extendedCache.get('key1');
+            await extendedCache.get('key2');
+            await extendedCache.get('key3');
+            await extendedCache.get('key4'); // Evicts key1
 
-            expect(cache.has('key1')).toBe(false);
-            expect(cache.has('key4')).toBe(true);
+            expect(extendedCache.has('key1')).toBe(false);
+            expect(extendedCache.has('key4')).toBe(true);
         });
     });
 
     describe('clear method', () => {
         it('should clear all cached items', async () => {
-            await cache.get('key1');
-            await cache.get('key2');
+            const extendedCache = new CacheExtended<string, string>(
+                3,
+                mockKeyMapper,
+                mockValueBuilder,
+                mockCleanupFn
+            );
+            await extendedCache.get('key1');
+            await extendedCache.get('key2');
 
-            cache.clear();
+            extendedCache.clear();
 
-            expect(cache.has('key1')).toBe(false);
-            expect(cache.has('key2')).toBe(false);
+            expect(extendedCache.has('key1')).toBe(false);
+            expect(extendedCache.has('key2')).toBe(false);
         });
 
         it('should call cleanup function for all items', async () => {
@@ -261,14 +338,26 @@ describe('Cache', () => {
 
     describe('getKeys method', () => {
         it('should return empty array for empty cache', () => {
-            expect(cache.getKeys()).toEqual([]);
+            const extendedCache = new CacheExtended<string, string>(
+                3,
+                mockKeyMapper,
+                mockValueBuilder,
+                mockCleanupFn
+            );
+            expect(extendedCache.getKeys()).toEqual([]);
         });
 
         it('should return all cached keys', async () => {
-            await cache.get('key1');
-            await cache.get('key2');
+            const extendedCache = new CacheExtended<string, string>(
+                3,
+                mockKeyMapper,
+                mockValueBuilder,
+                mockCleanupFn
+            );
+            await extendedCache.get('key1');
+            await extendedCache.get('key2');
 
-            const keys = cache.getKeys();
+            const keys = extendedCache.getKeys();
             expect(keys).toContain('key1');
             expect(keys).toContain('key2');
             expect(keys).toHaveLength(2);
@@ -277,44 +366,68 @@ describe('Cache', () => {
 
     describe('getLRUKeys method', () => {
         it('should return empty array for empty cache', () => {
-            expect(cache.getLRUKeys()).toEqual([]);
+            const extendedCache = new CacheExtended<string, string>(
+                3,
+                mockKeyMapper,
+                mockValueBuilder,
+                mockCleanupFn
+            );
+            expect(extendedCache.getLRUKeys()).toEqual([]);
         });
 
         it('should return keys in LRU order', async () => {
-            await cache.get('key1');
-            await cache.get('key2');
-            await cache.get('key3');
+            const extendedCache = new CacheExtended<string, string>(
+                3,
+                mockKeyMapper,
+                mockValueBuilder,
+                mockCleanupFn
+            );
+            await extendedCache.get('key1');
+            await extendedCache.get('key2');
+            await extendedCache.get('key3');
 
-            const lruKeys = cache.getLRUKeys();
+            const lruKeys = extendedCache.getLRUKeys();
             expect(lruKeys).toEqual(['key1', 'key2', 'key3']); // From tail (LRU) to head (MRU)
         });
 
         it('should limit returned keys to specified count', async () => {
-            await cache.get('key1');
-            await cache.get('key2');
-            await cache.get('key3');
+            const extendedCache = new CacheExtended<string, string>(
+                3,
+                mockKeyMapper,
+                mockValueBuilder,
+                mockCleanupFn
+            );
+            await extendedCache.get('key1');
+            await extendedCache.get('key2');
+            await extendedCache.get('key3');
 
-            const lruKeys = cache.getLRUKeys(2);
+            const lruKeys = extendedCache.getLRUKeys(2);
             expect(lruKeys).toEqual(['key1', 'key2']); // First 2 from tail (LRU)
             expect(lruKeys).toHaveLength(2);
         });
 
         it('should update order after accessing cached item', async () => {
-            await cache.get('key1');
-            await cache.get('key2');
-            await cache.get('key3');
+            const extendedCache = new CacheExtended<string, string>(
+                3,
+                mockKeyMapper,
+                mockValueBuilder,
+                mockCleanupFn
+            );
+            await extendedCache.get('key1');
+            await extendedCache.get('key2');
+            await extendedCache.get('key3');
 
             // Access key1 to make it most recently used
-            await cache.get('key1');
+            await extendedCache.get('key1');
 
-            const lruKeys = cache.getLRUKeys();
+            const lruKeys = extendedCache.getLRUKeys();
             expect(lruKeys).toEqual(['key2', 'key3', 'key1']); // key2 is now LRU, key1 is MRU
         });
     });
 
     describe('LRU edge cases', () => {
         it('should handle single item cache', async () => {
-            const singleCache = new Cache<string, string>(
+            const singleCache = new CacheExtended<string, string>(
                 1,
                 mockKeyMapper,
                 mockValueBuilder,
@@ -330,10 +443,16 @@ describe('Cache', () => {
         });
 
         it('should handle empty cache operations', () => {
-            expect(cache.getKeys()).toEqual([]);
-            expect(cache.getLRUKeys()).toEqual([]);
-            expect(cache.has('key1')).toBe(false);
-            expect(() => cache.clear()).not.toThrow();
+            const extendedCache = new CacheExtended<string, string>(
+                3,
+                mockKeyMapper,
+                mockValueBuilder,
+                mockCleanupFn
+            );
+            expect(extendedCache.getKeys()).toEqual([]);
+            expect(extendedCache.getLRUKeys()).toEqual([]);
+            expect(extendedCache.has('key1')).toBe(false);
+            expect(() => extendedCache.clear()).not.toThrow();
         });
 
         it('should handle edge case in LRU removal operations', async () => {
@@ -350,21 +469,19 @@ describe('Cache', () => {
 
         it('should handle missing node removal', () => {
             // Try to access private methods if possible for coverage
-            const cacheInstance = cache as unknown as {
-                removeFromLRU?: (key: string) => void;
-                delete?: (key: string) => boolean;
-            };
+            const extendedCache = new CacheExtended<string, string>(
+                3,
+                mockKeyMapper,
+                mockValueBuilder,
+                mockCleanupFn
+            );
 
             // Test removeFromLRU with non-existent key (should not crash)
-            if (cacheInstance.removeFromLRU) {
-                expect(() => cacheInstance.removeFromLRU!('nonexistent')).not.toThrow();
-            }
+            expect(() => extendedCache.callRemoveFromLRU('nonexistent')).not.toThrow();
 
             // Test delete with non-existent key
-            if (cacheInstance.delete) {
-                const result = cacheInstance.delete('nonexistent');
-                expect(result).toBe(false);
-            }
+            const result = extendedCache.callDelete('nonexistent');
+            expect(result).toBe(false);
         });
     });
 
@@ -474,39 +591,6 @@ describe('Cache', () => {
             expect(result).toBe('test-value');
             expect(emptyBuilder).toHaveBeenCalledTimes(1);
         });
-
-        it('should handle getLoadingCount method', async () => {
-            let loadingCount = 0;
-            let maxLoadingCount = 0;
-
-            const countBuilder = jest.fn().mockImplementation(async (key: string) => {
-                // Record loading count at the start of each operation
-                loadingCount++;
-                maxLoadingCount = Math.max(maxLoadingCount, loadingCount);
-
-                await new Promise(resolve => setTimeout(resolve, 20));
-
-                loadingCount--;
-                return `value-${key}`;
-            });
-
-            const countCache = new Cache<string, string>(2, mockKeyMapper, countBuilder);
-
-            // Start concurrent operations
-            const promises = [countCache.get('key1'), countCache.get('key2')];
-
-            await Promise.all(promises);
-
-            // Verify that we had concurrent operations
-            expect(maxLoadingCount).toBeGreaterThan(0);
-
-            // Test getLoadingCount method directly
-            const lockInstance = (
-                countCache as unknown as { lock: { getLoadingCount: () => number } }
-            ).lock;
-            expect(typeof lockInstance.getLoadingCount).toBe('function');
-            expect(lockInstance.getLoadingCount()).toBe(0); // Should be 0 after completion
-        });
     });
 
     describe('Batch processing coverage', () => {
@@ -537,36 +621,27 @@ describe('Cache', () => {
     describe('Edge case coverage', () => {
         it('should handle Cache eviction with empty tail', async () => {
             // Test the uncovered branch in evictLeastRecentlyUsed (line 189)
-            const emptyCache = new Cache<string, string>(1, mockKeyMapper, mockValueBuilder);
-
-            // Access private method to test the edge case
-            const cacheInstance = emptyCache as unknown as {
-                evictLeastRecentlyUsed: () => void;
-                tail: string | null;
-            };
+            const emptyCache = new CacheExtended<string, string>(
+                1,
+                mockKeyMapper,
+                mockValueBuilder
+            );
 
             // Ensure tail is null
-            cacheInstance.tail = null;
+            emptyCache.setTail(null);
 
             // This should not throw and should handle the null tail gracefully
-            expect(() => cacheInstance.evictLeastRecentlyUsed()).not.toThrow();
+            expect(() => emptyCache.callEvictLeastRecentlyUsed()).not.toThrow();
         });
 
         it('should handle ReentrantLock queue edge case', async () => {
             // Test the uncovered branch in ReentrantLock releaseLoadingSlot (line 99)
             // This is difficult to trigger naturally, but we can test the defensive programming
 
-            const testCache = new Cache<string, string>(1, mockKeyMapper, mockValueBuilder);
+            const testCache = new CacheExtended<string, string>(1, mockKeyMapper, mockValueBuilder);
 
             // Access the lock instance
-            const lockInstance = (
-                testCache as unknown as {
-                    lock: {
-                        waitQueue: (() => void)[];
-                        releaseLoadingSlot: () => void;
-                    };
-                }
-            ).lock;
+            const lockInstance = testCache.getLock();
 
             // Manually add undefined to queue to test the defensive check
             lockInstance.waitQueue.push(undefined as unknown as () => void);
@@ -577,24 +652,22 @@ describe('Cache', () => {
 
         it('should cover removeFromLRU when removing middle node', async () => {
             // Test lines 253-254: removing a node that has a next node
-            const cache = new Cache<string, string>(3, mockKeyMapper, mockValueBuilder);
+            const extendedCache = new CacheExtended<string, string>(
+                3,
+                mockKeyMapper,
+                mockValueBuilder
+            );
 
-            await cache.get('key1'); // Will be tail
-            await cache.get('key2'); // Will be middle
-            await cache.get('key3'); // Will be head
-
-            // Access private method to test specific removal case
-            const cacheInstance = cache as unknown as {
-                removeFromLRU: (key: string) => void;
-                lruOrder: Map<string, { prev: string | null; next: string | null }>;
-            };
+            await extendedCache.get('key1'); // Will be tail
+            await extendedCache.get('key2'); // Will be middle
+            await extendedCache.get('key3'); // Will be head
 
             // Remove middle node (has both prev and next)
-            cacheInstance.removeFromLRU('key2');
+            extendedCache.callRemoveFromLRU('key2');
 
             // Verify the links were updated correctly
-            const key3Node = cacheInstance.lruOrder.get('key3');
-            const key1Node = cacheInstance.lruOrder.get('key1');
+            const key3Node = extendedCache.getLruOrder().get('key3');
+            const key1Node = extendedCache.getLruOrder().get('key1');
 
             expect(key3Node?.next).toBe('key1'); // key3 should now point to key1
             expect(key1Node?.prev).toBe('key3'); // key1 should point back to key3

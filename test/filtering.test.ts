@@ -187,41 +187,6 @@ describe('DouglasPeucker', () => {
         expect(simplified).toEqual(shortPath);
     });
 
-    test('should calculate reduction percentage correctly', () => {
-        const reduction = DouglasPeucker.calculateReduction(100, 25);
-        expect(reduction).toBe(75);
-
-        const noReduction = DouglasPeucker.calculateReduction(50, 50);
-        expect(noReduction).toBe(0);
-
-        const zeroOriginal = DouglasPeucker.calculateReduction(0, 0);
-        expect(zeroOriginal).toBe(0);
-    });
-
-    test('should estimate appropriate tolerance', () => {
-        const flatPath: CoordinatesElevation[] = [
-            { latitude: 0, longitude: 0, elevation: 100 },
-            { latitude: 0.001, longitude: 0.001, elevation: 105 },
-            { latitude: 0.002, longitude: 0.002, elevation: 110 },
-        ];
-
-        const steepPath: CoordinatesElevation[] = [
-            { latitude: 0, longitude: 0, elevation: 0 },
-            { latitude: 0.001, longitude: 0.001, elevation: 500 },
-            { latitude: 0.002, longitude: 0.002, elevation: 1000 },
-        ];
-
-        const flatTolerance = DouglasPeucker.estimateTolerance(flatPath);
-        const steepTolerance = DouglasPeucker.estimateTolerance(steepPath);
-
-        // Steep paths should get higher tolerance
-        expect(steepTolerance).toBeGreaterThan(flatTolerance);
-
-        // Should be within reasonable bounds
-        expect(flatTolerance).toBeGreaterThanOrEqual(5);
-        expect(steepTolerance).toBeLessThanOrEqual(100);
-    });
-
     test('should handle edge case with identical elevations', () => {
         const flatPath: CoordinatesElevation[] = [
             { latitude: 0, longitude: 0, elevation: 100 },
@@ -229,10 +194,7 @@ describe('DouglasPeucker', () => {
             { latitude: 0.002, longitude: 0.002, elevation: 100 },
         ];
 
-        const tolerance = DouglasPeucker.estimateTolerance(flatPath);
-        expect(tolerance).toBe(5); // Should return minimum tolerance
-
-        const simplified = DouglasPeucker.simplify(flatPath, tolerance);
+        const simplified = DouglasPeucker.simplify(flatPath, 5);
         expect(simplified.length).toBeGreaterThanOrEqual(2); // At least start and end
     });
 
@@ -250,21 +212,6 @@ describe('DouglasPeucker', () => {
         expect(simplified.length).toBeGreaterThanOrEqual(2);
         expect(simplified[0]).toEqual(mountainPath[0]);
         expect(simplified[simplified.length - 1]).toEqual(mountainPath[mountainPath.length - 1]);
-    });
-
-    test('should handle edge case with 1 or 2 points in estimateTolerance', () => {
-        const singlePoint: CoordinatesElevation[] = [
-            { latitude: 46.5197, longitude: 9.8544, elevation: 1650 },
-        ];
-
-        const twoPoints: CoordinatesElevation[] = [
-            { latitude: 46.5197, longitude: 9.8544, elevation: 1650 },
-            { latitude: 46.52, longitude: 9.8547, elevation: 1680 },
-        ];
-
-        expect(DouglasPeucker.estimateTolerance(singlePoint)).toBe(10);
-        expect(DouglasPeucker.estimateTolerance(twoPoints)).toBe(10);
-        expect(DouglasPeucker.estimateTolerance([])).toBe(10);
     });
 });
 

@@ -25,26 +25,26 @@ export declare class Cache<K, T> {
      */
     get(k: K): Promise<T>;
     /**
-     * Check if item exists in cache
-     * @param k - Key to check
-     * @returns True if key exists in cache
-     */
-    has(k: K): boolean;
-    /**
      * Clear all cached items
      */
     clear(): void;
     /**
+     * Check if item exists in cache
+     * @param k - Key to check
+     * @returns True if key exists in cache
+     */
+    protected has(k: K): boolean;
+    /**
      * Get all cached keys
      * @returns Array of all cached keys
      */
-    getKeys(): string[];
+    protected getKeys(): string[];
     /**
      * Get the least recently used keys in order
      * @param count - Maximum number of keys to return
      * @returns Array of LRU keys from least to most recently used
      */
-    getLRUKeys(count?: number): string[];
+    protected getLRUKeys(count?: number): string[];
     /**
      * Store item in cache with automatic eviction
      */

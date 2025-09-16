@@ -20,11 +20,6 @@ export declare class ReentrantLock<T> {
      */
     acquire(key: string, fn: () => Promise<T>): Promise<T>;
     /**
-     * Get current number of active operations
-     * @returns Number of operations currently being loaded
-     */
-    getLoadingCount(): number;
-    /**
      * Acquire a loading slot (semaphore acquire)
      */
     private acquireLoadingSlot;

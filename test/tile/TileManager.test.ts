@@ -54,9 +54,10 @@ describe('TileManager', () => {
 
         MockedCache.prototype.get = mockCacheGet;
         MockedCache.prototype.clear = mockCacheClear;
-        MockedCache.prototype.has = jest.fn().mockReturnValue(false);
-        MockedCache.prototype.getKeys = jest.fn().mockReturnValue([]);
-        MockedCache.prototype.getLRUKeys = jest.fn().mockReturnValue([]);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (MockedCache.prototype as any).has = jest.fn().mockReturnValue(false);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (MockedCache.prototype as any).getKeys = jest.fn().mockReturnValue([]);
     });
 
     describe('constructor', () => {

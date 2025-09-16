@@ -15,7 +15,9 @@
                 <h1>@glandais/elevation Demo</h1>
                 <div class="info">
                     Interactive elevation demo with path profiling and chart visualization
-                    <a href="https://github.com/glandais/elevation" target="_blank" rel="noopener">🚀 View on GitHub</a>
+                    <a href="https://github.com/glandais/elevation" target="_blank" rel="noopener"
+                        >🚀 View on GitHub</a
+                    >
                 </div>
             </div>
 
@@ -37,8 +39,22 @@
                             <input type="checkbox" id="enable-smoothing" />
                             <label for="enable-smoothing">Enable</label>
                             <label for="smoothing-window-slider">Window:</label>
-                            <input type="range" id="smoothing-window-slider" min="10" max="200" value="50" step="10" />
-                            <input type="number" id="smoothing-window-input" min="10" max="200" value="50" step="10" />m
+                            <input
+                                type="range"
+                                id="smoothing-window-slider"
+                                min="10"
+                                max="200"
+                                value="50"
+                                step="10"
+                            />
+                            <input
+                                type="number"
+                                id="smoothing-window-input"
+                                min="10"
+                                max="200"
+                                value="50"
+                                step="10"
+                            />m
                         </div>
                     </div>
 
@@ -48,28 +64,48 @@
                             <input type="checkbox" id="enable-filtering" />
                             <label for="enable-filtering">Enable</label>
                             <label for="tolerance-slider">Tolerance:</label>
-                            <input type="range" id="tolerance-slider" min="1" max="100" value="10" step="1" />
-                            <input type="number" id="tolerance-input" min="1" max="100" value="10" step="1" />m
+                            <input
+                                type="range"
+                                id="tolerance-slider"
+                                min="1"
+                                max="100"
+                                value="10"
+                                step="1"
+                            />
+                            <input
+                                type="number"
+                                id="tolerance-input"
+                                min="1"
+                                max="100"
+                                value="10"
+                                step="1"
+                            />m
                         </div>
                         <div class="control-line">
                             <label for="z-exaggeration-slider">Z Exaggeration:</label>
-                            <input type="range" id="z-exaggeration-slider" min="1" max="10" value="3" step="0.5" />
-                            <input type="number" id="z-exaggeration-input" min="1" max="10" value="3" step="0.5" />x
-                        </div>
-                    </div>
-
-                    <div class="section">
-                        <strong>⚡ Actions</strong>
-                        <div class="button-group">
-                            <button id="smart-tolerance" class="secondary">🎯 Smart</button>
-                            <button id="apply-processing" class="primary" disabled>📈 Apply</button>
+                            <input
+                                type="range"
+                                id="z-exaggeration-slider"
+                                min="1"
+                                max="10"
+                                value="3"
+                                step="0.5"
+                            />
+                            <input
+                                type="number"
+                                id="z-exaggeration-input"
+                                min="1"
+                                max="10"
+                                value="3"
+                                step="0.5"
+                            />x
                         </div>
                     </div>
                 </div>
                 <div class="mode-info" id="mode-info">Click anywhere to get elevation</div>
                 <div class="stats-row">
-                    <div class="smoothing-stats" id="smoothing-stats" style="display: none;"></div>
-                    <div class="filter-stats" id="filter-stats" style="display: none;"></div>
+                    <div class="smoothing-stats" id="smoothing-stats" style="display: none"></div>
+                    <div class="filter-stats" id="filter-stats" style="display: none"></div>
                 </div>
             </div>
 

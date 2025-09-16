@@ -22,11 +22,11 @@ export class TileManager {
         );
     }
 
-    async getTile(tileCoords: TileCoordinates): Promise<Tile> {
+    public async getTile(tileCoords: TileCoordinates): Promise<Tile> {
         return await this.cache.get(tileCoords);
     }
 
-    clearCache(): void {
+    public clearCache(): void {
         this.cache.clear();
     }
 }

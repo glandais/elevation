@@ -1,4 +1,4 @@
-import { ElevationProvider, DouglasPeucker, EcefConverter, Vector3D } from '../src/index';
+import { ElevationProvider } from '../src/index';
 import type { ElevationProviderConfig, FilterOptions } from '../src/index';
 
 describe('index exports', () => {
@@ -30,25 +30,6 @@ describe('index exports', () => {
         expect(typeof config.cacheSize).toBe('number');
         expect(typeof config.tileUrlTemplate).toBe('string');
         expect(typeof config.timeout).toBe('number');
-    });
-
-    it('should export filtering utilities', () => {
-        expect(DouglasPeucker).toBeDefined();
-        expect(typeof DouglasPeucker.simplify).toBe('function');
-        expect(typeof DouglasPeucker.estimateTolerance).toBe('function');
-        expect(typeof DouglasPeucker.calculateReduction).toBe('function');
-
-        expect(EcefConverter).toBeDefined();
-        expect(typeof EcefConverter.toEcef).toBe('function');
-        expect(typeof EcefConverter.convertBatch).toBe('function');
-
-        expect(Vector3D).toBeDefined();
-        expect(typeof Vector3D).toBe('function');
-        // Test constructor
-        const vector = new Vector3D(1, 2, 3);
-        expect(vector.x).toBe(1);
-        expect(vector.y).toBe(2);
-        expect(vector.z).toBe(3);
     });
 
     it('should export FilterOptions type correctly', () => {

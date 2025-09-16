@@ -15,7 +15,7 @@ export class Vector3D {
         const dx = this.x - other.x;
         const dy = this.y - other.y;
         const dz = this.z - other.z;
-        return Math.sqrt(dx * dx + dy * dy + dz * dz);
+        return Math.hypot(dx, dy, dz);
     }
 
     /**
@@ -61,7 +61,7 @@ export class Vector3D {
      * Calculate the magnitude (length) of the vector
      */
     public magnitude(): number {
-        return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
+        return Math.hypot(this.x, this.y, this.z);
     }
 
     /**

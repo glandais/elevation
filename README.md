@@ -473,6 +473,11 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 See [CHANGELOG.md](CHANGELOG.md) for version history and updates.
 
+## TODO
+
+[ ] Consider WebWorker support for large batch operations
+[ ] Add streaming/progressive loading for large paths
+
 ---
 
 **Data Attribution**: Elevation data from multiple sources including SRTM, GMTED, NED and ETOPO1. Data processing by Mapzen/Tilezen. See https://github.com/tilezen/joerd for details.

@@ -1,5 +1,5 @@
 /* eslint-env browser */
-/* global L, Chart, alert */
+/* global L, Chart */
 
 // Initialize the map
 const map = L.map('map').setView([47.2, -1.5], 12); // France (Nantes area)
@@ -36,8 +36,6 @@ const toleranceSlider = document.getElementById('tolerance-slider');
 const toleranceInput = document.getElementById('tolerance-input');
 const zExaggerationSlider = document.getElementById('z-exaggeration-slider');
 const zExaggerationInput = document.getElementById('z-exaggeration-input');
-const smartToleranceBtn = document.getElementById('smart-tolerance');
-const applyProcessingBtn = document.getElementById('apply-processing');
 const filterStats = document.getElementById('filter-stats');
 
 // State
@@ -133,28 +131,6 @@ function getFilterOptions() {
     };
 }
 
-async function applySmartTolerance() {
-    if (!originalElevationProfile || originalElevationProfile.length < 3) {
-        alert('Please create a path with 2+ points first');
-        return;
-    }
-
-    try {
-        const estimatedTolerance =
-            window.Elevation.DouglasPeucker.estimateTolerance(originalElevationProfile);
-        toleranceSlider.value = estimatedTolerance;
-        toleranceInput.value = estimatedTolerance;
-
-        // Auto-apply processing if enabled
-        if (enableFilteringCheckbox.checked || enableSmoothingCheckbox.checked) {
-            await applyProcessing();
-        }
-    } catch (error) {
-        console.error('Error estimating tolerance:', error);
-        alert('Error estimating tolerance: ' + error.message);
-    }
-}
-
 async function applyProcessing() {
     if (!originalElevationProfile || originalElevationProfile.length < 3) {
         return;
@@ -239,8 +215,6 @@ function clearPath() {
 
     // Update button states
     clearPathBtn.disabled = true;
-    applyProcessingBtn.disabled = true;
-    smartToleranceBtn.disabled = true;
 
     // Clear display
     if (currentMode === 'path') {
@@ -487,10 +461,6 @@ async function handlePathClick(e) {
             // Store original profile for filtering
             originalElevationProfile = elevationProfile;
 
-            // Enable processing controls
-            applyProcessingBtn.disabled = false;
-            smartToleranceBtn.disabled = false;
-
             elevationDisplay.textContent = `Elevation profile: ${elevationProfile.length} points`;
             elevationDisplay.className = 'elevation-display success';
 
@@ -560,9 +530,6 @@ zExaggerationInput.addEventListener('input', () => {
         applyProcessing();
     }
 });
-
-smartToleranceBtn.addEventListener('click', applySmartTolerance);
-applyProcessingBtn.addEventListener('click', applyProcessing);
 
 // Map click handler
 map.on('click', function (e) {

@@ -11,19 +11,6 @@ export declare class BatchCalculator {
      */
     getElevationsFrom(coordinates: Iterable<Coordinates>, zoomLevel: number, interpolation?: boolean): Promise<number[]>;
     /**
-     * Generate coordinates between two points at regular intervals
-     * @param coordinate1 - Start coordinate
-     * @param coordinate2 - End coordinate
-     * @param step - Distance between points in meters
-     */
-    private generateCoordinatesBetween;
-    /**
-     * Generate coordinates along a path with multiple waypoints
-     * @param path - Array of coordinates defining the path
-     * @param step - Distance between points in meters
-     */
-    private generateCoordinatesAlong;
-    /**
      * Get elevations along a path defined by multiple coordinates
      * @param path - Array of coordinates defining the path
      * @param zoomLevel - Tile zoom level (0-15)
@@ -33,5 +20,18 @@ export declare class BatchCalculator {
      * @param filterOptions - Optional filtering options using Douglas-Peucker algorithm
      */
     getElevationsAlong(path: Coordinates[], zoomLevel: number, step: number, interpolation?: boolean, smoothingOptions?: SmoothingOptions, filterOptions?: FilterOptions): Promise<CoordinatesElevation[]>;
+    /**
+     * Generate coordinates along a path with multiple waypoints
+     * @param path - Array of coordinates defining the path
+     * @param step - Distance between points in meters
+     */
+    private generateCoordinatesAlong;
+    /**
+     * Generate coordinates between two points at regular intervals
+     * @param coordinate1 - Start coordinate
+     * @param coordinate2 - End coordinate
+     * @param step - Distance between points in meters
+     */
+    private generateCoordinatesBetween;
 }
 //# sourceMappingURL=BatchCalculator.d.ts.map

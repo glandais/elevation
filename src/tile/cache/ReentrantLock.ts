@@ -63,14 +63,6 @@ export class ReentrantLock<T> {
         return promise;
     }
 
-    /**
-     * Get current number of active operations
-     * @returns Number of operations currently being loaded
-     */
-    public getLoadingCount(): number {
-        return this.locks.size;
-    }
-
     // ========================================================================
     // PRIVATE - SEMAPHORE OPERATIONS
     // ========================================================================

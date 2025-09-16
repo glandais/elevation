@@ -1,6 +1,7 @@
 import { ElevationProvider } from '../src/ElevationProvider';
 import { TileManager } from '../src/tile/TileManager';
 import { ElevationCalculator, BatchCalculator } from '../src/calculator';
+import { toPixel } from '../src/calculator/ElevationFunctions';
 import type { ElevationProviderConfig, Tile, Coordinates } from '../src/types';
 
 // Mock dependencies
@@ -11,14 +12,10 @@ const MockedTileManager = TileManager as jest.MockedClass<typeof TileManager>;
 // Create a manual mock that preserves static methods
 const mockCalculator = {
     getElevation: jest.fn(),
-    normalizePixel: jest.fn(),
 };
 
 jest.spyOn(ElevationCalculator.prototype, 'getElevation').mockImplementation(
     mockCalculator.getElevation
-);
-jest.spyOn(ElevationCalculator.prototype, 'normalizePixel').mockImplementation(
-    mockCalculator.normalizePixel
 );
 
 describe('ElevationProvider', () => {
@@ -61,22 +58,12 @@ describe('ElevationProvider', () => {
         mockCalculator.getElevation.mockImplementation(
             async (coords, zoomLevel, _interpolation = true) => {
                 // Let the toPixel method run for validation - it will throw if invalid
-                // Create a calculator instance to call the instance method
-                const validatorCalc = new ElevationCalculator(mockTileManager);
-                (
-                    validatorCalc as unknown as {
-                        toPixel: (coords: Coordinates, z: number) => unknown;
-                    }
-                ).toPixel(coords, zoomLevel);
+                // Use the exported toPixel function from ElevationFunctions
+                toPixel(coords, zoomLevel);
 
                 return 0; // Default return value
             }
         );
-        mockCalculator.normalizePixel.mockReturnValue({
-            tile: { z: 12, x: 100, y: 200 },
-            x: 0,
-            y: 0,
-        });
 
         // Configure mocks to return our instances
         MockedTileManager.mockImplementation(() => mockTileManager);

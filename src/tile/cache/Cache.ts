@@ -83,16 +83,6 @@ export class Cache<K, T> {
     }
 
     /**
-     * Check if item exists in cache
-     * @param k - Key to check
-     * @returns True if key exists in cache
-     */
-    public has(k: K): boolean {
-        const key = this.keyMapper(k);
-        return this.cache.has(key);
-    }
-
-    /**
      * Clear all cached items
      */
     public clear(): void {
@@ -110,14 +100,24 @@ export class Cache<K, T> {
     }
 
     // ========================================================================
-    // PUBLIC API - INSPECTION METHODS
+    // PROTECTED API - INSPECTION METHODS
     // ========================================================================
+
+    /**
+     * Check if item exists in cache
+     * @param k - Key to check
+     * @returns True if key exists in cache
+     */
+    protected has(k: K): boolean {
+        const key = this.keyMapper(k);
+        return this.cache.has(key);
+    }
 
     /**
      * Get all cached keys
      * @returns Array of all cached keys
      */
-    public getKeys(): string[] {
+    protected getKeys(): string[] {
         return Array.from(this.cache.keys());
     }
 
@@ -126,7 +126,7 @@ export class Cache<K, T> {
      * @param count - Maximum number of keys to return
      * @returns Array of LRU keys from least to most recently used
      */
-    public getLRUKeys(count: number = 10): string[] {
+    protected getLRUKeys(count: number = 10): string[] {
         const result: string[] = [];
         let current = this.tail; // Start from tail (least recently used)
 
