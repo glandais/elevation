@@ -31,12 +31,23 @@
                             <button id="path-mode" class="secondary">🛤️ Path</button>
                             <button id="clear-path" class="danger" disabled>🗑️ Clear</button>
                         </div>
+                        <div class="button-group">
+                            <input
+                                type="file"
+                                id="gpx-file-input"
+                                accept=".gpx"
+                                style="display: none"
+                            />
+                            <button id="gpx-upload-btn" class="secondary">📁 Load GPX</button>
+                            <button id="load-sample-btn" class="secondary">📋 Example GPX</button>
+                        </div>
+                        <div id="gpx-status" class="gpx-status"></div>
                     </div>
 
                     <div class="section">
                         <strong>📊 Smoothing</strong>
                         <div class="control-line">
-                            <input type="checkbox" id="enable-smoothing" />
+                            <input type="checkbox" id="enable-smoothing" checked />
                             <label for="enable-smoothing">Enable</label>
                             <label for="smoothing-window-slider">Window:</label>
                             <input
@@ -44,7 +55,7 @@
                                 id="smoothing-window-slider"
                                 min="10"
                                 max="200"
-                                value="50"
+                                value="150"
                                 step="10"
                             />
                             <input
@@ -52,7 +63,7 @@
                                 id="smoothing-window-input"
                                 min="10"
                                 max="200"
-                                value="50"
+                                value="150"
                                 step="10"
                             />m
                         </div>
@@ -61,7 +72,7 @@
                     <div class="section">
                         <strong>🔧 Filtering</strong>
                         <div class="control-line">
-                            <input type="checkbox" id="enable-filtering" />
+                            <input type="checkbox" id="enable-filtering" checked />
                             <label for="enable-filtering">Enable</label>
                             <label for="tolerance-slider">Tolerance:</label>
                             <input
@@ -103,10 +114,6 @@
                     </div>
                 </div>
                 <div class="mode-info" id="mode-info">Click anywhere to get elevation</div>
-                <div class="stats-row">
-                    <div class="smoothing-stats" id="smoothing-stats" style="display: none"></div>
-                    <div class="filter-stats" id="filter-stats" style="display: none"></div>
-                </div>
             </div>
 
             <!-- Map -->
@@ -133,6 +140,7 @@
         </div>
 
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script src="https://unpkg.com/gpxparser@3.0.8/dist/gpxparser.min.js"></script>
         <script src="dist/index.min.js"></script>
         <script src="demo.js"></script>
     </body>

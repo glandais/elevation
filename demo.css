@@ -89,11 +89,6 @@ body {
     color: #666;
 }
 
-.stats-row {
-    display: flex;
-    gap: 10px;
-    margin-top: 8px;
-}
 
 .map-container {
     background: white;
@@ -202,14 +197,6 @@ h3 {
     font-size: 0.9rem;
 }
 
-.smoothing-stats, .filter-stats {
-    margin-top: 8px;
-    padding: 8px;
-    background: #f0f8ff;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    color: #2c5aa0;
-}
 
 .elevation-display {
     font-weight: 600;
@@ -381,14 +368,6 @@ h3 {
     cursor: pointer;
 }
 
-.filter-stats {
-    background: #f9f9f9;
-    padding: 10px;
-    border-radius: 4px;
-    margin-top: 10px;
-    font-size: 13px;
-    color: #666;
-}
 
 .controls h3 {
     margin: 0 0 10px 0;
@@ -587,4 +566,34 @@ button:disabled {
     font-size: 12px;
     color: #666;
     margin-top: 2px;
+}
+
+/* GPX Upload Styles */
+.gpx-status {
+    font-size: 0.8rem;
+    margin-top: 4px;
+    min-height: 1rem;
+    color: #666;
+}
+
+.gpx-status.loading {
+    color: #ff9800;
+    font-style: italic;
+}
+
+.gpx-status.success {
+    color: #4caf50;
+    font-weight: 500;
+}
+
+.gpx-status.error {
+    color: #f44336;
+    font-weight: 500;
+}
+
+/* Mobile responsive for GPX controls */
+@media (max-width: 480px) {
+    .gpx-status {
+        font-size: 0.75rem;
+    }
 }

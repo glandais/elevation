@@ -1,8 +1,8 @@
 /* eslint-env browser */
-/* global L, Chart */
+/* global L, Chart, gpxParser, FileReader */
 
 // Initialize the map
-const map = L.map('map').setView([47.2, -1.5], 12); // France (Nantes area)
+const map = L.map('map').setView([45.8, 8.6], 7);
 
 // Add OpenStreetMap tile layer
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -24,19 +24,22 @@ const pointModeBtn = document.getElementById('point-mode');
 const pathModeBtn = document.getElementById('path-mode');
 const clearPathBtn = document.getElementById('clear-path');
 
+// GPX Upload elements
+const gpxFileInput = document.getElementById('gpx-file-input');
+const gpxUploadBtn = document.getElementById('gpx-upload-btn');
+const loadSampleBtn = document.getElementById('load-sample-btn');
+const gpxStatus = document.getElementById('gpx-status');
+
 // Smoothing controls
 const enableSmoothingCheckbox = document.getElementById('enable-smoothing');
 const smoothingWindowSlider = document.getElementById('smoothing-window-slider');
 const smoothingWindowInput = document.getElementById('smoothing-window-input');
-const smoothingStats = document.getElementById('smoothing-stats');
-
 // Filter controls
 const enableFilteringCheckbox = document.getElementById('enable-filtering');
 const toleranceSlider = document.getElementById('tolerance-slider');
 const toleranceInput = document.getElementById('tolerance-input');
 const zExaggerationSlider = document.getElementById('z-exaggeration-slider');
 const zExaggerationInput = document.getElementById('z-exaggeration-input');
-const filterStats = document.getElementById('filter-stats');
 
 // State
 let currentMode = 'point'; // 'point' or 'path'
@@ -45,7 +48,6 @@ let pathPoints = [];
 let pathPolyline = null;
 let pathMarkers = [];
 let elevationChart = null;
-let originalElevationProfile = null;
 
 // Utility functions
 function formatElevation(elevation) {
@@ -75,47 +77,6 @@ function syncInputAndSlider(input, slider) {
     input.value = slider.value;
 }
 
-function updateProcessingStats(original, smoothed, filtered) {
-    if (smoothed && enableSmoothingCheckbox.checked) {
-        // Calculate variance to show smoothing effect
-        const originalVariance = calculateVariance(original.map(p => p.elevation));
-        const smoothedVariance = calculateVariance(smoothed.map(p => p.elevation));
-        const varianceReduction = (
-            ((originalVariance - smoothedVariance) / originalVariance) *
-            100
-        ).toFixed(1);
-
-        smoothingStats.innerHTML = `
-            <strong>Smoothing Results:</strong>
-            Variance reduced by ${varianceReduction}% (${originalVariance.toFixed(1)} → ${smoothedVariance.toFixed(1)})
-        `;
-        smoothingStats.style.display = 'block';
-    } else {
-        smoothingStats.style.display = 'none';
-    }
-
-    if (filtered && enableFilteringCheckbox.checked) {
-        const sourceData = smoothed || original;
-        const reduction = (
-            ((sourceData.length - filtered.length) / sourceData.length) *
-            100
-        ).toFixed(1);
-        filterStats.innerHTML = `
-            <strong>Filtering Results:</strong>
-            ${sourceData.length} → ${filtered.length} points (${reduction}% reduction)
-        `;
-        filterStats.style.display = 'block';
-    } else {
-        filterStats.style.display = 'none';
-    }
-}
-
-function calculateVariance(values) {
-    const mean = values.reduce((a, b) => a + b, 0) / values.length;
-    const squareDiffs = values.map(value => Math.pow(value - mean, 2));
-    return squareDiffs.reduce((a, b) => a + b, 0) / values.length;
-}
-
 function getSmoothingOptions() {
     return {
         enabled: enableSmoothingCheckbox.checked,
@@ -131,47 +92,130 @@ function getFilterOptions() {
     };
 }
 
-async function applyProcessing() {
-    if (!originalElevationProfile || originalElevationProfile.length < 3) {
-        return;
+// GPX Upload Functions
+function updateGPXStatus(message, type = '') {
+    gpxStatus.textContent = message;
+    gpxStatus.className = `gpx-status ${type}`;
+}
+
+function handleGPXUpload() {
+    gpxFileInput.click();
+}
+
+// Shared GPX parsing function
+function parseGPXContent(gpxContent) {
+    const gpx = new gpxParser();
+    gpx.parse(gpxContent);
+
+    if (!gpx.tracks || gpx.tracks.length === 0) {
+        throw new Error('No tracks found in GPX file');
     }
 
-    try {
-        const smoothingOptions = getSmoothingOptions();
-        const filterOptions = getFilterOptions();
-        let processedData = originalElevationProfile;
-        let smoothedData = null;
-
-        // Apply both smoothing and filtering in one call if enabled
-        if (smoothingOptions.enabled || filterOptions.enabled) {
-            processedData = await elevationProvider.getElevationsAlong(pathPoints, {
-                step: 25,
-                interpolation: true,
-                smoothingOptions: smoothingOptions.enabled ? smoothingOptions : undefined,
-                filterOptions: filterOptions.enabled ? filterOptions : undefined,
-            });
-
-            // For stats display, we need to show the intermediate smoothed data
-            if (smoothingOptions.enabled) {
-                smoothedData = await elevationProvider.getElevationsAlong(pathPoints, {
-                    step: 25,
-                    interpolation: true,
-                    smoothingOptions,
+    // Extract track points from all tracks
+    const trackPoints = [];
+    gpx.tracks.forEach(track => {
+        if (track.points && track.points.length > 0) {
+            track.points.forEach(point => {
+                trackPoints.push({
+                    latitude: point.lat,
+                    longitude: point.lon,
                 });
-            }
+            });
+        }
+    });
+
+    if (trackPoints.length === 0) {
+        throw new Error('No track points found in GPX file');
+    }
+
+    return trackPoints;
+}
+
+async function loadSampleGPX() {
+    try {
+        updateGPXStatus('Loading sample GPX...', 'loading');
+
+        const response = await fetch('./sample.gpx');
+        if (!response.ok) {
+            throw new Error(`Failed to fetch sample GPX: ${response.status}`);
         }
 
-        createElevationChart(processedData);
-        updateProcessingStats(
-            originalElevationProfile,
-            smoothedData,
-            filterOptions.enabled ? processedData : null
-        );
+        const gpxContent = await response.text();
+        updateGPXStatus('Parsing sample GPX...', 'loading');
+
+        const trackPoints = parseGPXContent(gpxContent);
+
+        updateGPXStatus(`Loaded sample GPX with ${trackPoints.length} points`, 'success');
+        loadGPXTrack(trackPoints);
     } catch (error) {
-        console.error('Error applying processing:', error);
-        elevationDisplay.textContent = `Processing error: ${error.message}`;
-        elevationDisplay.className = 'elevation-display error';
+        console.error('Sample GPX load error:', error);
+        updateGPXStatus(`Error loading sample: ${error.message}`, 'error');
     }
+}
+
+function parseGPXFile(file) {
+    return new Promise((resolve, reject) => {
+        if (!file.name.toLowerCase().endsWith('.gpx')) {
+            reject(new Error('Please select a valid GPX file'));
+            return;
+        }
+
+        updateGPXStatus('Reading GPX file...', 'loading');
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            try {
+                updateGPXStatus('Parsing GPX data...', 'loading');
+
+                const trackPoints = parseGPXContent(e.target.result);
+
+                updateGPXStatus(`Loaded ${trackPoints.length} points from GPX`, 'success');
+                resolve(trackPoints);
+            } catch (error) {
+                reject(new Error(`Failed to parse GPX file: ${error.message}`));
+            }
+        };
+
+        reader.onerror = function () {
+            reject(new Error('Failed to read GPX file'));
+        };
+
+        reader.readAsText(file);
+    });
+}
+
+function loadGPXTrack(trackPoints) {
+    // Switch to path mode
+    setMode('path');
+
+    // Clear existing path
+    clearPath();
+
+    // Set the new path points
+    pathPoints = trackPoints;
+
+    // Create polyline for the track
+    pathPolyline = L.polyline(
+        pathPoints.map(p => [p.latitude, p.longitude]),
+        {
+            color: '#2c5aa0',
+            weight: 3,
+        }
+    ).addTo(map);
+
+    // Enable clear button
+    clearPathBtn.disabled = false;
+
+    // Fit map to track bounds
+    map.fitBounds(pathPolyline.getBounds(), { padding: [20, 20] });
+
+    // Update display
+    coordinatesDisplay.textContent = `GPX track with ${pathPoints.length} points`;
+    elevationDisplay.textContent = 'Calculating elevation profile...';
+    elevationDisplay.className = 'elevation-display loading';
+
+    // Generate elevation profile
+    updateElevationProfile();
 }
 
 // Mode switching
@@ -194,7 +238,6 @@ function setMode(mode) {
 // Clear path
 function clearPath() {
     pathPoints = [];
-    originalElevationProfile = null;
 
     // Remove polyline
     if (pathPolyline) {
@@ -209,12 +252,11 @@ function clearPath() {
     // Hide chart
     chartContainer.classList.remove('visible');
 
-    // Hide processing stats
-    filterStats.style.display = 'none';
-    smoothingStats.style.display = 'none';
-
     // Update button states
     clearPathBtn.disabled = true;
+
+    // Clear GPX status
+    updateGPXStatus('');
 
     // Clear display
     if (currentMode === 'path') {
@@ -222,6 +264,53 @@ function clearPath() {
         coordinatesDisplay.textContent = 'Path coordinates will appear here';
     }
 }
+
+// Debounce utility function
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+async function updateElevationProfile() {
+    if (!pathPoints || pathPoints.length < 2) {
+        return;
+    }
+
+    try {
+        elevationDisplay.textContent = 'Updating elevation profile...';
+        elevationDisplay.className = 'elevation-display loading';
+
+        const smoothingOptions = getSmoothingOptions();
+        const filterOptions = getFilterOptions();
+
+        const elevationProfile = await elevationProvider.getElevationsAlong(pathPoints, {
+            step: 25,
+            interpolation: true,
+            smoothingOptions: smoothingOptions.enabled ? smoothingOptions : undefined,
+            filterOptions: filterOptions.enabled ? filterOptions : undefined,
+        });
+
+        elevationDisplay.textContent = `Elevation profile: ${elevationProfile.length} points`;
+        elevationDisplay.className = 'elevation-display success';
+
+        // Create chart with processed data
+        createElevationChart(elevationProfile);
+    } catch (error) {
+        console.error('Error updating elevation profile:', error);
+        elevationDisplay.textContent = `Error: ${error.message}`;
+        elevationDisplay.className = 'elevation-display error';
+    }
+}
+
+// Debounced version for slider interactions (300ms delay)
+const debouncedUpdateElevationProfile = debounce(updateElevationProfile, 300);
 
 // Calculate elevation profile statistics
 function calculateStats(elevationProfile) {
@@ -304,6 +393,7 @@ function createElevationChart(elevationProfile) {
         },
         options: {
             responsive: true,
+            animation: false,
             scales: {
                 x: {
                     type: 'linear',
@@ -453,19 +543,7 @@ async function handlePathClick(e) {
 
         // If we have 2+ points, generate elevation profile
         if (pathPoints.length >= 2) {
-            const elevationProfile = await elevationProvider.getElevationsAlong(pathPoints, {
-                step: 25,
-                interpolation: true,
-            });
-
-            // Store original profile for filtering
-            originalElevationProfile = elevationProfile;
-
-            elevationDisplay.textContent = `Elevation profile: ${elevationProfile.length} points`;
-            elevationDisplay.className = 'elevation-display success';
-
-            // Create chart (will be processed if smoothing/filtering is enabled)
-            await applyProcessing();
+            await updateElevationProfile();
         } else {
             elevationDisplay.textContent = `Point ${pathPoints.length} added - add more points to see elevation profile`;
             elevationDisplay.className = 'elevation-display success';
@@ -486,49 +564,58 @@ pointModeBtn.addEventListener('click', () => setMode('point'));
 pathModeBtn.addEventListener('click', () => setMode('path'));
 clearPathBtn.addEventListener('click', clearPath);
 
-// Processing control event listeners
-enableSmoothingCheckbox.addEventListener('change', applyProcessing);
-enableFilteringCheckbox.addEventListener('change', applyProcessing);
+// GPX Upload event listeners
+gpxUploadBtn.addEventListener('click', handleGPXUpload);
+loadSampleBtn.addEventListener('click', loadSampleGPX);
+gpxFileInput.addEventListener('change', async function (e) {
+    const file = e.target.files[0];
+    if (!file) {
+        return;
+    }
 
-// Smoothing control event listeners
+    try {
+        const trackPoints = await parseGPXFile(file);
+        loadGPXTrack(trackPoints);
+    } catch (error) {
+        console.error('GPX upload error:', error);
+        updateGPXStatus(error.message, 'error');
+    }
+
+    // Reset file input
+    gpxFileInput.value = '';
+});
+
+// Processing control event listeners (immediate updates for checkboxes)
+enableSmoothingCheckbox.addEventListener('change', updateElevationProfile);
+enableFilteringCheckbox.addEventListener('change', updateElevationProfile);
+
+// Smoothing control event listeners (debounced for sliders/inputs)
 smoothingWindowSlider.addEventListener('input', () => {
     syncInputAndSlider(smoothingWindowInput, smoothingWindowSlider);
-    if (enableSmoothingCheckbox.checked) {
-        applyProcessing();
-    }
+    debouncedUpdateElevationProfile();
 });
 smoothingWindowInput.addEventListener('input', () => {
     syncSliderAndInput(smoothingWindowSlider, smoothingWindowInput);
-    if (enableSmoothingCheckbox.checked) {
-        applyProcessing();
-    }
+    debouncedUpdateElevationProfile();
 });
 
-// Filtering control event listeners
+// Filtering control event listeners (debounced for sliders/inputs)
 toleranceSlider.addEventListener('input', () => {
     syncInputAndSlider(toleranceInput, toleranceSlider);
-    if (enableFilteringCheckbox.checked) {
-        applyProcessing();
-    }
+    debouncedUpdateElevationProfile();
 });
 toleranceInput.addEventListener('input', () => {
     syncSliderAndInput(toleranceSlider, toleranceInput);
-    if (enableFilteringCheckbox.checked) {
-        applyProcessing();
-    }
+    debouncedUpdateElevationProfile();
 });
 
 zExaggerationSlider.addEventListener('input', () => {
     syncInputAndSlider(zExaggerationInput, zExaggerationSlider);
-    if (enableFilteringCheckbox.checked) {
-        applyProcessing();
-    }
+    debouncedUpdateElevationProfile();
 });
 zExaggerationInput.addEventListener('input', () => {
     syncSliderAndInput(zExaggerationSlider, zExaggerationInput);
-    if (enableFilteringCheckbox.checked) {
-        applyProcessing();
-    }
+    debouncedUpdateElevationProfile();
 });
 
 // Map click handler
@@ -541,9 +628,4 @@ map.on('click', function (e) {
 });
 
 // Initialize
-setMode('point');
-console.log('Elevation Library Demo loaded');
-console.log('ElevationProvider available:', typeof elevationProvider);
-console.log('Available methods:', {
-    getElevationsAlong: typeof elevationProvider.getElevationsAlong,
-});
+setMode('path');
