@@ -4,12 +4,15 @@
 export interface Coordinates {
     readonly latitude: number;
     readonly longitude: number;
+    elevation?: number;
 }
-/**
- * Geographic coordinates in WGS84
- */
+
 export interface CoordinatesElevation extends Coordinates {
-    readonly elevation: number;
+    elevation: number;
+}
+
+export function asCoordinatesElevation(coordinates: Coordinates): CoordinatesElevation {
+    return { ...coordinates, elevation: coordinates.elevation ?? 0 };
 }
 
 /**
@@ -18,6 +21,14 @@ export interface CoordinatesElevation extends Coordinates {
 export interface TileCoordinates {
     readonly x: number;
     readonly y: number;
+    readonly z: number;
+}
+
+export interface TileCoordinatesFloat {
+    readonly x: number;
+    readonly y: number;
+    readonly xFloat: number;
+    readonly yFloat: number;
     readonly z: number;
 }
 
@@ -144,9 +155,9 @@ export interface GetElevationOptions {
 }
 
 /**
- * Options for getElevationsFrom method
+ * Options for setElevations method
  */
-export interface GetElevationsFromOptions {
+export interface SetElevationsOptions {
     /**
      * Use bilinear interpolation for smoother results
      * Default: true

@@ -2,7 +2,7 @@ import { Vector3D } from '../src/utils/Vector3D';
 import { EcefConverter } from '../src/utils/EcefConverter';
 import { EARTH_CONSTANTS } from '../src/utils/Constants';
 import { DouglasPeucker } from '../src/utils/DouglasPeucker';
-import { CoordinatesElevation } from '../src/types';
+import { Coordinates, CoordinatesElevation } from '../src/types';
 
 describe('Vector3D', () => {
     test('should calculate distance between two vectors', () => {
@@ -68,7 +68,7 @@ describe('Vector3D', () => {
 
 describe('EcefConverter', () => {
     test('should convert coordinates at equator', () => {
-        const coord: CoordinatesElevation = {
+        const coord: Coordinates = {
             latitude: 0,
             longitude: 0,
             elevation: 0,
@@ -83,7 +83,7 @@ describe('EcefConverter', () => {
     });
 
     test('should apply elevation exaggeration', () => {
-        const coord: CoordinatesElevation = {
+        const coord: Coordinates = {
             latitude: 0,
             longitude: 0,
             elevation: 100,
@@ -98,7 +98,7 @@ describe('EcefConverter', () => {
     });
 
     test('should handle north pole correctly', () => {
-        const coord: CoordinatesElevation = {
+        const coord: Coordinates = {
             latitude: 90,
             longitude: 0,
             elevation: 0,
@@ -113,7 +113,7 @@ describe('EcefConverter', () => {
     });
 
     test('should convert batch of coordinates', () => {
-        const coords: CoordinatesElevation[] = [
+        const coords: Coordinates[] = [
             { latitude: 0, longitude: 0, elevation: 0 },
             { latitude: 45, longitude: 90, elevation: 100 },
         ];
@@ -126,7 +126,7 @@ describe('EcefConverter', () => {
     });
 
     test('should use default zExaggeration when not specified', () => {
-        const coord: CoordinatesElevation = {
+        const coord: Coordinates = {
             latitude: 0,
             longitude: 0,
             elevation: 100,
@@ -140,7 +140,7 @@ describe('EcefConverter', () => {
         expect(ecefWithDefault.z).toBeCloseTo(ecefWithExplicit.z);
 
         // Test convertBatch with default parameter
-        const coords: CoordinatesElevation[] = [coord];
+        const coords: Coordinates[] = [coord];
         const batchDefault = EcefConverter.convertBatch(coords);
         const batchExplicit = EcefConverter.convertBatch(coords, 3);
 

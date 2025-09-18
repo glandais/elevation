@@ -138,7 +138,7 @@ const coordinates = [
     { latitude: 51.5, longitude: -0.1 },
 ];
 
-const elevations = await elevationProvider.getElevationsFrom(coordinates);
+await elevationProvider.setElevations(coordinates);
 console.log('Elevations:', elevations); // [elevation1, elevation2, elevation3]
 ```
 
@@ -249,18 +249,18 @@ const elevation = await elevationProvider.getElevation(47.2, -1.5);
 const rawElevation = await elevationProvider.getElevation(47.2, -1.5, { interpolation: false });
 ```
 
-##### `getElevationsFrom(coordinates: Iterable<Coordinates>, options?: GetElevationsFromOptions): Promise<number[]>`
+##### `setElevations(coordinates: Iterable<Coordinates>, options?: SetElevationsOptions): Promise<void>`
 
 Batch get elevations for multiple coordinates from an iterable.
 
 ```typescript
-const elevations = await elevationProvider.getElevationsFrom([
+await elevationProvider.setElevations([
     { latitude: 47.2, longitude: -1.5 },
     { latitude: 48.8, longitude: 2.3 },
 ]);
 
 // Without interpolation
-const rawElevations = await elevationProvider.getElevationsFrom(coordinates, {
+await elevationProvider.setElevations(coordinates, {
     interpolation: false,
 });
 ```
@@ -350,7 +350,7 @@ interface GetElevationOptions {
     readonly interpolation?: boolean; // Default: true
 }
 
-interface GetElevationsFromOptions {
+interface SetElevationsOptions {
     readonly interpolation?: boolean; // Default: true
 }
 
@@ -416,7 +416,7 @@ const elevation1 = await elevationProvider.getElevation(47.2, -1.5);
 const elevation2 = await elevationProvider.getElevation(47.3, -1.6);
 
 // Better: Batch requests
-const elevations = await elevationProvider.getElevationsFrom([
+await elevationProvider.setElevations([
     { latitude: 47.2, longitude: -1.5 },
     { latitude: 47.3, longitude: -1.6 },
 ]);

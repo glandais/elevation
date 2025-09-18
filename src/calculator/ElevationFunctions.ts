@@ -1,4 +1,4 @@
-import { Coordinates, Pixel } from 'src/types';
+import { Coordinates, Pixel, TileCoordinates, TileCoordinatesFloat } from 'src/types';
 
 const TILE_SIZE = 256;
 
@@ -65,13 +65,7 @@ export function normalizePixel(pixel: Pixel): Pixel {
     return { tile: { z, x: tileX, y: tileY }, x, y };
 }
 
-/**
- * Convert WGS84 coordinates to Web Mercator tile pixel coordinates
- * @param coords - WGS84 latitude/longitude coordinates
- * @param z - Zoom level (0-15)
- * @returns Pixel coordinates within the appropriate tile
- */
-export function toPixel(coords: Coordinates, z: number): Pixel {
+export function toTileCoordinatesFloat(coords: Coordinates, z: number): TileCoordinatesFloat {
     // Input validation
     if (!isValidLatitude(coords.latitude)) {
         throw new Error(
@@ -93,23 +87,50 @@ export function toPixel(coords: Coordinates, z: number): Pixel {
     const xFloat = ((coords.longitude + 180) / 360) * n;
     const yFloat = ((1 - Math.log(Math.tan(lat) + 1 / Math.cos(lat)) / Math.PI) / 2) * n;
 
-    let tileX = Math.floor(xFloat);
-    let tileY = Math.floor(yFloat);
+    let x = Math.floor(xFloat);
+    let y = Math.floor(yFloat);
 
     // Clamp tile coordinates to valid range for the zoom level
     const maxTile = n - 1;
-    tileX = Math.max(0, Math.min(maxTile, tileX));
-    tileY = Math.max(0, Math.min(maxTile, tileY));
+    x = Math.max(0, Math.min(maxTile, x));
+    y = Math.max(0, Math.min(maxTile, y));
+
+    return {
+        x,
+        y,
+        xFloat,
+        yFloat,
+        z,
+    };
+}
+
+export function toTileCoordinates(coords: Coordinates, z: number): TileCoordinates {
+    const tile = toTileCoordinatesFloat(coords, z);
+    return {
+        x: tile.x,
+        y: tile.y,
+        z: tile.z,
+    };
+}
+
+/**
+ * Convert WGS84 coordinates to Web Mercator tile pixel coordinates
+ * @param coords - WGS84 latitude/longitude coordinates
+ * @param z - Zoom level (0-15)
+ * @returns Pixel coordinates within the appropriate tile
+ */
+export function toPixel(coords: Coordinates, z: number): Pixel {
+    const tile = toTileCoordinatesFloat(coords, z);
 
     // Calculate pixel coordinates within the tile
-    const x = Math.floor((xFloat - tileX) * TILE_SIZE);
-    const y = Math.floor((yFloat - tileY) * TILE_SIZE);
+    const x = Math.floor((tile.xFloat - tile.x) * TILE_SIZE);
+    const y = Math.floor((tile.yFloat - tile.y) * TILE_SIZE);
 
     return {
         tile: {
             z,
-            x: tileX,
-            y: tileY,
+            x: tile.x,
+            y: tile.y,
         },
         x: Math.max(0, Math.min(TILE_SIZE - 1, x)),
         y: Math.max(0, Math.min(TILE_SIZE - 1, y)),

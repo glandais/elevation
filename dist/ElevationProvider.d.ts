@@ -1,4 +1,4 @@
-import { Coordinates, CoordinatesElevation, ElevationProviderConfig, Attribution, GetElevationOptions, GetElevationsFromOptions, GetElevationsAlongOptions } from './types';
+import { Coordinates, CoordinatesElevation, ElevationProviderConfig, Attribution, SetElevationsOptions, GetElevationsAlongOptions, GetElevationOptions } from './types';
 /**
  * Main API class for retrieving elevation data from geographic coordinates
  */
@@ -28,7 +28,7 @@ export declare class ElevationProvider {
      * @param coordinates - Iteratable of coordinates
      * @param options - Optional parameters
      */
-    getElevationsFrom(coordinates: Iterable<Coordinates>, options?: GetElevationsFromOptions): Promise<number[]>;
+    setElevations(coordinates: Iterable<Coordinates>, options?: SetElevationsOptions): Promise<void>;
     /**
      * Get elevations along a path defined by multiple coordinates
      * @param path - Array of coordinates defining the path

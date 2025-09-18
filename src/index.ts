@@ -11,6 +11,6 @@ export type {
     FilterOptions,
     SmoothingOptions,
     GetElevationOptions,
-    GetElevationsFromOptions,
+    SetElevationsOptions,
     GetElevationsAlongOptions,
 } from './types';

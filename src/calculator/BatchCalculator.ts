@@ -1,10 +1,19 @@
-import { Coordinates, CoordinatesElevation, FilterOptions, SmoothingOptions } from '../types';
+import {
+    asCoordinatesElevation,
+    Coordinates,
+    CoordinatesElevation,
+    FilterOptions,
+    SmoothingOptions,
+    TileCoordinates,
+} from '../types';
 import { ElevationCalculator } from './ElevationCalculator';
 import { DouglasPeucker } from '../utils/DouglasPeucker';
 import { ElevationSmoother } from '../utils/ElevationSmoother';
 import { Distance } from '../utils/Distance';
 import { ALGORITHM_CONSTANTS } from '../utils/Constants';
 import { createLogger, Logger, LogLevel } from '../utils';
+import { Flux } from './Reactive';
+import { toTileCoordinates } from './ElevationFunctions';
 
 const logger: Logger = createLogger('calculator/BatchCalculator');
 
@@ -15,94 +24,46 @@ export class BatchCalculator {
         this.elevationCalculator = elevationCalculator;
     }
 
-    /**
-     * Get elevations for multiple coordinates from an iterable
-     * @param coordinates - Iterable of coordinates (array, generator, etc.)
-     * @param zoomLevel - Tile zoom level (0-15)
-     * @param interpolation - Use bilinear interpolation for smoother results (default: true)
-     */
-    public async getElevationsFrom(
+    public async setElevations(
         coordinates: Iterable<Coordinates>,
         zoomLevel: number,
-        interpolation: boolean = true
-    ): Promise<number[]> {
-        const batchSize = 100;
-        const allResults: number[] = [];
-        let batch: Promise<number>[] = [];
-        let totalProcessed = 0;
-        let batchNumber = 0;
+        interpolation: boolean
+    ): Promise<void> {
+        const pointsPerTile: Record<string, Coordinates[]> = {};
+        const tileCoordinatesMap: Map<string, TileCoordinates> = new Map();
 
-        logger.info(
-            'Batch processing started - zoom: %d, interpolation: %s, batchSize: %d',
-            zoomLevel,
-            interpolation,
-            batchSize
-        );
+        // Helper function to create a unique key for tile coordinates
+        const tileKey = (tile: TileCoordinates): string => `${tile.z}/${tile.x}/${tile.y}`;
 
-        const timer = 'batch-elevations';
-        logger.timeLevel(LogLevel.INFO, timer);
+        // Populate pointsPerTile by grouping coordinates by their tile
+        for (const point of coordinates) {
+            const tile = toTileCoordinates(point, zoomLevel);
+            const key = tileKey(tile);
 
-        for (const coordinate of coordinates) {
-            const elevation = this.elevationCalculator.getElevation(
-                coordinate,
-                zoomLevel,
-                interpolation
-            );
-            batch.push(elevation);
-
-            // Process batch when it reaches the batch size
-            if (batch.length >= batchSize) {
-                batchNumber++;
-                logger.debug('Processing batch %d (%d coordinates)', batchNumber, batch.length);
-
-                const batchTimer = `batch-${batchNumber}`;
-                logger.timeLevel(LogLevel.DEBUG, batchTimer);
-
-                const batchResults = await Promise.all(batch);
-                allResults.push(...batchResults);
-                totalProcessed += batch.length;
-
-                logger.timeEndLevel(LogLevel.DEBUG, batchTimer);
-                logger.debug(
-                    'Batch %d completed - processed: %d, total: %d',
-                    batchNumber,
-                    batch.length,
-                    totalProcessed
-                );
-
-                batch = [];
+            let array = pointsPerTile[key];
+            if (!array) {
+                array = [];
+                pointsPerTile[key] = array;
+                tileCoordinatesMap.set(key, tile);
             }
+            array.push(point);
         }
 
-        // Process any remaining items in the last batch
-        if (batch.length > 0) {
-            batchNumber++;
-            logger.debug('Processing final batch %d (%d coordinates)', batchNumber, batch.length);
-
-            const batchTimer = `batch-${batchNumber}`;
-            logger.timeLevel(LogLevel.DEBUG, batchTimer);
-
-            const batchResults = await Promise.all(batch);
-            allResults.push(...batchResults);
-            totalProcessed += batch.length;
-
-            logger.timeEndLevel(LogLevel.DEBUG, batchTimer);
-            logger.debug(
-                'Final batch %d completed - processed: %d, total: %d',
-                batchNumber,
-                batch.length,
-                totalProcessed
-            );
-        }
-
-        logger.timeEndLevel(LogLevel.INFO, timer);
-        logger.info(
-            'Batch processing completed - total coordinates: %d, batches: %d',
-            totalProcessed,
-            batchNumber
-        );
-
-        return allResults;
+        const tiles = Array.from(tileCoordinatesMap.values());
+        await Flux.from(tiles)
+            .mapAsync(async tile => {
+                const key = tileKey(tile);
+                const points: Coordinates[] = pointsPerTile[key];
+                for (const point of points) {
+                    point.elevation = await this.elevationCalculator.getElevation(
+                        point,
+                        zoomLevel,
+                        interpolation
+                    );
+                }
+                return tile;
+            }, 10)
+            .countProcessed();
     }
 
     /**
@@ -110,7 +71,7 @@ export class BatchCalculator {
      * @param path - Array of coordinates defining the path
      * @param zoomLevel - Tile zoom level (0-15)
      * @param step - Distance between elevation points in meters
-     * @param interpolation - Use bilinear interpolation for smoother results (default: true)
+     * @param interpolation - Use bilinear interpolation for smoother results
      * @param smoothingOptions - Optional distance-based smoothing options
      * @param filterOptions - Optional filtering options using Douglas-Peucker algorithm
      */
@@ -118,7 +79,7 @@ export class BatchCalculator {
         path: Coordinates[],
         zoomLevel: number,
         step: number,
-        interpolation: boolean = true,
+        interpolation: boolean,
         smoothingOptions?: SmoothingOptions,
         filterOptions?: FilterOptions
     ): Promise<CoordinatesElevation[]> {
@@ -148,58 +109,46 @@ export class BatchCalculator {
         const coordGenTimer = 'coordinate-generation';
         logger.timeLevel(LogLevel.DEBUG, coordGenTimer);
 
-        const coordinates = Array.from(this.generateCoordinatesAlong(path, step));
+        let coordinates = Array.from(this.generateCoordinatesAlong(path, step));
 
         logger.timeEndLevel(LogLevel.DEBUG, coordGenTimer);
         logger.debug('Generated %d coordinates along path', coordinates.length);
 
         // Get elevations for all coordinates
         logger.debug('Fetching elevations for generated coordinates');
-        const elevations = await this.getElevationsFrom(coordinates, zoomLevel, interpolation);
+        await this.setElevations(coordinates, zoomLevel, interpolation);
 
-        // Combine coordinates with elevations
-        let coordinatesWithElevation = coordinates.map((coord, index) => ({
-            ...coord,
-            elevation: elevations[index],
-        }));
-
-        logger.debug(
-            'Combined coordinates with elevations - points: %d',
-            coordinatesWithElevation.length
-        );
+        logger.debug('Combined coordinates with elevations - points: %d', coordinates.length);
 
         // Apply smoothing if explicitly enabled
-        if (smoothingOptions?.enabled === true && coordinatesWithElevation.length >= 3) {
+        if (smoothingOptions?.enabled === true && coordinates.length >= 3) {
             const windowSize = smoothingOptions.windowSize ?? 50;
-            const originalCount = coordinatesWithElevation.length;
+            const originalCount = coordinates.length;
 
             logger.debug('Applying elevation smoothing - windowSize: %dm', windowSize);
             const smoothTimer = 'smoothing';
             logger.timeLevel(LogLevel.DEBUG, smoothTimer);
 
-            coordinatesWithElevation = ElevationSmoother.smooth(
-                coordinatesWithElevation,
-                windowSize
-            );
+            coordinates = ElevationSmoother.smooth(coordinates, windowSize);
 
             logger.timeEndLevel(LogLevel.DEBUG, smoothTimer);
             logger.debug(
                 'Smoothing completed - points: %d → %d',
                 originalCount,
-                coordinatesWithElevation.length
+                coordinates.length
             );
         } else if (smoothingOptions?.enabled === true) {
             logger.debug(
                 'Smoothing skipped - insufficient points: %d (minimum: 3)',
-                coordinatesWithElevation.length
+                coordinates.length
             );
         }
 
         // Apply filtering if explicitly enabled
-        if (filterOptions?.enabled === true && coordinatesWithElevation.length > 2) {
+        if (filterOptions?.enabled === true && coordinates.length > 2) {
             const tolerance = filterOptions?.tolerance ?? 10;
             const zExaggeration = filterOptions?.zExaggeration ?? 3;
-            const originalCount = coordinatesWithElevation.length;
+            const originalCount = coordinates.length;
 
             logger.debug(
                 'Applying Douglas-Peucker filtering - tolerance: %d, zExaggeration: %d',
@@ -209,18 +158,14 @@ export class BatchCalculator {
             const filterTimer = 'filtering';
             logger.timeLevel(LogLevel.DEBUG, filterTimer);
 
-            const filtered = DouglasPeucker.simplify(
-                coordinatesWithElevation,
-                tolerance,
-                zExaggeration
-            );
+            const filtered = DouglasPeucker.simplify(coordinates, tolerance, zExaggeration);
 
             logger.timeEndLevel(LogLevel.DEBUG, filterTimer);
             logger.debug(
-                'Filtering completed - points: %d → %d (%.1f%% reduction)',
+                'Filtering completed - points: %d → %d (%f % reduction)',
                 originalCount,
                 filtered.length,
-                ((originalCount - filtered.length) / originalCount) * 100
+                (((originalCount - filtered.length) / originalCount) * 100).toFixed(1)
             );
 
             logger.timeEndLevel(LogLevel.INFO, pathTimer);
@@ -236,7 +181,7 @@ export class BatchCalculator {
         } else if (filterOptions?.enabled === true) {
             logger.debug(
                 'Filtering skipped - insufficient points: %d (minimum: 3)',
-                coordinatesWithElevation.length
+                coordinates.length
             );
         }
 
@@ -244,12 +189,12 @@ export class BatchCalculator {
         logger.info(
             'Path processing completed - waypoints: %d, final points: %d, smoothed: %s, filtered: %s',
             path.length,
-            coordinatesWithElevation.length,
+            coordinates.length,
             smoothingOptions?.enabled,
             filterOptions?.enabled
         );
 
-        return coordinatesWithElevation;
+        return coordinates;
     }
 
     /**
@@ -260,7 +205,7 @@ export class BatchCalculator {
     private *generateCoordinatesAlong(
         path: Coordinates[],
         step: number
-    ): Generator<Coordinates, void, unknown> {
+    ): Generator<CoordinatesElevation, void, unknown> {
         if (path.length < 2) {
             logger.debug('Path generation skipped - insufficient waypoints: %d', path.length);
             return;
@@ -269,7 +214,7 @@ export class BatchCalculator {
         logger.debug('Generating coordinates - waypoints: %d, step: %dm', path.length, step);
 
         // Yield the first point
-        yield path[0];
+        yield asCoordinatesElevation(path[0]);
         let totalGenerated = 1;
         let skippedSegments = 0;
 
@@ -328,15 +273,15 @@ export class BatchCalculator {
         coordinate1: Coordinates,
         coordinate2: Coordinates,
         step: number
-    ): Generator<Coordinates, void, unknown> {
+    ): Generator<CoordinatesElevation, void, unknown> {
         const distance = Distance.haversine(coordinate1, coordinate2);
 
         // Always yield the start point
-        yield coordinate1;
+        yield asCoordinatesElevation(coordinate1);
 
         if (distance <= step) {
             // If distance is less than step, just yield the end point
-            yield coordinate2;
+            yield asCoordinatesElevation(coordinate2);
             return;
         }
 
@@ -352,10 +297,11 @@ export class BatchCalculator {
             yield {
                 latitude: coordinate1.latitude + latDiff * fraction,
                 longitude: coordinate1.longitude + lonDiff * fraction,
+                elevation: 0,
             };
         }
 
         // Always yield the end point
-        yield coordinate2;
+        yield asCoordinatesElevation(coordinate2);
     }
 }

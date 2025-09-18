@@ -1,4 +1,4 @@
-import { CoordinatesElevation } from '../types';
+import { Coordinates } from '../types';
 import { Vector3D } from './Vector3D';
 import { EARTH_CONSTANTS } from './Constants';
 
@@ -13,13 +13,13 @@ export class EcefConverter {
      * @param zExaggeration - Elevation exaggeration factor (default: 3)
      * @returns ECEF coordinates as Vector3D
      */
-    public static toEcef(coordinates: CoordinatesElevation, zExaggeration: number = 3): Vector3D {
+    public static toEcef(coordinates: Coordinates, zExaggeration: number = 3): Vector3D {
         // Convert degrees to radians
         const latRad = (coordinates.latitude * Math.PI) / 180;
         const lonRad = (coordinates.longitude * Math.PI) / 180;
 
         // Apply elevation exaggeration
-        const elevationExaggerated = zExaggeration * coordinates.elevation;
+        const elevationExaggerated = zExaggeration * (coordinates.elevation || 0);
 
         // Calculate prime vertical radius of curvature
         const sinLat = Math.sin(latRad);
@@ -46,10 +46,7 @@ export class EcefConverter {
      * @param zExaggeration - Elevation exaggeration factor (default: 3)
      * @returns Array of ECEF coordinates as Vector3D
      */
-    public static convertBatch(
-        coordinates: CoordinatesElevation[],
-        zExaggeration: number = 3
-    ): Vector3D[] {
+    public static convertBatch(coordinates: Coordinates[], zExaggeration: number = 3): Vector3D[] {
         return coordinates.map(coord => this.toEcef(coord, zExaggeration));
     }
 }

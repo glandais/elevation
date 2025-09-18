@@ -226,89 +226,6 @@ describe('ElevationProvider', () => {
             provider = new ElevationProvider();
         });
 
-        describe('getElevationsFrom', () => {
-            it('should get elevations for multiple coordinates', async () => {
-                const coordinates = [
-                    { latitude: 0, longitude: 0 },
-                    { latitude: 1, longitude: 1 },
-                    { latitude: -1, longitude: -1 },
-                ];
-
-                const elevations = await provider.getElevationsFrom(coordinates);
-
-                expect(elevations).toHaveLength(3);
-                elevations.forEach(elevation => {
-                    expect(typeof elevation).toBe('number');
-                    expect(isFinite(elevation)).toBe(true);
-                });
-            });
-
-            it('should handle empty array', async () => {
-                const elevations = await provider.getElevationsFrom([], { interpolation: true });
-                expect(elevations).toEqual([]);
-            });
-
-            it('should handle single coordinate', async () => {
-                const coordinates = [{ latitude: 0, longitude: 0 }];
-                const elevations = await provider.getElevationsFrom(coordinates, {
-                    interpolation: false,
-                });
-
-                expect(elevations).toHaveLength(1);
-                expect(typeof elevations[0]).toBe('number');
-            });
-
-            it('should reject if any coordinate is invalid', async () => {
-                const coordinates = [
-                    { latitude: 0, longitude: 0 },
-                    { latitude: 90, longitude: 0 }, // Invalid
-                ];
-
-                await expect(provider.getElevationsFrom(coordinates.values())).rejects.toThrow();
-            });
-
-            it('should handle large batch processing (triggers batch logic)', async () => {
-                // Create array with more than 100 coordinates to trigger batch processing
-                const coordinates = Array.from({ length: 150 }, (_, i) => ({
-                    latitude: i % 85,
-                    longitude: i % 180,
-                }));
-
-                mockCalculator.getElevation.mockResolvedValue(100);
-
-                const elevations = await provider.getElevationsFrom(coordinates);
-
-                expect(elevations).toHaveLength(150);
-                elevations.forEach(elevation => {
-                    expect(typeof elevation).toBe('number');
-                    expect(elevation).toBe(100);
-                });
-
-                // Should have called getElevation for each coordinate
-                expect(mockCalculator.getElevation).toHaveBeenCalledTimes(150);
-            });
-
-            it('should handle batch with remainder (tests last batch processing)', async () => {
-                // Create array with 105 coordinates to test remainder processing (100 + 5)
-                const coordinates = Array.from({ length: 105 }, (_, i) => ({
-                    latitude: i % 85,
-                    longitude: i % 180,
-                }));
-
-                mockCalculator.getElevation.mockResolvedValue(200);
-
-                const elevations = await provider.getElevationsFrom(coordinates);
-
-                expect(elevations).toHaveLength(105);
-                elevations.forEach(elevation => {
-                    expect(typeof elevation).toBe('number');
-                    expect(elevation).toBe(200);
-                });
-
-                expect(mockCalculator.getElevation).toHaveBeenCalledTimes(105);
-            });
-        });
-
         describe('getElevationsAlong', () => {
             it('should get elevations along a path', async () => {
                 const path: Coordinates[] = [
@@ -647,7 +564,6 @@ describe('ElevationProvider', () => {
 
         beforeEach(() => {
             mockBatchCalculator = {
-                getElevationsFrom: jest.fn(),
                 getElevationsAlong: jest.fn(),
             } as unknown as jest.Mocked<BatchCalculator>;
 
@@ -698,6 +614,69 @@ describe('ElevationProvider', () => {
                 undefined, // smoothingOptions
                 undefined // no filterOptions
             );
+        });
+    });
+
+    describe('setElevations', () => {
+        let provider: ElevationProvider;
+        let mockBatchCalculator: jest.Mocked<BatchCalculator>;
+
+        beforeEach(() => {
+            provider = new ElevationProvider();
+
+            // Mock the batchCalculator's setElevations method
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            mockBatchCalculator = (provider as any).batchCalculator as jest.Mocked<BatchCalculator>;
+            mockBatchCalculator.setElevations = jest.fn().mockResolvedValue(undefined);
+        });
+
+        it('should call batchCalculator.setElevations with default interpolation', async () => {
+            const coordinates = [
+                { latitude: 40.7128, longitude: -74.006, elevation: 0 },
+                { latitude: 51.5074, longitude: -0.1278, elevation: 0 },
+            ];
+
+            await provider.setElevations(coordinates);
+
+            expect(mockBatchCalculator.setElevations).toHaveBeenCalledWith(
+                coordinates,
+                12, // default zoomLevel from provider config
+                true // default interpolation
+            );
+        });
+
+        it('should respect interpolation option when false', async () => {
+            const coordinates = [{ latitude: 40.7128, longitude: -74.006, elevation: 0 }];
+
+            await provider.setElevations(coordinates, { interpolation: false });
+
+            expect(mockBatchCalculator.setElevations).toHaveBeenCalledWith(
+                coordinates,
+                12, // default zoomLevel from provider config
+                false // explicit interpolation setting
+            );
+        });
+
+        it('should handle empty coordinates array', async () => {
+            const coordinates: Coordinates[] = [];
+
+            await provider.setElevations(coordinates);
+
+            expect(mockBatchCalculator.setElevations).toHaveBeenCalledWith(coordinates, 12, true);
+        });
+
+        it('should work with generators', async () => {
+            function* coordinateGenerator() {
+                yield { latitude: 40.7128, longitude: -74.006, elevation: 0 };
+                yield { latitude: 51.5074, longitude: -0.1278, elevation: 0 };
+            }
+
+            await provider.setElevations(coordinateGenerator());
+
+            expect(mockBatchCalculator.setElevations).toHaveBeenCalled();
+            const callArgs = mockBatchCalculator.setElevations.mock.calls[0];
+            expect(callArgs[1]).toBe(12); // zoomLevel
+            expect(callArgs[2]).toBe(true); // default interpolation
         });
     });
 });

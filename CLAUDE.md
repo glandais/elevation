@@ -308,7 +308,7 @@ describe('Protected method tests', () => {
 #### Core API Testing
 
 - **ElevationProvider Methods**: All public methods with options interfaces
-- **Batch Operations**: getElevationsFrom, getElevationsAlong
+- **Batch Operations**: setElevations, getElevationsAlong
 - **Configuration Validation**: Constructor options and validation logic
 - **Cache Management**: clearCache functionality
 

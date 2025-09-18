@@ -3,23 +3,17 @@ import { ElevationCalculator } from './ElevationCalculator';
 export declare class BatchCalculator {
     private readonly elevationCalculator;
     constructor(elevationCalculator: ElevationCalculator);
-    /**
-     * Get elevations for multiple coordinates from an iterable
-     * @param coordinates - Iterable of coordinates (array, generator, etc.)
-     * @param zoomLevel - Tile zoom level (0-15)
-     * @param interpolation - Use bilinear interpolation for smoother results (default: true)
-     */
-    getElevationsFrom(coordinates: Iterable<Coordinates>, zoomLevel: number, interpolation?: boolean): Promise<number[]>;
+    setElevations(coordinates: Iterable<Coordinates>, zoomLevel: number, interpolation: boolean): Promise<void>;
     /**
      * Get elevations along a path defined by multiple coordinates
      * @param path - Array of coordinates defining the path
      * @param zoomLevel - Tile zoom level (0-15)
      * @param step - Distance between elevation points in meters
-     * @param interpolation - Use bilinear interpolation for smoother results (default: true)
+     * @param interpolation - Use bilinear interpolation for smoother results
      * @param smoothingOptions - Optional distance-based smoothing options
      * @param filterOptions - Optional filtering options using Douglas-Peucker algorithm
      */
-    getElevationsAlong(path: Coordinates[], zoomLevel: number, step: number, interpolation?: boolean, smoothingOptions?: SmoothingOptions, filterOptions?: FilterOptions): Promise<CoordinatesElevation[]>;
+    getElevationsAlong(path: Coordinates[], zoomLevel: number, step: number, interpolation: boolean, smoothingOptions?: SmoothingOptions, filterOptions?: FilterOptions): Promise<CoordinatesElevation[]>;
     /**
      * Generate coordinates along a path with multiple waypoints
      * @param path - Array of coordinates defining the path

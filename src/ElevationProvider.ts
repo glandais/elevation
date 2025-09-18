@@ -5,9 +5,9 @@ import type {
     CoordinatesElevation,
     ElevationProviderConfig,
     Attribution,
-    GetElevationOptions,
-    GetElevationsFromOptions,
+    SetElevationsOptions,
     GetElevationsAlongOptions,
+    GetElevationOptions,
 } from './types';
 import { createLogger, Logger } from './utils';
 
@@ -93,16 +93,12 @@ export class ElevationProvider {
      * @param coordinates - Iteratable of coordinates
      * @param options - Optional parameters
      */
-    public async getElevationsFrom(
+    public async setElevations(
         coordinates: Iterable<Coordinates>,
-        options?: GetElevationsFromOptions
-    ): Promise<number[]> {
+        options?: SetElevationsOptions
+    ): Promise<void> {
         const interpolation = options?.interpolation ?? true;
-        return this.batchCalculator.getElevationsFrom(
-            coordinates,
-            this.config.zoomLevel,
-            interpolation
-        );
+        await this.batchCalculator.setElevations(coordinates, this.config.zoomLevel, interpolation);
     }
 
     /**

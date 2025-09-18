@@ -1,4 +1,4 @@
-import { Coordinates, Pixel } from 'src/types';
+import { Coordinates, Pixel, TileCoordinates, TileCoordinatesFloat } from 'src/types';
 /**
  * Convert degrees to radians
  */
@@ -16,6 +16,8 @@ export declare function isValidLongitude(lon: number): boolean;
  */
 export declare function isValidZoomLevel(zoom: number): boolean;
 export declare function normalizePixel(pixel: Pixel): Pixel;
+export declare function toTileCoordinatesFloat(coords: Coordinates, z: number): TileCoordinatesFloat;
+export declare function toTileCoordinates(coords: Coordinates, z: number): TileCoordinates;
 /**
  * Convert WGS84 coordinates to Web Mercator tile pixel coordinates
  * @param coords - WGS84 latitude/longitude coordinates

@@ -101,7 +101,7 @@ test.describe('ElevationProvider Browser Tests', () => {
         );
     });
 
-    test('should getElevationsFromArray with interpolation', async ({ page }) => {
+    test('should setElevations with interpolation', async ({ page }) => {
         const readmeExampleResult = await page.evaluate(async () => {
             try {
                 const elevationProvider: ElevationProvider =
@@ -156,12 +156,12 @@ test.describe('ElevationProvider Browser Tests', () => {
 
                 console.log(`Created array with ${array.length} coordinates`);
 
-                const elevations = await elevationProvider.getElevationsFrom(array, {
+                await elevationProvider.setElevations(array, {
                     interpolation: true,
                 });
                 return {
                     success: true,
-                    elevations,
+                    array,
                     coordinateCount: array.length,
                 };
             } catch (error) {
@@ -173,14 +173,14 @@ test.describe('ElevationProvider Browser Tests', () => {
         });
 
         expect(readmeExampleResult.success).toBe(true);
-        expect(readmeExampleResult.elevations).toBeDefined();
-        expect(Array.isArray(readmeExampleResult.elevations)).toBe(true);
-        expect(readmeExampleResult.elevations?.length).toBe(150);
+        expect(readmeExampleResult.array).toBeDefined();
+        expect(Array.isArray(readmeExampleResult.array)).toBe(true);
+        expect(readmeExampleResult.array?.length).toBe(150);
         expect(readmeExampleResult.coordinateCount).toBe(150);
 
         console.log(
-            'getElevationsFromArray with interpolation executed successfully:',
-            `${readmeExampleResult.coordinateCount} coordinates processed, got ${readmeExampleResult.elevations?.length} elevations`
+            'setElevationsFrom with interpolation executed successfully:',
+            `${readmeExampleResult.coordinateCount} coordinates processed, got ${readmeExampleResult.array?.length} elevations`
         );
     });
 

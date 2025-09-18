@@ -2,7 +2,7 @@ import { BatchCalculator } from '../../src/calculator/BatchCalculator';
 import { ElevationCalculator } from '../../src/calculator/ElevationCalculator';
 import { TileManager } from '../../src/tile/TileManager';
 import { Distance } from '../../src/utils/Distance';
-import type { Coordinates } from '../../src/types';
+import { asCoordinatesElevation, type Coordinates } from '../../src/types';
 
 // Mock dependencies
 jest.mock('../../src/tile/TileManager');
@@ -48,189 +48,6 @@ describe('BatchCalculator', () => {
         MockedElevationCalculator.mockImplementation(() => mockElevationCalculator);
 
         batchCalculator = new BatchCalculator(mockElevationCalculator);
-    });
-
-    describe('getElevationsFrom', () => {
-        function* createCoordinatesIterator(count: number): Generator<Coordinates> {
-            for (let i = 0; i < count; i++) {
-                yield {
-                    latitude: i % 85,
-                    longitude: i % 180,
-                };
-            }
-        }
-
-        it('should process small batch without triggering batch logic', async () => {
-            const coordinatesIterator = createCoordinatesIterator(50);
-            mockElevationCalculator.getElevation.mockResolvedValue(100);
-
-            const elevations = await batchCalculator.getElevationsFrom(
-                coordinatesIterator,
-                12 // zoomLevel
-            );
-
-            expect(elevations).toHaveLength(50);
-            elevations.forEach(elevation => {
-                expect(elevation).toBe(100);
-            });
-
-            expect(mockElevationCalculator.getElevation).toHaveBeenCalledTimes(50);
-        });
-
-        it('should handle large batch processing (triggers batch size logic)', async () => {
-            // Create iterator with more than 100 coordinates to trigger batch processing
-            const coordinatesIterator = createCoordinatesIterator(150);
-            mockElevationCalculator.getElevation.mockResolvedValue(200);
-
-            const elevations = await batchCalculator.getElevationsFrom(
-                coordinatesIterator,
-                12, // zoomLevel
-                false // interpolation
-            );
-
-            expect(elevations).toHaveLength(150);
-            elevations.forEach(elevation => {
-                expect(elevation).toBe(200);
-            });
-
-            expect(mockElevationCalculator.getElevation).toHaveBeenCalledTimes(150);
-        });
-
-        it('should handle batch with remainder (tests last batch processing)', async () => {
-            // Create iterator with 105 coordinates to test remainder processing (100 + 5)
-            const coordinatesIterator = createCoordinatesIterator(105);
-            mockElevationCalculator.getElevation.mockResolvedValue(300);
-
-            const elevations = await batchCalculator.getElevationsFrom(
-                coordinatesIterator,
-                12, // zoomLevel
-                false // interpolation
-            );
-
-            expect(elevations).toHaveLength(105);
-            elevations.forEach(elevation => {
-                expect(elevation).toBe(300);
-            });
-
-            expect(mockElevationCalculator.getElevation).toHaveBeenCalledTimes(105);
-        });
-
-        it('should handle empty iterator', async () => {
-            const coordinatesIterator = createCoordinatesIterator(0);
-
-            const elevations = await batchCalculator.getElevationsFrom(
-                coordinatesIterator,
-                12, // zoomLevel
-                true // interpolation
-            );
-
-            expect(elevations).toHaveLength(0);
-            expect(elevations).toEqual([]);
-            expect(mockElevationCalculator.getElevation).not.toHaveBeenCalled();
-        });
-
-        it('should handle single coordinate iterator', async () => {
-            const coordinatesIterator = createCoordinatesIterator(1);
-            mockElevationCalculator.getElevation.mockResolvedValue(50);
-
-            const elevations = await batchCalculator.getElevationsFrom(
-                coordinatesIterator,
-                10, // zoomLevel
-                true // interpolation
-            );
-
-            expect(elevations).toHaveLength(1);
-            expect(elevations[0]).toBe(50);
-            expect(mockElevationCalculator.getElevation).toHaveBeenCalledTimes(1);
-        });
-
-        it('should pass correct parameters to ElevationCalculator', async () => {
-            const testCoords = { latitude: 40.7128, longitude: -74.006 };
-
-            function* testIterator(): Generator<Coordinates> {
-                yield testCoords;
-            }
-
-            mockElevationCalculator.getElevation.mockResolvedValue(150);
-
-            await batchCalculator.getElevationsFrom(
-                testIterator(),
-                8, // zoomLevel
-                false // interpolation
-            );
-
-            expect(mockElevationCalculator.getElevation).toHaveBeenCalledWith(
-                testCoords,
-                8, // zoomLevel
-                false // interpolation
-            );
-        });
-
-        it('should propagate errors from elevation calculation', async () => {
-            const coordinatesIterator = createCoordinatesIterator(1);
-            mockElevationCalculator.getElevation.mockRejectedValue(new Error('Calculation failed'));
-
-            await expect(
-                batchCalculator.getElevationsFrom(
-                    coordinatesIterator,
-                    12, // zoomLevel
-                    true // interpolation
-                )
-            ).rejects.toThrow('Calculation failed');
-        });
-
-        it('should handle multiple batches correctly (200 coordinates)', async () => {
-            // This will trigger 2 full batches of 100 each
-            const coordinatesIterator = createCoordinatesIterator(200);
-            mockElevationCalculator.getElevation.mockResolvedValue(400);
-
-            const elevations = await batchCalculator.getElevationsFrom(
-                coordinatesIterator,
-                12, // zoomLevel
-                true // interpolation
-            );
-
-            expect(elevations).toHaveLength(200);
-            elevations.forEach(elevation => {
-                expect(elevation).toBe(400);
-            });
-
-            expect(mockElevationCalculator.getElevation).toHaveBeenCalledTimes(200);
-        });
-
-        it('should handle exactly 100 coordinates (boundary case)', async () => {
-            // Test the boundary case of exactly one full batch
-            const coordinatesIterator = createCoordinatesIterator(100);
-            mockElevationCalculator.getElevation.mockResolvedValue(500);
-
-            const elevations = await batchCalculator.getElevationsFrom(
-                coordinatesIterator,
-                12, // zoomLevel
-                true // interpolation
-            );
-
-            expect(elevations).toHaveLength(100);
-            elevations.forEach(elevation => {
-                expect(elevation).toBe(500);
-            });
-
-            expect(mockElevationCalculator.getElevation).toHaveBeenCalledTimes(100);
-        });
-
-        it('should work with array as iterable', async () => {
-            const coordinates: Coordinates[] = [
-                { latitude: 45.0, longitude: 0.0 },
-                { latitude: 46.0, longitude: 1.0 },
-                { latitude: 47.0, longitude: 2.0 },
-            ];
-            mockElevationCalculator.getElevation.mockResolvedValue(250);
-
-            const elevations = await batchCalculator.getElevationsFrom(coordinates, 10, true);
-
-            expect(elevations).toHaveLength(3);
-            expect(elevations).toEqual([250, 250, 250]);
-            expect(mockElevationCalculator.getElevation).toHaveBeenCalledTimes(3);
-        });
     });
 
     describe('distance calculation', () => {
@@ -392,7 +209,8 @@ describe('BatchCalculator', () => {
             const result = await batchCalculator.getElevationsAlong(
                 path,
                 10,
-                30 // Small step to ensure multiple points per segment
+                30, // Small step to ensure multiple points per segment
+                true
             );
 
             // Check for duplicates
@@ -479,8 +297,8 @@ describe('BatchCalculator', () => {
                 const points: Coordinates[] = Array.from(generator);
 
                 expect(points.length).toBeGreaterThan(2);
-                expect(points[0]).toEqual(coord1);
-                expect(points[points.length - 1]).toEqual(coord2);
+                expect(points[0]).toEqual(asCoordinatesElevation(coord1));
+                expect(points[points.length - 1]).toEqual(asCoordinatesElevation(coord2));
 
                 // Check intermediate points are properly interpolated
                 for (let i = 1; i < points.length - 1; i++) {
@@ -506,8 +324,8 @@ describe('BatchCalculator', () => {
                 const points: Coordinates[] = Array.from(generator);
 
                 expect(points).toHaveLength(2);
-                expect(points[0]).toEqual(coord1);
-                expect(points[1]).toEqual(coord2);
+                expect(points[0]).toEqual(asCoordinatesElevation(coord1));
+                expect(points[1]).toEqual(asCoordinatesElevation(coord2));
             });
         });
 
@@ -525,7 +343,7 @@ describe('BatchCalculator', () => {
                 const points: Coordinates[] = Array.from(generator);
 
                 expect(points.length).toBeGreaterThan(3);
-                expect(points[0]).toEqual(path[0]);
+                expect(points[0]).toEqual(asCoordinatesElevation(path[0]));
 
                 // Last point should be close to the path endpoint
                 const lastPoint = points[points.length - 1] as Coordinates;
@@ -546,7 +364,7 @@ describe('BatchCalculator', () => {
                 const points: Coordinates[] = Array.from(generator);
 
                 // Should skip the tiny segment
-                expect(points[0]).toEqual(path[0]);
+                expect(points[0]).toEqual(asCoordinatesElevation(path[0]));
 
                 // Should have points from the longer segment
                 expect(points.length).toBeGreaterThan(2);
@@ -796,6 +614,155 @@ describe('BatchCalculator', () => {
             expect(result).toBeDefined();
             expect(Array.isArray(result)).toBe(true);
             // With only 2 points, smoothing shouldn't be applied regardless of enabled setting
+        });
+    });
+
+    describe('setElevations', () => {
+        it('should set elevations for all provided coordinates', async () => {
+            const coordinates = [
+                { latitude: 40.7128, longitude: -74.006, elevation: 0 },
+                { latitude: 40.713, longitude: -74.007, elevation: 0 },
+                { latitude: 51.5074, longitude: -0.1278, elevation: 0 },
+                { latitude: 51.5076, longitude: -0.128, elevation: 0 },
+            ];
+
+            mockElevationCalculator.getElevation.mockImplementation(async (coord: Coordinates) => {
+                // Return different elevations based on latitude
+                return coord.latitude > 50 ? 100 : 50;
+            });
+
+            await batchCalculator.setElevations(coordinates, 12, true);
+
+            // Verify elevations were set
+            expect(coordinates[0].elevation).toBe(50);
+            expect(coordinates[1].elevation).toBe(50);
+            expect(coordinates[2].elevation).toBe(100);
+            expect(coordinates[3].elevation).toBe(100);
+
+            // Verify getElevation was called for each coordinate
+            expect(mockElevationCalculator.getElevation).toHaveBeenCalledTimes(4);
+        });
+
+        it('should group coordinates by tile for efficient processing', async () => {
+            // Create coordinates that will be in the same tile
+            const coordinates = [
+                { latitude: 40.7128, longitude: -74.006, elevation: 0 },
+                { latitude: 40.7129, longitude: -74.0061, elevation: 0 },
+                { latitude: 40.7127, longitude: -74.0059, elevation: 0 },
+            ];
+
+            mockElevationCalculator.getElevation.mockResolvedValue(75);
+
+            await batchCalculator.setElevations(coordinates, 12, false);
+
+            // All elevations should be set
+            coordinates.forEach(coord => {
+                expect(coord.elevation).toBe(75);
+            });
+
+            expect(mockElevationCalculator.getElevation).toHaveBeenCalledTimes(3);
+        });
+
+        it('should handle empty coordinate list', async () => {
+            const coordinates: Array<{ latitude: number; longitude: number; elevation: number }> =
+                [];
+
+            await batchCalculator.setElevations(coordinates, 12, true);
+
+            expect(mockElevationCalculator.getElevation).not.toHaveBeenCalled();
+            expect(coordinates).toHaveLength(0);
+        });
+
+        it('should handle single coordinate', async () => {
+            const coordinates = [{ latitude: 40.7128, longitude: -74.006, elevation: 0 }];
+
+            mockElevationCalculator.getElevation.mockResolvedValue(25);
+
+            await batchCalculator.setElevations(coordinates, 10, true);
+
+            expect(coordinates[0].elevation).toBe(25);
+            expect(mockElevationCalculator.getElevation).toHaveBeenCalledTimes(1);
+            expect(mockElevationCalculator.getElevation).toHaveBeenCalledWith(
+                coordinates[0],
+                10,
+                true
+            );
+        });
+
+        it('should handle coordinates across multiple tiles', async () => {
+            // Create coordinates that will be in different tiles
+            const coordinates = [
+                { latitude: 0, longitude: 0, elevation: 0 }, // Equator
+                { latitude: 40.7128, longitude: -74.006, elevation: 0 }, // New York
+                { latitude: 51.5074, longitude: -0.1278, elevation: 0 }, // London
+                { latitude: -33.8688, longitude: 151.2093, elevation: 0 }, // Sydney
+            ];
+
+            mockElevationCalculator.getElevation.mockImplementation(async (coord: Coordinates) => {
+                // Return elevation based on latitude ranges
+                if (coord.latitude < -30) {
+                    return 10;
+                }
+                if (coord.latitude < 10) {
+                    return 20;
+                }
+                if (coord.latitude < 45) {
+                    return 30;
+                }
+                return 40;
+            });
+
+            await batchCalculator.setElevations(coordinates, 8, false);
+
+            expect(coordinates[0].elevation).toBe(20); // Equator
+            expect(coordinates[1].elevation).toBe(30); // New York
+            expect(coordinates[2].elevation).toBe(40); // London
+            expect(coordinates[3].elevation).toBe(10); // Sydney
+
+            expect(mockElevationCalculator.getElevation).toHaveBeenCalledTimes(4);
+        });
+
+        it('should respect interpolation parameter', async () => {
+            const coordinates = [
+                { latitude: 40.7128, longitude: -74.006, elevation: 0 },
+                { latitude: 41.7128, longitude: -74.006, elevation: 0 },
+            ];
+
+            mockElevationCalculator.getElevation.mockResolvedValue(60);
+
+            await batchCalculator.setElevations(coordinates, 14, false);
+
+            expect(mockElevationCalculator.getElevation).toHaveBeenCalledWith(
+                coordinates[0],
+                14,
+                false
+            );
+            expect(mockElevationCalculator.getElevation).toHaveBeenCalledWith(
+                coordinates[1],
+                14,
+                false
+            );
+        });
+
+        it('should handle generator as iterable input', async () => {
+            function* coordinateGenerator() {
+                yield { latitude: 40.7128, longitude: -74.006, elevation: 0 };
+                yield { latitude: 51.5074, longitude: -0.1278, elevation: 0 };
+            }
+
+            const coordinates = Array.from(coordinateGenerator());
+            mockElevationCalculator.getElevation.mockResolvedValue(80);
+
+            await batchCalculator.setElevations(coordinateGenerator(), 12, true);
+
+            // Since we're passing a generator, we need to check the results differently
+            // The generator will be consumed during the process
+            expect(mockElevationCalculator.getElevation).toHaveBeenCalledTimes(2);
+
+            // Set elevations on our saved array for verification
+            await batchCalculator.setElevations(coordinates, 12, true);
+            expect(coordinates[0].elevation).toBe(80);
+            expect(coordinates[1].elevation).toBe(80);
         });
     });
 });

@@ -1,4 +1,4 @@
-import { CoordinatesElevation } from '../types';
+import { Coordinates } from '../types';
 import { Vector3D } from './Vector3D';
 /**
  * ECEF (Earth-Centered, Earth-Fixed) coordinate converter
@@ -11,13 +11,13 @@ export declare class EcefConverter {
      * @param zExaggeration - Elevation exaggeration factor (default: 3)
      * @returns ECEF coordinates as Vector3D
      */
-    static toEcef(coordinates: CoordinatesElevation, zExaggeration?: number): Vector3D;
+    static toEcef(coordinates: Coordinates, zExaggeration?: number): Vector3D;
     /**
      * Convert multiple coordinates to ECEF vectors
      * @param coordinates - Array of geographic coordinates with elevation
      * @param zExaggeration - Elevation exaggeration factor (default: 3)
      * @returns Array of ECEF coordinates as Vector3D
      */
-    static convertBatch(coordinates: CoordinatesElevation[], zExaggeration?: number): Vector3D[];
+    static convertBatch(coordinates: Coordinates[], zExaggeration?: number): Vector3D[];
 }
 //# sourceMappingURL=EcefConverter.d.ts.map
