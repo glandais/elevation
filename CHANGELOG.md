@@ -1,3 +1,11 @@
+# [2.1.0](https://github.com/glandais/elevation/compare/v2.0.2...v2.1.0) (2025-09-18)
+
+
+### Features
+
+* complete setElevations implementation and add Reactive module tests ([60839c0](https://github.com/glandais/elevation/commit/60839c000c1766bfb0ce633f7d077ec97cd62f6c))
+* implement advanced configurable logging system ([5c402b7](https://github.com/glandais/elevation/commit/5c402b76783cff8306d099502307036b2ce391ab))
+
 ## [2.0.2](https://github.com/glandais/elevation/compare/v2.0.1...v2.0.2) (2025-09-16)
 
 
