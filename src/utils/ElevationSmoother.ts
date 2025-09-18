@@ -1,6 +1,9 @@
 import { CoordinatesElevation } from '../types';
 import { Distance } from './Distance';
 import { ALGORITHM_CONSTANTS } from './Constants';
+import { createLogger, Logger, LogLevel } from './Logger';
+
+const logger: Logger = createLogger('utils/ElevationSmoother');
 
 /**
  * Distance-based elevation smoothing using weighted triangular kernel
@@ -17,14 +20,17 @@ export class ElevationSmoother {
         points: CoordinatesElevation[],
         windowSize: number = 50
     ): CoordinatesElevation[] {
+        logger.debug('smooth %s', points.length);
         // Validate inputs
         if (points.length < ALGORITHM_CONSTANTS.MIN_SMOOTHING_POINTS) {
+            logger.debug('too small');
             return points; // Not enough points to smooth
         }
 
         if (windowSize <= 0) {
             throw new Error(`Invalid window size: ${windowSize}. Must be positive`);
         }
+        logger.timeLevel(LogLevel.INFO, 'smooth');
 
         // Calculate cumulative distances for efficient range queries
         const distances = Distance.cumulativeDistances(points);
@@ -40,6 +46,7 @@ export class ElevationSmoother {
                 elevation: smoothedElevation,
             });
         }
+        logger.timeEndLevel(LogLevel.INFO, 'smooth');
 
         return smoothedPoints;
     }

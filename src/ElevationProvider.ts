@@ -9,6 +9,9 @@ import type {
     GetElevationsFromOptions,
     GetElevationsAlongOptions,
 } from './types';
+import { createLogger, Logger } from './utils';
+
+const logger: Logger = createLogger('ElevationProvider');
 
 /**
  * Main API class for retrieving elevation data from geographic coordinates
@@ -32,6 +35,7 @@ export class ElevationProvider {
                 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
             timeout: config.timeout ?? 5000,
         };
+        logger.dir('Config :', this.config);
 
         this.validateConfig();
         this.tileManager = new TileManager(

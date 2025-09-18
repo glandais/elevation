@@ -17,6 +17,7 @@ export declare class TileFetcher {
     /**
      * Fetch a tile image and return both ImageData and ImageBitmap for memory management
      * @param url - The URL of the tile to fetch
+     * @param tileKey - The tile identifier for logging
      * @returns Promise<Tile> - Object containing ImageData and ImageBitmap
      */
     private fetchTile;

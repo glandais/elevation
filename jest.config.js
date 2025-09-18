@@ -3,7 +3,7 @@ module.exports = {
     testEnvironment: 'jsdom',
     collectCoverage: true,
     coverageDirectory: 'coverage',
-    coveragePathIgnorePatterns: ['/node_modules/', '/test/', '/coverage/'],
+    coveragePathIgnorePatterns: ['/node_modules/', '/test/', '/coverage/', '/src/utils/Logger.ts'],
     testMatch: ['**/test/**/*.test.ts', '**/__tests__/**/*.test.ts'],
     testPathIgnorePatterns: ['/node_modules/', '/test/browser/'],
     setupFilesAfterEnv: ['<rootDir>/test/setup.ts'],

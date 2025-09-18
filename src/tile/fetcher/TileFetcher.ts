@@ -1,5 +1,8 @@
 import { Tile, TileCoordinates } from '../../types';
 import { CanvasPool } from './CanvasPool';
+import { createLogger, Logger, LogLevel } from '../../utils';
+
+const logger: Logger = createLogger('tile/fetcher/TileFetcher');
 
 // ============================================================================
 // TILE FETCHER - HTTP Client for Terrain Tiles
@@ -33,8 +36,9 @@ export class TileFetcher {
     // ========================================================================
 
     public async loadTile(tileCoords: TileCoordinates): Promise<Tile> {
+        const tileKey = `${tileCoords.z}/${tileCoords.x}/${tileCoords.y}`;
         const tileUrl = this.getTileUrl(tileCoords);
-        return await this.fetchTile(tileUrl);
+        return await this.fetchTile(tileUrl, tileKey);
     }
 
     // ========================================================================
@@ -51,19 +55,25 @@ export class TileFetcher {
     /**
      * Fetch a tile image and return both ImageData and ImageBitmap for memory management
      * @param url - The URL of the tile to fetch
+     * @param tileKey - The tile identifier for logging
      * @returns Promise<Tile> - Object containing ImageData and ImageBitmap
      */
-    private async fetchTile(url: string): Promise<Tile> {
+    private async fetchTile(url: string, tileKey: string): Promise<Tile> {
+        const fetchTimer = `fetch-${tileKey}`;
+        logger.timeLevel(LogLevel.DEBUG, fetchTimer);
+
         try {
             const response = await this.fetchWithTimeout(url);
+            logger.timeEndLevel(LogLevel.DEBUG, fetchTimer);
 
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
             const blob = await response.blob();
-            return await this.blobToImageDataAndBitmap(blob);
+            return await this.blobToImageDataAndBitmap(blob, tileKey);
         } catch (error) {
+            logger.timeEndLevel(LogLevel.DEBUG, fetchTimer);
             if (error instanceof Error) {
                 throw new Error(`Failed to fetch tile from ${url}: ${error.message}`);
             }
@@ -101,10 +111,12 @@ export class TileFetcher {
      * This approach avoids memory leaks from Image objects and blob URLs
      * Uses canvas pool for efficient resource management
      */
-    private async blobToImageDataAndBitmap(blob: Blob): Promise<Tile> {
+    private async blobToImageDataAndBitmap(blob: Blob, tileKey: string): Promise<Tile> {
         // Acquire canvas from pool
         const canvas = this.canvasPool.acquire();
 
+        const bitmapTimer = `bitmap-${tileKey}`;
+        logger.timeLevel(LogLevel.DEBUG, bitmapTimer);
         try {
             const ctx = canvas.getContext('2d', { willReadFrequently: true });
             if (!ctx) {
@@ -122,8 +134,11 @@ export class TileFetcher {
             ctx.drawImage(bitmap, 0, 0);
             const data = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
 
+            logger.timeEndLevel(LogLevel.DEBUG, bitmapTimer);
+
             return { data, bitmap };
         } catch (error) {
+            logger.timeEndLevel(LogLevel.DEBUG, bitmapTimer);
             throw new Error(
                 `Failed to process image: ${error instanceof Error ? error.message : 'Unknown error'}`
             );

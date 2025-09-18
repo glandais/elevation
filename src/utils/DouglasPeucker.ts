@@ -1,5 +1,8 @@
 import { CoordinatesElevation } from '../types';
 import { EcefConverter } from './EcefConverter';
+import { createLogger, Logger, LogLevel } from './Logger';
+
+const logger: Logger = createLogger('utils/DouglasPeucker');
 
 /**
  * 3D Douglas-Peucker algorithm implementation for elevation profile simplification
@@ -18,9 +21,12 @@ export class DouglasPeucker {
         tolerance: number,
         zExaggeration: number = 3
     ): CoordinatesElevation[] {
+        logger.info('simplify %s', points.length);
         if (points.length <= 2) {
+            logger.warn('too small');
             return [...points]; // Return copy to avoid mutation
         }
+        logger.timeLevel(LogLevel.INFO, 'simplify');
 
         const lastIndex = points.length - 1;
         const simplified: CoordinatesElevation[] = [];
@@ -41,6 +47,8 @@ export class DouglasPeucker {
         // Always include last point
         simplified.push(points[lastIndex]);
 
+        logger.timeEndLevel(LogLevel.INFO, 'simplify');
+        logger.debug('simplified -> %s', simplified.length);
         return simplified;
     }
 

@@ -1,4 +1,6 @@
+import { createLogger, Logger, LogLevel } from '../../utils';
 import { ReentrantLock } from './ReentrantLock';
+const logger: Logger = createLogger('tile/cache/Cache');
 
 // ============================================================================
 // LRU CACHE - Memory-Efficient Caching with Concurrency Control
@@ -68,15 +70,21 @@ export class Cache<K, T> {
             this.moveToFront(key);
             return cachedItem;
         }
+        logger.debug('%s miss', key);
 
         return this.lock.acquire(key, async () => {
             const existing = this.cache.get(key);
             if (existing) {
+                logger.debug('%s Missed at first but now OK', key);
                 this.moveToFront(key);
                 return existing;
             }
 
+            logger.info('%s loading', key);
+            logger.timeLevel(LogLevel.INFO, key);
             const newItem = await this.valueBuilder(k);
+            logger.info('%s loaded', key);
+            logger.timeEndLevel(LogLevel.INFO, key);
             this.set(key, newItem);
             return newItem;
         });
@@ -86,6 +94,7 @@ export class Cache<K, T> {
      * Clear all cached items
      */
     public clear(): void {
+        logger.debug('clear');
         // Call cleanup function for all cached items
         if (this.cleanupFn) {
             for (const value of this.cache.values()) {
@@ -161,6 +170,7 @@ export class Cache<K, T> {
      * Remove item from cache with cleanup
      */
     private delete(key: string): boolean {
+        logger.debug('%s delete', key);
         if (!this.cache.has(key)) {
             return false;
         }

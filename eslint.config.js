@@ -66,6 +66,8 @@ module.exports = [
             sourceType: 'module',
             parser: tsparser,
             globals: {
+                // Build-time constants
+                __DEV__: 'readonly',
                 // Node.js globals
                 module: 'readonly',
                 require: 'readonly',
@@ -77,6 +79,8 @@ module.exports = [
                 window: 'readonly',
                 document: 'readonly',
                 console: 'readonly',
+                performance: 'readonly',
+                Date: 'readonly',
                 fetch: 'readonly',
                 createImageBitmap: 'readonly',
                 DOMException: 'readonly',

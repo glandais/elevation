@@ -7,6 +7,9 @@ export declare class CanvasPool {
     private readonly idleSize;
     private readonly idleTimeout;
     private idleTimer;
+    private totalCreated;
+    private totalAcquired;
+    private totalReleased;
     /**
      * Acquire a canvas from the pool (creates new if none available)
      */

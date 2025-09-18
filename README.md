@@ -499,6 +499,71 @@ npm install
 npm run dev
 ```
 
+### Logging (Development Only)
+
+The library includes a lightweight logging system that is **completely removed in production builds** through build-time dead code elimination. This ensures zero overhead in production while providing helpful debugging information during development.
+
+#### How It Works
+
+- **Build-time constant**: Uses `__DEV__` constant that's replaced during build
+- **Development**: `__DEV__ = true` - Logging is active
+- **Production**: `__DEV__ = false` - All logging code is removed by the bundler
+- **Zero dependencies**: Uses native console methods
+
+#### Usage
+
+```typescript
+import { createLogger } from '@glandais/elevation';
+
+// Create a logger with a namespace
+const logger = createLogger('MyModule');
+
+// Available log methods (only in development)
+logger.debug('Detailed debug information', { data });
+logger.info('General information');
+logger.warn('Warning message');
+logger.error('Error occurred', error);
+
+// Performance timing
+logger.time('operation');
+// ... perform operation ...
+logger.timeEnd('operation');
+
+// Grouped logging
+logger.group('Processing batch');
+logger.info('Item 1');
+logger.info('Item 2');
+logger.groupEnd();
+```
+
+#### Example Integration
+
+```typescript
+import { createLogger } from '@glandais/elevation';
+
+class MyElevationProcessor {
+    private logger = createLogger('Processor');
+
+    async process(coordinates: Coordinates): Promise<number> {
+        this.logger.debug('Processing coordinates', coordinates);
+        this.logger.time('elevation-fetch');
+
+        try {
+            const elevation = await this.getElevation(coordinates);
+            this.logger.info('Elevation retrieved', { elevation });
+            return elevation;
+        } catch (error) {
+            this.logger.error('Failed to process', error);
+            throw error;
+        } finally {
+            this.logger.timeEnd('elevation-fetch');
+        }
+    }
+}
+```
+
+**Note**: All logging statements are completely eliminated from production builds, so you can freely add detailed logging without worrying about bundle size or performance impact.
+
 ### Development Workflow
 
 The project includes an interactive demo that showcases library capabilities:

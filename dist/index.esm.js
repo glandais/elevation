@@ -1,68 +1,233 @@
-class F {
+const y = class y {
+};
+y.ERROR = 0, y.WARN = 1, y.INFO = 2, y.DEBUG = 3, y.TRACE = 4;
+let c = y;
+const U = {
+  warn: c.WARN
+}, A = {
+  0: "ERROR",
+  1: "WARN",
+  2: "INFO",
+  3: "DEBUG",
+  4: "TRACE"
+}, O = {
+  0: console.error,
+  1: console.error,
+  2: console.log,
+  3: console.log,
+  4: console.log
+};
+class G {
+  constructor(e) {
+    this.namespace = e, this.level = U.warn;
+  }
+  shouldLog(e) {
+    return e <= this.level;
+  }
+  doLog(e, t, ...i) {
+    const n = `[${this.namespace}:${A[e]}]`;
+    typeof t == "string" ? O[e](`${n} ${t}`, ...i) : O[e](n, t, ...i);
+  }
+  log(e, t, ...i) {
+    this.shouldLog(e) && this.doLog(e, t, ...i);
+  }
+  /**
+   * Log debug information (verbose output for development)
+   * Supports printf-style formatting: logger.debug('Value: %s, Count: %d', value, count)
+   */
+  trace(e, ...t) {
+  }
+  /**
+   * Log debug information (verbose output for development)
+   * Supports printf-style formatting: logger.debug('Value: %s, Count: %d', value, count)
+   */
+  debug(e, ...t) {
+  }
+  /**
+   * Log general information
+   * Supports printf-style formatting: logger.info('User %s logged in', username)
+   */
+  info(e, ...t) {
+  }
+  /**
+   * Log warnings
+   * Supports printf-style formatting: logger.warn('Timeout after %dms', timeout)
+   */
+  warn(e, ...t) {
+    this.log(c.WARN, e, ...t);
+  }
+  /**
+   * Log errors
+   * Supports printf-style formatting: logger.error('Failed to load %s: %o', file, error)
+   */
+  error(e, ...t) {
+    this.log(c.ERROR, e, ...t);
+  }
+  getTimeLabel(e, t) {
+    return `[${this.namespace}:${A[e]}] ${t}`;
+  }
+  doTime(e, t) {
+    console.time(this.getTimeLabel(e, t));
+  }
+  doTimeEnd(e, t) {
+    console.timeEnd(this.getTimeLabel(e, t));
+  }
+  /**
+   * Log with timing information
+   * Useful for performance debugging
+   */
+  timeLevel(e, t) {
+  }
+  /**
+   * End timing and log duration
+   */
+  timeEndLevel(e, t) {
+  }
+  /**
+   * Log with timing information
+   * Useful for performance debugging
+   */
+  time(e) {
+    this.doTime(c.INFO, e);
+  }
+  /**
+   * End timing and log duration
+   */
+  timeEnd(e) {
+    this.doTimeEnd(c.INFO, e);
+  }
+  logDir(e, t, i, n) {
+    this.doLog(e, "DIR %s", t), console.dir(i, n);
+  }
+  /**
+   * Display an interactive list of object properties
+   * Useful for exploring complex objects in development
+   * @param obj - The object to inspect
+   * @param options - Optional display options
+   */
+  dirLevel(e, t, i, n) {
+  }
+  /**
+   * Display an interactive list of object properties
+   * Useful for exploring complex objects in development
+   * @param obj - The object to inspect
+   * @param options - Optional display options
+   */
+  dir(e, t, i) {
+    this.logDir(c.INFO, e, t, i);
+  }
+  /**
+   * Clear the console
+   */
+  clear() {
+    console.clear();
+  }
+}
+const M = (h) => new G(h), b = M("tile/fetcher/CanvasPool");
+class B {
   constructor() {
-    this.available = [], this.idleSize = 5, this.idleTimeout = 3e4, this.idleTimer = null;
+    this.available = [], this.idleSize = 5, this.idleTimeout = 3e4, this.idleTimer = null, this.totalCreated = 0, this.totalAcquired = 0, this.totalReleased = 0;
   }
   /**
    * Acquire a canvas from the pool (creates new if none available)
    */
   acquire() {
-    let t = this.available.pop();
-    return t || (t = document.createElement("canvas")), this._resetIdleTimer(), t;
+    this.totalAcquired++;
+    let e = this.available.pop();
+    return e ? b.debug(
+      "Canvas acquired from pool (pool size: %d → %d, total acquired: %d)",
+      this.available.length + 1,
+      this.available.length,
+      this.totalAcquired
+    ) : (e = document.createElement("canvas"), this.totalCreated++, b.debug(
+      "Canvas created - new canvas (total created: %d, pool size: %d)",
+      this.totalCreated,
+      this.available.length
+    )), this._resetIdleTimer(), e;
   }
   /**
    * Return a canvas to the pool for reuse
    */
-  release(t) {
-    t && (this.available.push(t), this._resetIdleTimer());
+  release(e) {
+    e ? (this.totalReleased++, this.available.push(e), b.debug(
+      "Canvas released to pool (pool size: %d → %d, total released: %d)",
+      this.available.length - 1,
+      this.available.length,
+      this.totalReleased
+    ), this._resetIdleTimer()) : b.warn("Canvas release attempted with null/undefined canvas");
   }
   /**
    * Reset the idle timer for automatic cleanup
    */
   _resetIdleTimer() {
-    this.idleTimer && clearTimeout(this.idleTimer), this.idleTimer = setTimeout(() => this._trim(), this.idleTimeout);
+    this.idleTimer ? (clearTimeout(this.idleTimer), b.debug("Idle timer reset - previous timer cleared")) : b.debug("Idle timer started - %d ms until auto-trim", this.idleTimeout), this.idleTimer = setTimeout(() => this._trim(), this.idleTimeout);
   }
   /**
    * Trim excess canvases to prevent memory buildup
    */
   _trim() {
-    for (; this.available.length > this.idleSize; )
-      this.available.pop();
+    const e = this.available.length;
+    let t = 0;
+    if (e > this.idleSize) {
+      for (b.debug(
+        "Auto-trim triggered - pool size %d exceeds idle limit %d",
+        e,
+        this.idleSize
+      ); this.available.length > this.idleSize; )
+        this.available.pop(), t++;
+      b.info(
+        "Canvas pool trimmed - removed %d canvases (pool size: %d → %d)",
+        t,
+        e,
+        this.available.length
+      );
+    } else
+      b.debug(
+        "Auto-trim skipped - pool size %d within idle limit %d",
+        e,
+        this.idleSize
+      );
+    this.idleTimer = null;
   }
 }
-class S {
+const C = M("tile/fetcher/TileFetcher");
+class q {
   // ========================================================================
   // CONSTRUCTOR
   // ========================================================================
-  constructor(t, e = 5e3) {
-    this.tileUrlTemplate = t, this.timeout = e, this.canvasPool = new F();
+  constructor(e, t = 5e3) {
+    this.tileUrlTemplate = e, this.timeout = t, this.canvasPool = new B();
   }
   // ========================================================================
   // PUBLIC API
   // ========================================================================
-  async loadTile(t) {
-    const e = this.getTileUrl(t);
-    return await this.fetchTile(e);
+  async loadTile(e) {
+    const t = `${e.z}/${e.x}/${e.y}`, i = this.getTileUrl(e);
+    return await this.fetchTile(i, t);
   }
   // ========================================================================
   // PRIVATE
   // ========================================================================
-  getTileUrl(t) {
-    return this.tileUrlTemplate.replace("{z}", t.z.toString()).replace("{x}", t.x.toString()).replace("{y}", t.y.toString());
+  getTileUrl(e) {
+    return this.tileUrlTemplate.replace("{z}", e.z.toString()).replace("{x}", e.x.toString()).replace("{y}", e.y.toString());
   }
   /**
    * Fetch a tile image and return both ImageData and ImageBitmap for memory management
    * @param url - The URL of the tile to fetch
+   * @param tileKey - The tile identifier for logging
    * @returns Promise<Tile> - Object containing ImageData and ImageBitmap
    */
-  async fetchTile(t) {
+  async fetchTile(e, t) {
+    const i = `fetch-${t}`;
+    C.timeLevel(c.DEBUG, i);
     try {
-      const e = await this.fetchWithTimeout(t);
-      if (!e.ok)
-        throw new Error(`HTTP ${e.status}: ${e.statusText}`);
-      const i = await e.blob();
-      return await this.blobToImageDataAndBitmap(i);
-    } catch (e) {
-      throw e instanceof Error ? new Error(`Failed to fetch tile from ${t}: ${e.message}`) : new Error(`Failed to fetch tile from ${t}: Unknown error`);
+      const n = await this.fetchWithTimeout(e);
+      if (C.timeEndLevel(c.DEBUG, i), !n.ok)
+        throw new Error(`HTTP ${n.status}: ${n.statusText}`);
+      const s = await n.blob();
+      return await this.blobToImageDataAndBitmap(s, t);
+    } catch (n) {
+      throw C.timeEndLevel(c.DEBUG, i), n instanceof Error ? new Error(`Failed to fetch tile from ${e}: ${n.message}`) : new Error(`Failed to fetch tile from ${e}: Unknown error`);
     }
   }
   // ========================================================================
@@ -71,11 +236,11 @@ class S {
   /**
    * Fetch with timeout support using AbortController
    */
-  async fetchWithTimeout(t) {
-    const e = new AbortController(), i = setTimeout(() => e.abort(), this.timeout);
+  async fetchWithTimeout(e) {
+    const t = new AbortController(), i = setTimeout(() => t.abort(), this.timeout);
     try {
-      return await fetch(t, {
-        signal: e.signal
+      return await fetch(e, {
+        signal: t.signal
       });
     } finally {
       clearTimeout(i);
@@ -89,29 +254,33 @@ class S {
    * This approach avoids memory leaks from Image objects and blob URLs
    * Uses canvas pool for efficient resource management
    */
-  async blobToImageDataAndBitmap(t) {
-    const e = this.canvasPool.acquire();
+  async blobToImageDataAndBitmap(e, t) {
+    const i = this.canvasPool.acquire(), n = `bitmap-${t}`;
+    C.timeLevel(c.DEBUG, n);
     try {
-      const i = e.getContext("2d", { willReadFrequently: !0 });
-      if (!i)
+      const s = i.getContext("2d", { willReadFrequently: !0 });
+      if (!s)
         throw new Error("Failed to get 2D canvas context");
-      const n = await createImageBitmap(t);
-      return e.width = n.width, e.height = n.height, i.drawImage(n, 0, 0), { data: i.getImageData(0, 0, n.width, n.height), bitmap: n };
-    } catch (i) {
-      throw new Error(
-        `Failed to process image: ${i instanceof Error ? i.message : "Unknown error"}`
+      const a = await createImageBitmap(e);
+      i.width = a.width, i.height = a.height, s.drawImage(a, 0, 0);
+      const o = s.getImageData(0, 0, a.width, a.height);
+      return C.timeEndLevel(c.DEBUG, n), { data: o, bitmap: a };
+    } catch (s) {
+      throw C.timeEndLevel(c.DEBUG, n), new Error(
+        `Failed to process image: ${s instanceof Error ? s.message : "Unknown error"}`
       );
     } finally {
-      this.canvasPool.release(e);
+      this.canvasPool.release(i);
     }
   }
 }
-class R {
+const f = M("tile/cache/ReentrantLock");
+class _ {
   // ========================================================================
   // CONSTRUCTOR
   // ========================================================================
-  constructor(t) {
-    this.locks = /* @__PURE__ */ new Map(), this.loadingCount = 0, this.waitQueue = [], this.maxConcurrent = t;
+  constructor(e) {
+    this.locks = /* @__PURE__ */ new Map(), this.loadingCount = 0, this.waitQueue = [], this.maxConcurrent = e;
   }
   // ========================================================================
   // PUBLIC API
@@ -122,19 +291,36 @@ class R {
    * @param fn - Function to execute if not already running
    * @returns Promise resolving to the operation result
    */
-  async acquire(t, e) {
-    if (this.locks.has(t))
-      return this.locks.get(t);
-    if (await this.acquireLoadingSlot(), this.locks.has(t))
-      return this.releaseLoadingSlot(), this.locks.get(t);
+  async acquire(e, t) {
+    if (f.debug(
+      "%s: Lock acquire requested (active: %d/%d, queued: %d)",
+      e,
+      this.loadingCount,
+      this.maxConcurrent,
+      this.waitQueue.length
+    ), this.locks.has(e))
+      return f.debug(
+        "%s: Lock deduplication - already loading, returning existing promise",
+        e
+      ), this.locks.get(e);
+    if (await this.acquireLoadingSlot(e), this.locks.has(e))
+      return f.debug(
+        "%s: Lock race condition - already loading after slot acquired, releasing slot",
+        e
+      ), this.releaseLoadingSlot(e), this.locks.get(e);
+    f.debug("%s: Lock creating new promise", e);
     const i = (async () => {
       try {
-        return await e();
+        f.debug("%s: Promise executing function", e);
+        const n = await t();
+        return f.debug("%s: Promise resolved successfully", e), n;
+      } catch (n) {
+        throw f.error("%s: Promise rejected - %o", e, n), n;
       } finally {
-        this.locks.delete(t), this.releaseLoadingSlot();
+        f.debug("%s: Promise cleanup - removing lock and releasing slot", e), this.locks.delete(e), this.releaseLoadingSlot(e);
       }
     })();
-    return this.locks.set(t, i), i;
+    return this.locks.set(e, i), f.debug("%s: Lock registered promise (total locks: %d)", e, this.locks.size), i;
   }
   // ========================================================================
   // PRIVATE - SEMAPHORE OPERATIONS
@@ -142,34 +328,68 @@ class R {
   /**
    * Acquire a loading slot (semaphore acquire)
    */
-  async acquireLoadingSlot() {
+  async acquireLoadingSlot(e) {
     if (this.loadingCount < this.maxConcurrent) {
-      this.loadingCount++;
+      this.loadingCount++, f.debug(
+        "%s: Semaphore acquired slot immediately (%d/%d active, %d queued)",
+        e,
+        this.loadingCount,
+        this.maxConcurrent,
+        this.waitQueue.length
+      );
       return;
     }
-    return new Promise((t) => {
-      this.waitQueue.push(t);
+    return f.debug(
+      "%s: Semaphore waiting for slot (%d/%d active, %d queued)",
+      e,
+      this.loadingCount,
+      this.maxConcurrent,
+      this.waitQueue.length
+    ), f.timeLevel(c.DEBUG, e), new Promise((t) => {
+      this.waitQueue.push(() => {
+        f.timeEndLevel(c.DEBUG, e), this.loadingCount++, f.debug(
+          "%s: Semaphore acquired slot after waiting (%d/%d active, %d queued)",
+          e,
+          this.loadingCount,
+          this.maxConcurrent,
+          this.waitQueue.length
+        ), t();
+      });
     });
   }
   /**
    * Release a loading slot (semaphore release)
    */
-  releaseLoadingSlot() {
+  releaseLoadingSlot(e) {
     if (this.waitQueue.length > 0) {
+      f.debug(
+        "%s: Semaphore: releasing slot to waiting request (%d/%d active, %d queued)",
+        e,
+        this.loadingCount,
+        this.maxConcurrent,
+        this.waitQueue.length
+      );
       const t = this.waitQueue.shift();
       t && t();
     } else
-      this.loadingCount--;
+      this.loadingCount--, f.debug(
+        "%s: Semaphore: released slot (%d/%d active, %d queued)",
+        e,
+        this.loadingCount,
+        this.maxConcurrent,
+        this.waitQueue.length
+      );
   }
 }
-class z {
+const w = M("tile/cache/Cache");
+class Q {
   // ========================================================================
   // CONSTRUCTOR & VALIDATION
   // ========================================================================
-  constructor(t, e, i, n) {
-    if (this.head = null, this.tail = null, t <= 0)
+  constructor(e, t, i, n) {
+    if (this.head = null, this.tail = null, e <= 0)
       throw new Error("Cache size must be greater than 0");
-    this.maxSize = t, this.keyMapper = e, this.valueBuilder = i, this.cleanupFn = n, this.cache = /* @__PURE__ */ new Map(), this.lruOrder = /* @__PURE__ */ new Map(), this.lock = new R(t);
+    this.maxSize = e, this.keyMapper = t, this.valueBuilder = i, this.cleanupFn = n, this.cache = /* @__PURE__ */ new Map(), this.lruOrder = /* @__PURE__ */ new Map(), this.lock = new _(e);
   }
   // ========================================================================
   // PUBLIC API - CACHE OPERATIONS
@@ -179,23 +399,24 @@ class z {
    * @param k - Key to retrieve
    * @returns Promise resolving to cached or newly built value
    */
-  async get(t) {
-    const e = this.keyMapper(t), i = this.cache.get(e);
-    return i ? (this.moveToFront(e), i) : this.lock.acquire(e, async () => {
-      const n = this.cache.get(e);
+  async get(e) {
+    const t = this.keyMapper(e), i = this.cache.get(t);
+    return i ? (this.moveToFront(t), i) : (w.debug("%s miss", t), this.lock.acquire(t, async () => {
+      const n = this.cache.get(t);
       if (n)
-        return this.moveToFront(e), n;
-      const s = await this.valueBuilder(t);
-      return this.set(e, s), s;
-    });
+        return w.debug("%s Missed at first but now OK", t), this.moveToFront(t), n;
+      w.info("%s loading", t), w.timeLevel(c.INFO, t);
+      const s = await this.valueBuilder(e);
+      return w.info("%s loaded", t), w.timeEndLevel(c.INFO, t), this.set(t, s), s;
+    }));
   }
   /**
    * Clear all cached items
    */
   clear() {
-    if (this.cleanupFn)
-      for (const t of this.cache.values())
-        this.cleanupFn(t);
+    if (w.debug("clear"), this.cleanupFn)
+      for (const e of this.cache.values())
+        this.cleanupFn(e);
     this.cache.clear(), this.lruOrder.clear(), this.head = null, this.tail = null;
   }
   // ========================================================================
@@ -206,9 +427,9 @@ class z {
    * @param k - Key to check
    * @returns True if key exists in cache
    */
-  has(t) {
-    const e = this.keyMapper(t);
-    return this.cache.has(e);
+  has(e) {
+    const t = this.keyMapper(e);
+    return this.cache.has(t);
   }
   /**
    * Get all cached keys
@@ -222,12 +443,12 @@ class z {
    * @param count - Maximum number of keys to return
    * @returns Array of LRU keys from least to most recently used
    */
-  getLRUKeys(t = 10) {
-    const e = [];
+  getLRUKeys(e = 10) {
+    const t = [];
     let i = this.tail;
-    for (; i && e.length < t; )
-      e.push(i), i = this.lruOrder.get(i)?.prev || null;
-    return e;
+    for (; i && t.length < e; )
+      t.push(i), i = this.lruOrder.get(i)?.prev || null;
+    return t;
   }
   // ========================================================================
   // PRIVATE - CACHE STORAGE OPERATIONS
@@ -235,17 +456,17 @@ class z {
   /**
    * Store item in cache with automatic eviction
    */
-  set(t, e) {
-    this.cache.size >= this.maxSize && this.evictLeastRecentlyUsed(), this.cache.set(t, e), this.addToFront(t);
+  set(e, t) {
+    this.cache.size >= this.maxSize && this.evictLeastRecentlyUsed(), this.cache.set(e, t), this.addToFront(e);
   }
   /**
    * Remove item from cache with cleanup
    */
-  delete(t) {
-    if (!this.cache.has(t))
+  delete(e) {
+    if (w.debug("%s delete", e), !this.cache.has(e))
       return !1;
-    const e = this.cache.get(t);
-    return this.cache.delete(t), this.removeFromLRU(t), e && this.cleanupFn && this.cleanupFn(e), !0;
+    const t = this.cache.get(e);
+    return this.cache.delete(e), this.removeFromLRU(e), t && this.cleanupFn && this.cleanupFn(t), !0;
   }
   // ========================================================================
   // PRIVATE - LRU EVICTION OPERATIONS
@@ -256,8 +477,8 @@ class z {
   evictLeastRecentlyUsed() {
     if (!this.tail)
       return;
-    const t = this.tail;
-    this.delete(t);
+    const e = this.tail;
+    this.delete(e);
   }
   // ========================================================================
   // PRIVATE - LRU LINKED LIST OPERATIONS
@@ -265,62 +486,62 @@ class z {
   /**
    * Add a key to the front of the LRU list (most recently used)
    */
-  addToFront(t) {
-    const e = { prev: null, next: this.head };
-    if (this.lruOrder.set(t, e), this.head) {
+  addToFront(e) {
+    const t = { prev: null, next: this.head };
+    if (this.lruOrder.set(e, t), this.head) {
       const i = this.lruOrder.get(this.head);
-      i.prev = t;
+      i.prev = e;
     } else
-      this.tail = t;
-    this.head = t;
+      this.tail = e;
+    this.head = e;
   }
   /**
    * Move an existing key to the front of the LRU list
    */
-  moveToFront(t) {
-    this.head !== t && (this.removeFromLRU(t), this.addToFront(t));
+  moveToFront(e) {
+    this.head !== e && (this.removeFromLRU(e), this.addToFront(e));
   }
   /**
    * Remove a key from the LRU doubly-linked list
    */
-  removeFromLRU(t) {
-    const e = this.lruOrder.get(t);
-    if (e) {
-      if (e.prev) {
-        const i = this.lruOrder.get(e.prev);
-        i.next = e.next;
+  removeFromLRU(e) {
+    const t = this.lruOrder.get(e);
+    if (t) {
+      if (t.prev) {
+        const i = this.lruOrder.get(t.prev);
+        i.next = t.next;
       } else
-        this.head = e.next;
-      if (e.next) {
-        const i = this.lruOrder.get(e.next);
-        i.prev = e.prev;
+        this.head = t.next;
+      if (t.next) {
+        const i = this.lruOrder.get(t.next);
+        i.prev = t.prev;
       } else
-        this.tail = e.prev;
-      this.lruOrder.delete(t);
+        this.tail = t.prev;
+      this.lruOrder.delete(e);
     }
   }
 }
-class C {
-  constructor(t, e, i) {
-    this.tileFetcher = new S(t, e);
+class W {
+  constructor(e, t, i) {
+    this.tileFetcher = new q(e, t);
     const n = (s) => {
       s.bitmap.close();
     };
-    this.cache = new z(
+    this.cache = new Q(
       i,
       (s) => `${s.z}/${s.x}/${s.y}`,
       (s) => this.tileFetcher.loadTile(s),
       n
     );
   }
-  async getTile(t) {
-    return await this.cache.get(t);
+  async getTile(e) {
+    return await this.cache.get(e);
   }
   clearCache() {
     this.cache.clear();
   }
 }
-class A {
+class j {
   // ========================================================================
   // PUBLIC API - ELEVATION DECODING
   // ========================================================================
@@ -330,9 +551,9 @@ class A {
    * @param rgb - RGB color values from terrain tile pixel
    * @returns Elevation in meters, rounded to 2 decimal places
    */
-  static decodeElevation(t) {
-    const e = t.red * 256 + t.green + t.blue / 256 - 32768;
-    return Math.round(e * 100) / 100;
+  static decodeElevation(e) {
+    const t = e.red * 256 + e.green + e.blue / 256 - 32768;
+    return Math.round(t * 100) / 100;
   }
   /**
    * Get elevation from ImageData at specific pixel position (convenience method)
@@ -340,8 +561,8 @@ class A {
    * @param position - Pixel coordinates within the tile
    * @returns Elevation in meters at the specified position
    */
-  static getElevationFromImageData(t, e) {
-    const i = this.getRGBFromImageData(t, e);
+  static getElevationFromImageData(e, t) {
+    const i = this.getRGBFromImageData(e, t);
     return this.decodeElevation(i);
   }
   // ========================================================================
@@ -353,83 +574,83 @@ class A {
    * @param position - Pixel coordinates within the tile
    * @returns RGB color values for elevation decoding
    */
-  static getRGBFromImageData(t, e) {
-    if (e.x < 0 || e.x >= t.width)
+  static getRGBFromImageData(e, t) {
+    if (t.x < 0 || t.x >= e.width)
       throw new Error(
-        `Invalid x position: ${e.x}. Must be between 0 and ${t.width - 1}`
+        `Invalid x position: ${t.x}. Must be between 0 and ${e.width - 1}`
       );
-    if (e.y < 0 || e.y >= t.height)
+    if (t.y < 0 || t.y >= e.height)
       throw new Error(
-        `Invalid y position: ${e.y}. Must be between 0 and ${t.height - 1}`
+        `Invalid y position: ${t.y}. Must be between 0 and ${e.height - 1}`
       );
-    const i = (e.y * t.width + e.x) * 4;
+    const i = (t.y * e.width + t.x) * 4;
     return {
-      red: t.data[i],
-      green: t.data[i + 1],
-      blue: t.data[i + 2]
+      red: e.data[i],
+      green: e.data[i + 1],
+      blue: e.data[i + 2]
       // Alpha channel (index + 3) is ignored for Terrarium encoding
     };
   }
 }
-const d = 256;
-function P(o) {
-  return o * Math.PI / 180;
+const p = 256;
+function H(h) {
+  return h * Math.PI / 180;
 }
-function D(o) {
-  return o >= -85.0511 && o <= 85.0511;
+function V(h) {
+  return h >= -85.0511 && h <= 85.0511;
 }
-function N(o) {
-  return o >= -180 && o <= 180;
+function k(h) {
+  return h >= -180 && h <= 180;
 }
-function L(o) {
-  return Number.isInteger(o) && o >= 0 && o <= 15;
+function Y(h) {
+  return Number.isInteger(h) && h >= 0 && h <= 15;
 }
-function w(o) {
-  let { x: t, y: e } = o;
-  const i = o.tile;
+function L(h) {
+  let { x: e, y: t } = h;
+  const i = h.tile;
   let n = i.x, s = i.y;
   const a = i.z;
-  t < 0 && (t += d, n -= 1), t >= d && (t -= d, n += 1), e < 0 && (e += d, s -= 1), e >= d && (e -= d, s += 1);
-  const r = Math.pow(2, a) - 1;
-  return n = Math.max(0, Math.min(r, n)), s = Math.max(0, Math.min(r, s)), { tile: { z: a, x: n, y: s }, x: t, y: e };
+  e < 0 && (e += p, n -= 1), e >= p && (e -= p, n += 1), t < 0 && (t += p, s -= 1), t >= p && (t -= p, s += 1);
+  const o = Math.pow(2, a) - 1;
+  return n = Math.max(0, Math.min(o, n)), s = Math.max(0, Math.min(o, s)), { tile: { z: a, x: n, y: s }, x: e, y: t };
 }
-function T(o, t) {
-  if (!D(o.latitude))
+function $(h, e) {
+  if (!V(h.latitude))
     throw new Error(
-      `Invalid latitude: ${o.latitude}. Must be between -85.0511 and 85.0511`
+      `Invalid latitude: ${h.latitude}. Must be between -85.0511 and 85.0511`
     );
-  if (!N(o.longitude))
-    throw new Error(`Invalid longitude: ${o.longitude}. Must be between -180 and 180`);
-  if (!L(t))
-    throw new Error(`Invalid zoom level: ${t}. Must be between 0 and 15`);
-  const e = P(o.latitude), i = Math.pow(2, t), n = (o.longitude + 180) / 360 * i, s = (1 - Math.log(Math.tan(e) + 1 / Math.cos(e)) / Math.PI) / 2 * i;
-  let a = Math.floor(n), r = Math.floor(s);
+  if (!k(h.longitude))
+    throw new Error(`Invalid longitude: ${h.longitude}. Must be between -180 and 180`);
+  if (!Y(e))
+    throw new Error(`Invalid zoom level: ${e}. Must be between 0 and 15`);
+  const t = H(h.latitude), i = Math.pow(2, e), n = (h.longitude + 180) / 360 * i, s = (1 - Math.log(Math.tan(t) + 1 / Math.cos(t)) / Math.PI) / 2 * i;
+  let a = Math.floor(n), o = Math.floor(s);
   const l = i - 1;
-  a = Math.max(0, Math.min(l, a)), r = Math.max(0, Math.min(l, r));
-  const c = Math.floor((n - a) * d), h = Math.floor((s - r) * d);
+  a = Math.max(0, Math.min(l, a)), o = Math.max(0, Math.min(l, o));
+  const u = Math.floor((n - a) * p), g = Math.floor((s - o) * p);
   return {
     tile: {
-      z: t,
+      z: e,
       x: a,
-      y: r
+      y: o
     },
-    x: Math.max(0, Math.min(d - 1, c)),
-    y: Math.max(0, Math.min(d - 1, h))
+    x: Math.max(0, Math.min(p - 1, u)),
+    y: Math.max(0, Math.min(p - 1, g))
   };
 }
-class _ {
-  constructor(t) {
-    this.tileManager = t;
+class K {
+  constructor(e) {
+    this.tileManager = e;
   }
   // ========================================================================
   // PUBLIC API - ELEVATION CALCULATIONS
   // ========================================================================
-  async getElevation(t, e, i = !0) {
+  async getElevation(e, t, i = !0) {
     try {
       if (i)
-        return await this.getInterpolatedElevationInternal(t, e);
+        return await this.getInterpolatedElevationInternal(e, t);
       {
-        const n = T(t, e);
+        const n = $(e, t);
         return await this.getElevationFromPixel(n);
       }
     } catch (n) {
@@ -439,73 +660,73 @@ class _ {
   // ========================================================================
   // PRIVATE - HELPER METHODS
   // ========================================================================
-  async getInterpolatedElevationInternal(t, e) {
-    const i = T(t, e), n = {
+  async getInterpolatedElevationInternal(e, t) {
+    const i = $(e, t), n = {
       tile: i.tile,
       x: i.x,
       y: i.y
-    }, s = Math.floor(n.x), a = Math.floor(n.y), r = s + 1, l = a + 1, c = n.x - s, h = n.y - a, u = await this.getElevationFromPixel(
-      w({ tile: n.tile, x: s, y: a })
-    ), g = await this.getElevationFromPixel(
-      w({ tile: n.tile, x: r, y: a })
+    }, s = Math.floor(n.x), a = Math.floor(n.y), o = s + 1, l = a + 1, u = n.x - s, g = n.y - a, d = await this.getElevationFromPixel(
+      L({ tile: n.tile, x: s, y: a })
+    ), m = await this.getElevationFromPixel(
+      L({ tile: n.tile, x: o, y: a })
     ), v = await this.getElevationFromPixel(
-      w({ tile: n.tile, x: s, y: l })
-    ), p = await this.getElevationFromPixel(
-      w({ tile: n.tile, x: r, y: l })
-    ), I = u * (1 - c) + g * c, b = v * (1 - c) + p * c;
-    return I * (1 - h) + b * h;
+      L({ tile: n.tile, x: s, y: l })
+    ), E = await this.getElevationFromPixel(
+      L({ tile: n.tile, x: o, y: l })
+    ), S = d * (1 - u) + m * u, I = v * (1 - u) + E * u;
+    return S * (1 - g) + I * g;
   }
   /**
    * Get elevation for a specific pixel (internal helper)
    */
-  async getElevationFromPixel(t) {
-    const e = await this.tileManager.getTile(t.tile);
-    return A.getElevationFromImageData(e.data, t);
+  async getElevationFromPixel(e) {
+    const t = await this.tileManager.getTile(e.tile);
+    return j.getElevationFromImageData(t.data, e);
   }
 }
-class f {
-  constructor(t, e, i) {
-    this.x = t, this.y = e, this.z = i;
+class x {
+  constructor(e, t, i) {
+    this.x = e, this.y = t, this.z = i;
   }
   /**
    * Calculate Euclidean distance between two vectors
    */
-  distanceTo(t) {
-    const e = this.x - t.x, i = this.y - t.y, n = this.z - t.z;
-    return Math.hypot(e, i, n);
+  distanceTo(e) {
+    const t = this.x - e.x, i = this.y - e.y, n = this.z - e.z;
+    return Math.hypot(t, i, n);
   }
   /**
    * Subtract two vectors
    */
-  subtract(t) {
-    return new f(this.x - t.x, this.y - t.y, this.z - t.z);
+  subtract(e) {
+    return new x(this.x - e.x, this.y - e.y, this.z - e.z);
   }
   /**
    * Add two vectors
    */
-  add(t) {
-    return new f(this.x + t.x, this.y + t.y, this.z + t.z);
+  add(e) {
+    return new x(this.x + e.x, this.y + e.y, this.z + e.z);
   }
   /**
    * Multiply vector by scalar
    */
-  multiply(t) {
-    return new f(this.x * t, this.y * t, this.z * t);
+  multiply(e) {
+    return new x(this.x * e, this.y * e, this.z * e);
   }
   /**
    * Calculate dot product with another vector
    */
-  dot(t) {
-    return this.x * t.x + this.y * t.y + this.z * t.z;
+  dot(e) {
+    return this.x * e.x + this.y * e.y + this.z * e.z;
   }
   /**
    * Calculate cross product with another vector
    */
-  cross(t) {
-    return new f(
-      this.y * t.z - this.z * t.y,
-      this.z * t.x - this.x * t.z,
-      this.x * t.y - this.y * t.x
+  cross(e) {
+    return new x(
+      this.y * e.z - this.z * e.y,
+      this.z * e.x - this.x * e.z,
+      this.x * e.y - this.y * e.x
     );
   }
   /**
@@ -518,48 +739,48 @@ class f {
    * Normalize the vector to unit length
    */
   normalize() {
-    const t = this.magnitude();
-    return t === 0 ? new f(0, 0, 0) : this.multiply(1 / t);
+    const e = this.magnitude();
+    return e === 0 ? new x(0, 0, 0) : this.multiply(1 / e);
   }
   /**
    * Calculate perpendicular distance from this point to a line segment defined by two points
    * Uses the formula: ||(p-a) × (p-b)|| / ||b-a||
    * where p is this point, a and b are the line segment endpoints
    */
-  distanceToSegment(t, e) {
-    const i = e.subtract(t), n = i.magnitude();
+  distanceToSegment(e, t) {
+    const i = t.subtract(e), n = i.magnitude();
     if (n === 0)
-      return this.distanceTo(t);
-    const a = this.subtract(t).dot(i) / (n * n), r = Math.max(0, Math.min(1, a)), l = t.add(i.multiply(r));
+      return this.distanceTo(e);
+    const a = this.subtract(e).dot(i) / (n * n), o = Math.max(0, Math.min(1, a)), l = e.add(i.multiply(o));
     return this.distanceTo(l);
   }
 }
-const M = {
+const D = {
   /** Semi-major axis in meters (WGS84 ellipsoid) */
   SEMI_MAJOR_AXIS: 6378137,
   /** Mean radius in meters (used for distance calculations) */
   MEAN_RADIUS: 6371e3,
   /** First eccentricity squared (WGS84 ellipsoid) */
   FIRST_ECCENTRICITY_SQUARED: 0.00669437999014
-}, E = {
+}, R = {
   /** Degrees to radians conversion factor */
   DEG_TO_RAD: Math.PI / 180
-}, x = {
+}, P = {
   /** Minimum points needed for smoothing operations */
   MIN_SMOOTHING_POINTS: 3,
   /** Minimum segment distance in meters for path processing */
   MIN_SEGMENT_DISTANCE: 1
 };
-class y {
+class N {
   /**
    * Convert WGS84 coordinates to ECEF coordinates with optional elevation exaggeration
    * @param coordinates - Geographic coordinates with elevation
    * @param zExaggeration - Elevation exaggeration factor (default: 3)
    * @returns ECEF coordinates as Vector3D
    */
-  static toEcef(t, e = 3) {
-    const i = t.latitude * Math.PI / 180, n = t.longitude * Math.PI / 180, s = e * t.elevation, a = Math.sin(i), r = M.SEMI_MAJOR_AXIS / Math.sqrt(1 - M.FIRST_ECCENTRICITY_SQUARED * a * a), l = Math.cos(i), c = Math.cos(n), h = Math.sin(n), u = (r + s) * l * c, g = (r + s) * l * h, v = (r * (1 - M.FIRST_ECCENTRICITY_SQUARED) + s) * a;
-    return new f(u, g, v);
+  static toEcef(e, t = 3) {
+    const i = e.latitude * Math.PI / 180, n = e.longitude * Math.PI / 180, s = t * e.elevation, a = Math.sin(i), o = D.SEMI_MAJOR_AXIS / Math.sqrt(1 - D.FIRST_ECCENTRICITY_SQUARED * a * a), l = Math.cos(i), u = Math.cos(n), g = Math.sin(n), d = (o + s) * l * u, m = (o + s) * l * g, v = (o * (1 - D.FIRST_ECCENTRICITY_SQUARED) + s) * a;
+    return new x(d, m, v);
   }
   /**
    * Convert multiple coordinates to ECEF vectors
@@ -567,11 +788,12 @@ class y {
    * @param zExaggeration - Elevation exaggeration factor (default: 3)
    * @returns Array of ECEF coordinates as Vector3D
    */
-  static convertBatch(t, e = 3) {
-    return t.map((i) => this.toEcef(i, e));
+  static convertBatch(e, t = 3) {
+    return e.map((i) => this.toEcef(i, t));
   }
 }
-class O {
+const F = M("utils/DouglasPeucker");
+class X {
   /**
    * Simplify a path using the Douglas-Peucker algorithm in 3D space
    * @param points - Array of coordinates with elevation
@@ -579,19 +801,20 @@ class O {
    * @param zExaggeration - Elevation exaggeration factor for ECEF conversion (default: 3)
    * @returns Simplified array of coordinates
    */
-  static simplify(t, e, i = 3) {
-    if (t.length <= 2)
-      return [...t];
-    const n = t.length - 1, s = [];
-    s.push(t[0]);
+  static simplify(e, t, i = 3) {
+    if (F.info("simplify %s", e.length), e.length <= 2)
+      return F.warn("too small"), [...e];
+    F.timeLevel(c.INFO, "simplify");
+    const n = e.length - 1, s = [];
+    s.push(e[0]);
     const a = this.simplifyRecursive(
-      t,
+      e,
       0,
       n,
-      e,
+      t,
       i
     );
-    return s.push(...a), s.push(t[n]), s;
+    return s.push(...a), s.push(e[n]), F.timeEndLevel(c.INFO, "simplify"), F.debug("simplified -> %s", s.length), s;
   }
   /**
    * Recursive step of the Douglas-Peucker algorithm
@@ -602,48 +825,48 @@ class O {
    * @param zExaggeration - Elevation exaggeration factor
    * @returns Array of points to include in simplified path
    */
-  static simplifyRecursive(t, e, i, n, s) {
-    let a = 0, r = -1;
-    const l = [], c = y.toEcef(t[e], s), h = y.toEcef(t[i], s);
-    for (let u = e + 1; u < i; u++) {
-      const v = y.toEcef(t[u], s).distanceToSegment(c, h);
-      v > a && (a = v, r = u);
+  static simplifyRecursive(e, t, i, n, s) {
+    let a = 0, o = -1;
+    const l = [], u = N.toEcef(e[t], s), g = N.toEcef(e[i], s);
+    for (let d = t + 1; d < i; d++) {
+      const v = N.toEcef(e[d], s).distanceToSegment(u, g);
+      v > a && (a = v, o = d);
     }
-    if (a > n && r !== -1) {
-      if (r - e > 1) {
-        const u = this.simplifyRecursive(
-          t,
+    if (a > n && o !== -1) {
+      if (o - t > 1) {
+        const d = this.simplifyRecursive(
           e,
-          r,
+          t,
+          o,
           n,
           s
         );
-        l.push(...u);
+        l.push(...d);
       }
-      if (l.push(t[r]), i - r > 1) {
-        const u = this.simplifyRecursive(
-          t,
-          r,
+      if (l.push(e[o]), i - o > 1) {
+        const d = this.simplifyRecursive(
+          e,
+          o,
           i,
           n,
           s
         );
-        l.push(...u);
+        l.push(...d);
       }
     }
     return l;
   }
 }
-class m {
+class T {
   /**
    * Calculate great circle distance between two geographic coordinates using Haversine formula
    * @param coord1 - First coordinate
    * @param coord2 - Second coordinate
    * @returns Distance in meters
    */
-  static haversine(t, e) {
-    const i = t.latitude * E.DEG_TO_RAD, n = e.latitude * E.DEG_TO_RAD, s = (e.latitude - t.latitude) * E.DEG_TO_RAD, a = (e.longitude - t.longitude) * E.DEG_TO_RAD, r = Math.sin(s / 2) * Math.sin(s / 2) + Math.cos(i) * Math.cos(n) * Math.sin(a / 2) * Math.sin(a / 2), l = 2 * Math.atan2(Math.sqrt(r), Math.sqrt(1 - r));
-    return M.MEAN_RADIUS * l;
+  static haversine(e, t) {
+    const i = e.latitude * R.DEG_TO_RAD, n = t.latitude * R.DEG_TO_RAD, s = (t.latitude - e.latitude) * R.DEG_TO_RAD, a = (t.longitude - e.longitude) * R.DEG_TO_RAD, o = Math.sin(s / 2) * Math.sin(s / 2) + Math.cos(i) * Math.cos(n) * Math.sin(a / 2) * Math.sin(a / 2), l = 2 * Math.atan2(Math.sqrt(o), Math.sqrt(1 - o));
+    return D.MEAN_RADIUS * l;
   }
   /**
    * Calculate Euclidean distance between two 3D points
@@ -651,8 +874,8 @@ class m {
    * @param point2 - Second 3D point
    * @returns Distance in meters
    */
-  static euclidean3D(t, e) {
-    const i = t.x - e.x, n = t.y - e.y, s = t.z - e.z;
+  static euclidean3D(e, t) {
+    const i = e.x - t.x, n = e.y - t.y, s = e.z - t.z;
     return Math.sqrt(i * i + n * n + s * s);
   }
   /**
@@ -662,61 +885,63 @@ class m {
    * @param segmentEnd - End point of line segment
    * @returns Perpendicular distance in meters
    */
-  static pointToSegment3D(t, e, i) {
-    const n = i.subtract(e), s = t.subtract(e), a = n.dot(n);
+  static pointToSegment3D(e, t, i) {
+    const n = i.subtract(t), s = e.subtract(t), a = n.dot(n);
     if (a === 0)
-      return m.euclidean3D(t, e);
-    const r = Math.max(0, Math.min(1, s.dot(n) / a)), l = e.add(n.multiply(r));
-    return m.euclidean3D(t, l);
+      return T.euclidean3D(e, t);
+    const o = Math.max(0, Math.min(1, s.dot(n) / a)), l = t.add(n.multiply(o));
+    return T.euclidean3D(e, l);
   }
   /**
    * Calculate cumulative distances along a path of coordinates
    * @param points - Array of coordinates
    * @returns Array of cumulative distances in meters
    */
-  static cumulativeDistances(t) {
-    const e = [0];
-    for (let i = 1; i < t.length; i++) {
-      const n = m.haversine(t[i - 1], t[i]);
-      e.push(e[i - 1] + n);
+  static cumulativeDistances(e) {
+    const t = [0];
+    for (let i = 1; i < e.length; i++) {
+      const n = T.haversine(e[i - 1], e[i]);
+      t.push(t[i - 1] + n);
     }
-    return e;
+    return t;
   }
   /**
    * Calculate total distance along a path of coordinates
    * @param points - Array of coordinates
    * @returns Total distance in meters
    */
-  static totalPathDistance(t) {
-    if (t.length < 2)
+  static totalPathDistance(e) {
+    if (e.length < 2)
       return 0;
-    let e = 0;
-    for (let i = 1; i < t.length; i++)
-      e += m.haversine(t[i - 1], t[i]);
-    return e;
+    let t = 0;
+    for (let i = 1; i < e.length; i++)
+      t += T.haversine(e[i - 1], e[i]);
+    return t;
   }
 }
-class U {
+const z = M("utils/ElevationSmoother");
+class J {
   /**
    * Apply distance-based smoothing to elevation data
    * @param points - Array of coordinates with elevation
    * @param windowSize - Smoothing window in meters (default: 50)
    * @returns Smoothed elevation data
    */
-  static smooth(t, e = 50) {
-    if (t.length < x.MIN_SMOOTHING_POINTS)
-      return t;
-    if (e <= 0)
-      throw new Error(`Invalid window size: ${e}. Must be positive`);
-    const i = m.cumulativeDistances(t), n = [];
-    for (let s = 0; s < t.length; s++) {
-      const a = this.computeSmoothedValue(s, t, i, e);
+  static smooth(e, t = 50) {
+    if (z.debug("smooth %s", e.length), e.length < P.MIN_SMOOTHING_POINTS)
+      return z.debug("too small"), e;
+    if (t <= 0)
+      throw new Error(`Invalid window size: ${t}. Must be positive`);
+    z.timeLevel(c.INFO, "smooth");
+    const i = T.cumulativeDistances(e), n = [];
+    for (let s = 0; s < e.length; s++) {
+      const a = this.computeSmoothedValue(s, e, i, t);
       n.push({
-        ...t[s],
+        ...e[s],
         elevation: a
       });
     }
-    return n;
+    return z.timeEndLevel(c.INFO, "smooth"), n;
   }
   /**
    * Compute smoothed elevation value for a single point
@@ -726,25 +951,26 @@ class U {
    * @param windowSize - Smoothing window in meters
    * @returns Smoothed elevation value
    */
-  static computeSmoothedValue(t, e, i, n) {
-    const s = i[t];
-    let a = t;
+  static computeSmoothedValue(e, t, i, n) {
+    const s = i[e];
+    let a = e;
     for (; a > 0 && s - i[a - 1] <= n; )
       a--;
-    let r = t;
-    for (; r < e.length - 1 && i[r + 1] - s <= n; )
-      r++;
-    let l = 0, c = 0;
-    for (let h = a; h <= r; h++) {
-      const g = 1 - Math.abs(i[h] - s) / n;
-      l += g, c += e[h].elevation * g;
+    let o = e;
+    for (; o < t.length - 1 && i[o + 1] - s <= n; )
+      o++;
+    let l = 0, u = 0;
+    for (let g = a; g <= o; g++) {
+      const m = 1 - Math.abs(i[g] - s) / n;
+      l += m, u += t[g].elevation * m;
     }
-    return l > 0 ? c / l : e[t].elevation;
+    return l > 0 ? u / l : t[e].elevation;
   }
 }
-class $ {
-  constructor(t) {
-    this.elevationCalculator = t;
+const r = M("calculator/BatchCalculator");
+class Z {
+  constructor(e) {
+    this.elevationCalculator = e;
   }
   /**
    * Get elevations for multiple coordinates from an iterable
@@ -752,25 +978,53 @@ class $ {
    * @param zoomLevel - Tile zoom level (0-15)
    * @param interpolation - Use bilinear interpolation for smoother results (default: true)
    */
-  async getElevationsFrom(t, e, i = !0) {
+  async getElevationsFrom(e, t, i = !0) {
     const s = [];
-    let a = [];
-    for (const r of t) {
-      const l = this.elevationCalculator.getElevation(
-        r,
-        e,
+    let a = [], o = 0, l = 0;
+    r.info(
+      "Batch processing started - zoom: %d, interpolation: %s, batchSize: %d",
+      t,
+      i,
+      100
+    );
+    const u = "batch-elevations";
+    r.timeLevel(c.INFO, u);
+    for (const g of e) {
+      const d = this.elevationCalculator.getElevation(
+        g,
+        t,
         i
       );
-      if (a.push(l), a.length >= 100) {
-        const c = await Promise.all(a);
-        s.push(...c), a = [];
+      if (a.push(d), a.length >= 100) {
+        l++, r.debug("Processing batch %d (%d coordinates)", l, a.length);
+        const m = `batch-${l}`;
+        r.timeLevel(c.DEBUG, m);
+        const v = await Promise.all(a);
+        s.push(...v), o += a.length, r.timeEndLevel(c.DEBUG, m), r.debug(
+          "Batch %d completed - processed: %d, total: %d",
+          l,
+          a.length,
+          o
+        ), a = [];
       }
     }
     if (a.length > 0) {
-      const r = await Promise.all(a);
-      s.push(...r);
+      l++, r.debug("Processing final batch %d (%d coordinates)", l, a.length);
+      const g = `batch-${l}`;
+      r.timeLevel(c.DEBUG, g);
+      const d = await Promise.all(a);
+      s.push(...d), o += a.length, r.timeEndLevel(c.DEBUG, g), r.debug(
+        "Final batch %d completed - processed: %d, total: %d",
+        l,
+        a.length,
+        o
+      );
     }
-    return s;
+    return r.timeEndLevel(c.INFO, u), r.info(
+      "Batch processing completed - total coordinates: %d, batches: %d",
+      o,
+      l
+    ), s;
   }
   /**
    * Get elevations along a path defined by multiple coordinates
@@ -781,50 +1035,124 @@ class $ {
    * @param smoothingOptions - Optional distance-based smoothing options
    * @param filterOptions - Optional filtering options using Douglas-Peucker algorithm
    */
-  async getElevationsAlong(t, e, i, n = !0, s, a) {
-    if (t.length < 2)
-      throw new Error("Path must contain at least 2 coordinates");
+  async getElevationsAlong(e, t, i, n = !0, s, a) {
+    const o = "path-elevations";
+    if (r.timeLevel(c.INFO, o), r.info(
+      "Path processing started - waypoints: %d, step: %dm, zoom: %d, interpolation: %s",
+      e.length,
+      i,
+      t,
+      n
+    ), e.length < 2)
+      throw r.error("Path validation failed - insufficient waypoints: %d", e.length), new Error("Path must contain at least 2 coordinates");
     if (i <= 1)
-      throw new Error(`Step is too small: ${i} meters`);
-    const r = Array.from(this.generateCoordinatesAlong(t, i)), l = await this.getElevationsFrom(r, e, n);
-    let c = r.map((h, u) => ({
-      ...h,
-      elevation: l[u]
+      throw r.error("Path validation failed - step too small: %dm", i), new Error(`Step is too small: ${i} meters`);
+    r.debug("Generating coordinates along path");
+    const l = "coordinate-generation";
+    r.timeLevel(c.DEBUG, l);
+    const u = Array.from(this.generateCoordinatesAlong(e, i));
+    r.timeEndLevel(c.DEBUG, l), r.debug("Generated %d coordinates along path", u.length), r.debug("Fetching elevations for generated coordinates");
+    const g = await this.getElevationsFrom(u, t, n);
+    let d = u.map((m, v) => ({
+      ...m,
+      elevation: g[v]
     }));
-    if (s?.enabled === !0 && c.length >= 3) {
-      const h = s.windowSize ?? 50;
-      c = U.smooth(
-        c,
-        h
+    if (r.debug(
+      "Combined coordinates with elevations - points: %d",
+      d.length
+    ), s?.enabled === !0 && d.length >= 3) {
+      const m = s.windowSize ?? 50, v = d.length;
+      r.debug("Applying elevation smoothing - windowSize: %dm", m);
+      const E = "smoothing";
+      r.timeLevel(c.DEBUG, E), d = J.smooth(
+        d,
+        m
+      ), r.timeEndLevel(c.DEBUG, E), r.debug(
+        "Smoothing completed - points: %d → %d",
+        v,
+        d.length
       );
-    }
-    if (a?.enabled === !0 && c.length > 2) {
-      const h = a?.tolerance ?? 10, u = a?.zExaggeration ?? 3;
-      return O.simplify(c, h, u);
-    }
-    return c;
+    } else s?.enabled === !0 && r.debug(
+      "Smoothing skipped - insufficient points: %d (minimum: 3)",
+      d.length
+    );
+    if (a?.enabled === !0 && d.length > 2) {
+      const m = a?.tolerance ?? 10, v = a?.zExaggeration ?? 3, E = d.length;
+      r.debug(
+        "Applying Douglas-Peucker filtering - tolerance: %d, zExaggeration: %d",
+        m,
+        v
+      );
+      const S = "filtering";
+      r.timeLevel(c.DEBUG, S);
+      const I = X.simplify(
+        d,
+        m,
+        v
+      );
+      return r.timeEndLevel(c.DEBUG, S), r.debug(
+        "Filtering completed - points: %d → %d (%.1f%% reduction)",
+        E,
+        I.length,
+        (E - I.length) / E * 100
+      ), r.timeEndLevel(c.INFO, o), r.info(
+        "Path processing completed - waypoints: %d, final points: %d, smoothed: %s, filtered: %s",
+        e.length,
+        I.length,
+        s?.enabled,
+        a?.enabled
+      ), I;
+    } else a?.enabled === !0 && r.debug(
+      "Filtering skipped - insufficient points: %d (minimum: 3)",
+      d.length
+    );
+    return r.timeEndLevel(c.INFO, o), r.info(
+      "Path processing completed - waypoints: %d, final points: %d, smoothed: %s, filtered: %s",
+      e.length,
+      d.length,
+      s?.enabled,
+      a?.enabled
+    ), d;
   }
   /**
    * Generate coordinates along a path with multiple waypoints
    * @param path - Array of coordinates defining the path
    * @param step - Distance between points in meters
    */
-  *generateCoordinatesAlong(t, e) {
-    if (!(t.length < 2)) {
-      yield t[0];
-      for (let i = 0; i < t.length - 1; i++) {
-        if (m.haversine(t[i], t[i + 1]) < x.MIN_SEGMENT_DISTANCE)
-          continue;
-        let s = !0;
-        for (const a of this.generateCoordinatesBetween(t[i], t[i + 1], e)) {
-          if (s) {
-            s = !1;
-            continue;
-          }
-          yield a;
-        }
-      }
+  *generateCoordinatesAlong(e, t) {
+    if (e.length < 2) {
+      r.debug("Path generation skipped - insufficient waypoints: %d", e.length);
+      return;
     }
+    r.debug("Generating coordinates - waypoints: %d, step: %dm", e.length, t), yield e[0];
+    let i = 1, n = 0;
+    for (let s = 0; s < e.length - 1; s++) {
+      const a = T.haversine(e[s], e[s + 1]);
+      if (a < P.MIN_SEGMENT_DISTANCE) {
+        n++, r.debug(
+          "Segment %d skipped - distance too short: %.2fm (minimum: %.2fm)",
+          s + 1,
+          a,
+          P.MIN_SEGMENT_DISTANCE
+        );
+        continue;
+      }
+      r.debug("Processing segment %d - distance: %.2fm", s + 1, a);
+      let o = !0, l = 0;
+      for (const u of this.generateCoordinatesBetween(e[s], e[s + 1], t)) {
+        if (o) {
+          o = !1;
+          continue;
+        }
+        yield u, i++, l++;
+      }
+      r.debug("Segment %d completed - generated: %d points", s + 1, l);
+    }
+    n > 0 ? r.debug(
+      "Path generation completed - generated: %d points, skipped segments: %d",
+      i,
+      n
+    ) : r.debug("Path generation completed - generated: %d points", i);
   }
   /**
    * Generate coordinates between two points at regular intervals
@@ -832,38 +1160,39 @@ class $ {
    * @param coordinate2 - End coordinate
    * @param step - Distance between points in meters
    */
-  *generateCoordinatesBetween(t, e, i) {
-    const n = m.haversine(t, e);
-    if (yield t, n <= i) {
-      yield e;
+  *generateCoordinatesBetween(e, t, i) {
+    const n = T.haversine(e, t);
+    if (yield e, n <= i) {
+      yield t;
       return;
     }
-    const s = Math.floor(n / i), a = e.latitude - t.latitude, r = e.longitude - t.longitude;
+    const s = Math.floor(n / i), a = t.latitude - e.latitude, o = t.longitude - e.longitude;
     for (let l = 1; l <= s; l++) {
-      const c = l * i / n;
+      const u = l * i / n;
       yield {
-        latitude: t.latitude + a * c,
-        longitude: t.longitude + r * c
+        latitude: e.latitude + a * u,
+        longitude: e.longitude + o * u
       };
     }
-    yield e;
+    yield t;
   }
 }
-class G {
+const ee = M("ElevationProvider");
+class te {
   // ============================================================================
   // CONSTRUCTOR & CONFIGURATION
   // ============================================================================
-  constructor(t = {}) {
+  constructor(e = {}) {
     this.config = {
-      zoomLevel: t.zoomLevel ?? 12,
-      cacheSize: t.cacheSize ?? 100,
-      tileUrlTemplate: t.tileUrlTemplate ?? "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
-      timeout: t.timeout ?? 5e3
-    }, this.validateConfig(), this.tileManager = new C(
+      zoomLevel: e.zoomLevel ?? 12,
+      cacheSize: e.cacheSize ?? 100,
+      tileUrlTemplate: e.tileUrlTemplate ?? "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+      timeout: e.timeout ?? 5e3
+    }, ee.dir("Config :", this.config), this.validateConfig(), this.tileManager = new W(
       this.config.tileUrlTemplate,
       this.config.timeout,
       this.config.cacheSize
-    ), this.calculator = new _(this.tileManager), this.batchCalculator = new $(this.calculator);
+    ), this.calculator = new K(this.tileManager), this.batchCalculator = new Z(this.calculator);
   }
   /**
    * Get current configuration
@@ -889,8 +1218,8 @@ class G {
    * @param longitude - Longitude in decimal degrees
    * @param options - Optional parameters
    */
-  async getElevation(t, e, i) {
-    const n = i?.interpolation ?? !0, s = { latitude: t, longitude: e };
+  async getElevation(e, t, i) {
+    const n = i?.interpolation ?? !0, s = { latitude: e, longitude: t };
     return await this.calculator.getElevation(s, this.config.zoomLevel, n);
   }
   // ============================================================================
@@ -901,10 +1230,10 @@ class G {
    * @param coordinates - Iteratable of coordinates
    * @param options - Optional parameters
    */
-  async getElevationsFrom(t, e) {
-    const i = e?.interpolation ?? !0;
+  async getElevationsFrom(e, t) {
+    const i = t?.interpolation ?? !0;
     return this.batchCalculator.getElevationsFrom(
-      t,
+      e,
       this.config.zoomLevel,
       i
     );
@@ -914,10 +1243,10 @@ class G {
    * @param path - Array of coordinates defining the path
    * @param options - Optional parameters
    */
-  async getElevationsAlong(t, e) {
-    const i = e?.step ?? 10, n = e?.interpolation ?? !0, s = e?.smoothingOptions, a = e?.filterOptions;
+  async getElevationsAlong(e, t) {
+    const i = t?.step ?? 10, n = t?.interpolation ?? !0, s = t?.smoothingOptions, a = t?.filterOptions;
     return this.batchCalculator.getElevationsAlong(
-      t,
+      e,
       this.config.zoomLevel,
       i,
       n,
@@ -938,19 +1267,19 @@ class G {
   // PRIVATE - VALIDATION
   // ============================================================================
   validateConfig() {
-    const { zoomLevel: t, cacheSize: e, timeout: i } = this.config;
-    if (!Number.isInteger(t) || t < 0 || t > 15)
+    const { zoomLevel: e, cacheSize: t, timeout: i } = this.config;
+    if (!Number.isInteger(e) || e < 0 || e > 15)
       throw new Error(
-        `Invalid zoom level: ${t}. Must be an integer between 0 and 15`
+        `Invalid zoom level: ${e}. Must be an integer between 0 and 15`
       );
-    if (!Number.isInteger(e) || e <= 0)
-      throw new Error(`Invalid cache size: ${e}. Must be a positive integer`);
+    if (!Number.isInteger(t) || t <= 0)
+      throw new Error(`Invalid cache size: ${t}. Must be a positive integer`);
     if (!Number.isInteger(i) || i <= 0)
       throw new Error(`Invalid timeout: ${i}. Must be a positive integer`);
   }
 }
 export {
-  G as ElevationProvider,
-  G as default
+  te as ElevationProvider,
+  te as default
 };
 //# sourceMappingURL=index.esm.js.map

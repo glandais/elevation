@@ -80,6 +80,53 @@ https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png
 - Cache Size: 100 tiles maximum
 - Timeout: 5000ms for HTTP requests
 
+### Logging Strategy
+
+The library implements a zero-overhead logging system for development debugging while maintaining the zero-dependency philosophy.
+
+**Implementation Details:**
+
+1. **Build-Time Dead Code Elimination**
+    - Uses `__DEV__` constant defined in Vite configuration
+    - Development builds: `__DEV__ = true` (logging enabled)
+    - Production builds: `__DEV__ = false` (all logging code removed by bundler)
+    - Zero runtime overhead in production
+
+2. **Logger Architecture**
+    - Location: `src/utils/Logger.ts`
+    - TypeScript global declaration: `src/global.d.ts`
+    - Vite configuration: `vite.config.ts` with mode-based `__DEV__` definition
+    - Export through `src/utils/index.ts`
+
+3. **Available Methods**
+    - `debug()`, `info()`, `warn()`, `error()` - Standard log levels
+    - `time()`, `timeEnd()` - Performance timing
+    - `group()`, `groupCollapsed()`, `groupEnd()` - Grouped logging
+    - `table()` - Tabular data display
+    - `assert()` - Conditional assertions
+    - `trace()` - Stack traces
+
+4. **Usage Pattern**
+
+    ```typescript
+    import { createLogger } from '@/utils/Logger';
+
+    const logger = createLogger('ModuleName');
+
+    // All these calls are eliminated in production
+    logger.debug('Cache lookup', { key, found });
+    logger.info('Tile fetched', { z, x, y });
+    logger.warn('Request timeout', { url, timeout });
+    logger.error('Decode failed', error);
+    ```
+
+5. **Testing Considerations**
+    - Logger calls don't affect test coverage (eliminated in production)
+    - Can mock `console` methods in tests if needed
+    - `__DEV__` can be defined as `true` in test environment
+
+**Important**: Never add logging configuration to the public API. The logger is purely for internal development use and should not be exposed to library consumers.
+
 ## Important Constraints
 
 1. **Zero Runtime Dependencies**: This library must remain completely dependency-free. All functionality must be implemented using browser-native APIs only. Do not add any runtime dependencies to package.json.
