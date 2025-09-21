@@ -16,6 +16,8 @@ concurrency:
 
 jobs:
   build-and-deploy:
+    environment:
+      name: github-pages
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -39,13 +41,23 @@ jobs:
       - name: Build library
         run: npm run build
 
+      - name: Create static
+        run: |
+          mkdir static
+          mkdir static/dist
+          cp index.html static
+          cp demo.css static
+          cp demo.js static
+          cp sample.gpx static
+          cp dist/index.min.js static/dist
+
       - name: Setup Pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v5
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
-          path: '.'
+          path: './static'
 
       - name: Deploy to GitHub Pages
         id: deployment
