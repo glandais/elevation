@@ -1,3 +1,10 @@
+## [3.0.1](https://github.com/glandais/elevation/compare/v3.0.0...v3.0.1) (2025-09-21)
+
+
+### Bug Fixes
+
+* update GitHub Pages deployment to bypass environment protection ([2270f82](https://github.com/glandais/elevation/commit/2270f8242a7c6c29c13d28c96c282b641eb82397))
+
 # [3.0.0](https://github.com/glandais/elevation/compare/v2.1.0...v3.0.0) (2025-09-21)
 
 
