@@ -1,3 +1,18 @@
+# [3.0.0](https://github.com/glandais/elevation/compare/v2.1.0...v3.0.0) (2025-09-21)
+
+
+### Features
+
+* add Node.js support with environment-specific implementations ([0da3695](https://github.com/glandais/elevation/commit/0da3695b447d3661324ebe098a54d5a71457841b))
+
+
+### BREAKING CHANGES
+
+* Removed clearCache() method from public API - cache is now managed
+internally with LRU eviction only
+* Removed timeout parameter from ElevationProviderConfig - timeout
+handling is now environment-specific
+
 # [2.1.0](https://github.com/glandais/elevation/compare/v2.0.2...v2.1.0) (2025-09-18)
 
 

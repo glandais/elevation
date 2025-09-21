@@ -1,6 +1,6 @@
 {
     "name": "@glandais/elevation",
-    "version": "2.1.0",
+    "version": "3.0.0",
     "description": "TypeScript library for retrieving elevation data from geographic coordinates using terrain RGB tiles",
     "sideEffects": false,
     "main": "./dist/index.umd.js",
