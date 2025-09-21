@@ -41,7 +41,7 @@ jobs:
           cp demo.css static/
           cp demo.js static/
           cp sample.gpx static/
-          cp dist/index.min.js static/dist/
+          cp -R dist static/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
