@@ -68,15 +68,15 @@ const { ElevationProvider } = require('@glandais/elevation');
 ```html
 <!-- Modern ES Module (recommended) -->
 <script
-    src="https://cdn.jsdelivr.net/npm/@glandais/elevation@2/dist/index.esm.js"
+    src="https://cdn.jsdelivr.net/npm/@glandais/elevation@3/dist/index.esm.js"
     type="module"
 ></script>
 
 <!-- UMD (browser global) -->
-<script src="https://cdn.jsdelivr.net/npm/@glandais/elevation@2/dist/index.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@glandais/elevation@3/dist/index.umd.js"></script>
 
 <!-- Minified version -->
-<script src="https://cdn.jsdelivr.net/npm/@glandais/elevation@2/dist/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@glandais/elevation@3/dist/index.min.js"></script>
 ```
 
 ### Local Download
@@ -158,7 +158,6 @@ const coordinates = [
 await elevationProvider.setElevations(coordinates);
 console.log('Elevations:', elevations); // [elevation1, elevation2, elevation3]
 ```
-
 
 ### Elevation Profiling
 
@@ -403,9 +402,9 @@ The library uses terrain data processed from multiple sources:
 ### Node.js Support
 
 - Node.js 18+ with optional dependencies:
-  - `canvas`: For image processing
-  - `node-fetch`: For HTTP requests (Node.js < 18)
-  - `abort-controller`: For request cancellation (Node.js < 15)
+    - `canvas`: For image processing
+    - `node-fetch`: For HTTP requests (Node.js < 18)
+    - `abort-controller`: For request cancellation (Node.js < 15)
 
 ## Performance Considerations
 
