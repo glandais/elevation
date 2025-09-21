@@ -68,6 +68,7 @@ module.exports = [
             globals: {
                 // Build-time constants
                 __DEV__: 'readonly',
+                __NODE__: 'readonly',
                 // Node.js globals
                 module: 'readonly',
                 require: 'readonly',
@@ -90,6 +91,7 @@ module.exports = [
                 Blob: 'readonly',
                 HTMLCanvasElement: 'readonly',
                 HTMLElement: 'readonly',
+                HTMLImageElement: 'readonly',
                 ImageBitmap: 'readonly',
                 AbortSignal: 'readonly',
                 CanvasRenderingContext2D: 'readonly',
@@ -97,6 +99,7 @@ module.exports = [
                 Image: 'readonly',
                 Response: 'readonly',
                 URL: 'readonly',
+                Buffer: 'readonly',
                 // Jest globals
                 describe: 'readonly',
                 it: 'readonly',

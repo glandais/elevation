@@ -1,5 +1,6 @@
+import { BrowserTile } from '../src/tile/fetcher/browser/BrowserTile';
 import { ElevationProvider } from '../src/ElevationProvider';
-import type { Tile, TileCoordinates } from '../src/types';
+import type { TileCoordinates } from '../src/types';
 
 // No mocks in this file - use real implementations except TileFetcher
 
@@ -8,15 +9,16 @@ describe('ElevationProvider Integration - Constructor Function Coverage', () => 
         const closeSpy = jest.fn();
 
         // Mock only TileFetcher, let Cache be real
-        const { TileFetcher } = require('../src/tile/fetcher/TileFetcher');
-        const originalLoadTile = TileFetcher.prototype.loadTile;
+        const { BrowserTileFetcher } = require('../src/tile/fetcher/browser/BrowserTileFetcher');
+        const originalFetchTile = BrowserTileFetcher.prototype.fetchTile;
 
-        const createMockTile = (): Tile => ({
-            data: new ImageData(new Uint8ClampedArray(256 * 256 * 4).fill(128), 256, 256),
-            bitmap: { close: closeSpy } as unknown as ImageBitmap,
-        });
+        const createMockTile = (): BrowserTile =>
+            new BrowserTile(
+                new ImageData(new Uint8ClampedArray(256 * 256 * 4).fill(128), 256, 256),
+                { close: closeSpy } as unknown as ImageBitmap
+            );
 
-        TileFetcher.prototype.loadTile = jest
+        BrowserTileFetcher.prototype.fetchTile = jest
             .fn()
             .mockImplementation(() => Promise.resolve(createMockTile()));
 
@@ -32,26 +34,23 @@ describe('ElevationProvider Integration - Constructor Function Coverage', () => 
             // This tests line 43: cachedTile.bitmap.close();
             await provider.getElevation(45, 90);
             expect(closeSpy).toHaveBeenCalledTimes(1);
-
-            // Clear cache - should cleanup remaining tile
-            provider.clearCache();
-            expect(closeSpy).toHaveBeenCalledTimes(2);
         } finally {
-            TileFetcher.prototype.loadTile = originalLoadTile;
+            BrowserTileFetcher.prototype.fetchTile = originalFetchTile;
         }
     });
 
     it('should execute key mapper and value builder functions (lines 47-48)', async () => {
-        const { TileFetcher } = require('../src/tile/fetcher/TileFetcher');
-        const originalLoadTile = TileFetcher.prototype.loadTile;
+        const { TileLoader } = require('../src/tile/fetcher/TileLoader');
+        const originalLoadTile = TileLoader.prototype.loadTile;
 
-        const mockTile: Tile = {
-            data: new ImageData(new Uint8ClampedArray(256 * 256 * 4).fill(128), 256, 256),
-            bitmap: { close: jest.fn() } as unknown as ImageBitmap,
-        };
+        const createMockTile = (): BrowserTile =>
+            new BrowserTile(
+                new ImageData(new Uint8ClampedArray(256 * 256 * 4).fill(128), 256, 256),
+                { close: jest.fn() } as unknown as ImageBitmap
+            );
 
-        const mockLoadTile = jest.fn().mockResolvedValue(mockTile);
-        TileFetcher.prototype.loadTile = mockLoadTile;
+        const mockLoadTile = jest.fn().mockResolvedValue(createMockTile());
+        TileLoader.prototype.loadTile = mockLoadTile;
 
         try {
             // Create ElevationProvider - this creates real Cache with our functions
@@ -74,7 +73,7 @@ describe('ElevationProvider Integration - Constructor Function Coverage', () => 
             // This proves key mapper (line 47) works: tileCoords => `${tileCoords.z}/${tileCoords.x}/${tileCoords.y}`
             expect(mockLoadTile).toHaveBeenCalledTimes(1);
         } finally {
-            TileFetcher.prototype.loadTile = originalLoadTile;
+            TileLoader.prototype.loadTile = originalLoadTile;
         }
     });
 

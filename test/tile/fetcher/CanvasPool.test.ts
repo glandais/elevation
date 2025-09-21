@@ -1,10 +1,48 @@
 import { CanvasPool } from '../../../src/tile/fetcher/CanvasPool';
 
+// Extended class for testing private methods
+class CanvasPoolExtended<T> extends CanvasPool<T> {
+    // Expose private methods as public for testing
+    public callTrim(): void {
+        const parent = Object.getPrototypeOf(Object.getPrototypeOf(this));
+        return parent._trim.call(this);
+    }
+
+    public callResetIdleTimer(): void {
+        const parent = Object.getPrototypeOf(Object.getPrototypeOf(this));
+        return parent._resetIdleTimer.call(this);
+    }
+
+    // Expose private properties with getter/setter methods
+    public getAvailable(): T[] {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return (this as any).available;
+    }
+
+    public setAvailable(value: T[]): void {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (this as any).available = value;
+    }
+
+    public getIdleTimer(): ReturnType<typeof setTimeout> | null {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return (this as any).idleTimer;
+    }
+
+    public getIdleTimeout(): number {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return (this as any).idleTimeout;
+    }
+}
+
 describe('CanvasPool', () => {
-    let canvasPool: CanvasPool;
+    let canvasPool: CanvasPool<HTMLCanvasElement>;
+    let extendedCanvasPool: CanvasPoolExtended<HTMLCanvasElement>;
 
     beforeEach(() => {
-        canvasPool = new CanvasPool();
+        const canvasBuilder = () => document.createElement('canvas');
+        canvasPool = new CanvasPool(canvasBuilder);
+        extendedCanvasPool = new CanvasPoolExtended(canvasBuilder);
         jest.clearAllTimers();
     });
 
@@ -35,7 +73,7 @@ describe('CanvasPool', () => {
 
             // Acquire multiple canvases
             for (let i = 0; i < 10; i++) {
-                canvases.push(canvasPool.acquire());
+                canvases.push(extendedCanvasPool.acquire());
             }
 
             // All canvases should be different instances when pool is empty
@@ -43,102 +81,80 @@ describe('CanvasPool', () => {
             expect(uniqueCanvases.size).toBe(10);
 
             // Release them to populate the pool
-            canvases.forEach(canvas => canvasPool.release(canvas));
-
-            // Access private members to verify pool state
-            const poolInstance = canvasPool as unknown as {
-                available: HTMLCanvasElement[];
-            };
+            canvases.forEach(canvas => extendedCanvasPool.release(canvas));
 
             // Pool should contain the released canvases
-            expect(poolInstance.available.length).toBeGreaterThan(0);
+            expect(extendedCanvasPool.getAvailable().length).toBeGreaterThan(0);
         });
     });
 
     describe('trim functionality', () => {
         it('should trim excess canvases when pool exceeds idle size', () => {
-            const poolInstance = canvasPool as unknown as {
-                available: HTMLCanvasElement[];
-                _trim: () => void;
-            };
-
             // Create more canvases than idleSize (5)
-            poolInstance.available = [];
+            const canvases: HTMLCanvasElement[] = [];
             for (let i = 0; i < 10; i++) {
-                poolInstance.available.push(document.createElement('canvas'));
+                canvases.push(document.createElement('canvas'));
             }
+            extendedCanvasPool.setAvailable(canvases);
 
-            expect(poolInstance.available.length).toBe(10);
+            expect(extendedCanvasPool.getAvailable().length).toBe(10);
 
             // Call _trim to trigger the while loop
-            poolInstance._trim();
+            extendedCanvasPool.callTrim();
 
             // Should have trimmed to idleSize (5)
-            expect(poolInstance.available.length).toBe(5);
+            expect(extendedCanvasPool.getAvailable().length).toBe(5);
         });
 
         it('should not trim when pool is at idle size', () => {
-            const poolInstance = canvasPool as unknown as {
-                available: HTMLCanvasElement[];
-                _trim: () => void;
-            };
-
             // Create exactly idleSize canvases (5)
-            poolInstance.available = [];
+            const canvases: HTMLCanvasElement[] = [];
             for (let i = 0; i < 5; i++) {
-                poolInstance.available.push(document.createElement('canvas'));
+                canvases.push(document.createElement('canvas'));
             }
+            extendedCanvasPool.setAvailable(canvases);
 
-            expect(poolInstance.available.length).toBe(5);
+            expect(extendedCanvasPool.getAvailable().length).toBe(5);
 
             // Call _trim - should not change anything
-            poolInstance._trim();
+            extendedCanvasPool.callTrim();
 
             // Should still have 5 canvases
-            expect(poolInstance.available.length).toBe(5);
+            expect(extendedCanvasPool.getAvailable().length).toBe(5);
         });
 
         it('should handle empty pool trim gracefully', () => {
-            const poolInstance = canvasPool as unknown as {
-                available: HTMLCanvasElement[];
-                _trim: () => void;
-            };
-
             // Ensure pool is empty
-            poolInstance.available = [];
+            extendedCanvasPool.setAvailable([]);
 
             // Call _trim - should not throw
-            expect(() => poolInstance._trim()).not.toThrow();
+            expect(() => extendedCanvasPool.callTrim()).not.toThrow();
 
             // Should still be empty
-            expect(poolInstance.available.length).toBe(0);
+            expect(extendedCanvasPool.getAvailable().length).toBe(0);
         });
 
         it('should trim with forced conditions preserving state', () => {
-            const poolInstance = canvasPool as unknown as {
-                available: HTMLCanvasElement[];
-                _trim: () => void;
-            };
-
             // Backup original state
-            const originalAvailable = [...poolInstance.available];
+            const originalAvailable = [...extendedCanvasPool.getAvailable()];
 
             // Force pool to exceed idle size
-            poolInstance.available = [];
+            const canvases: HTMLCanvasElement[] = [];
             for (let i = 0; i < 10; i++) {
-                poolInstance.available.push(document.createElement('canvas'));
+                canvases.push(document.createElement('canvas'));
             }
+            extendedCanvasPool.setAvailable(canvases);
 
-            expect(poolInstance.available.length).toBeGreaterThan(5);
+            expect(extendedCanvasPool.getAvailable().length).toBeGreaterThan(5);
 
             // Trigger trim
-            poolInstance._trim();
+            extendedCanvasPool.callTrim();
 
             // Should have trimmed excess canvases
-            expect(poolInstance.available.length).toBeLessThanOrEqual(5);
+            expect(extendedCanvasPool.getAvailable().length).toBeLessThanOrEqual(5);
 
             // Restore original state
-            poolInstance.available = originalAvailable;
+            extendedCanvasPool.setAvailable(originalAvailable);
         });
     });
 
@@ -146,13 +162,9 @@ describe('CanvasPool', () => {
         it('should set timer when acquiring canvas', () => {
             jest.useFakeTimers();
 
-            canvasPool.acquire();
+            extendedCanvasPool.acquire();
 
-            const poolInstance = canvasPool as unknown as {
-                idleTimer: ReturnType<typeof setTimeout> | null;
-            };
-
-            expect(poolInstance.idleTimer).not.toBeNull();
+            expect(extendedCanvasPool.getIdleTimer()).not.toBeNull();
 
             jest.useRealTimers();
         });
@@ -160,18 +172,14 @@ describe('CanvasPool', () => {
         it('should reset timer when releasing canvas', () => {
             jest.useFakeTimers();
 
-            const canvas = canvasPool.acquire();
-            const poolInstance = canvasPool as unknown as {
-                idleTimer: ReturnType<typeof setTimeout> | null;
-            };
+            const canvas = extendedCanvasPool.acquire();
+            const firstTimer = extendedCanvasPool.getIdleTimer();
 
-            const firstTimer = poolInstance.idleTimer;
-
-            canvasPool.release(canvas);
+            extendedCanvasPool.release(canvas);
 
             // Timer should be different (reset)
-            expect(poolInstance.idleTimer).not.toBe(firstTimer);
-            expect(poolInstance.idleTimer).not.toBeNull();
+            expect(extendedCanvasPool.getIdleTimer()).not.toBe(firstTimer);
+            expect(extendedCanvasPool.getIdleTimer()).not.toBeNull();
 
             jest.useRealTimers();
         });
@@ -180,19 +188,14 @@ describe('CanvasPool', () => {
             jest.useFakeTimers();
 
             // Acquire first canvas to set timer
-            canvasPool.acquire();
-
-            const poolInstance = canvasPool as unknown as {
-                idleTimer: ReturnType<typeof setTimeout> | null;
-            };
-
-            const firstTimer = poolInstance.idleTimer;
+            extendedCanvasPool.acquire();
+            const firstTimer = extendedCanvasPool.getIdleTimer();
 
             // Acquire second canvas - should reset timer
-            canvasPool.acquire();
+            extendedCanvasPool.acquire();
 
             // Timer should be different
-            expect(poolInstance.idleTimer).not.toBe(firstTimer);
+            expect(extendedCanvasPool.getIdleTimer()).not.toBe(firstTimer);
 
             jest.useRealTimers();
         });
@@ -203,23 +206,17 @@ describe('CanvasPool', () => {
             // Add many canvases to pool
             const canvases: HTMLCanvasElement[] = [];
             for (let i = 0; i < 10; i++) {
-                canvases.push(canvasPool.acquire());
+                canvases.push(extendedCanvasPool.acquire());
             }
-            canvases.forEach(canvas => canvasPool.release(canvas));
+            canvases.forEach(canvas => extendedCanvasPool.release(canvas));
 
-            // Access pool internals
-            const poolInstance = canvasPool as unknown as {
-                available: HTMLCanvasElement[];
-                idleTimeout: number;
-            };
-
-            expect(poolInstance.available.length).toBe(10);
+            expect(extendedCanvasPool.getAvailable().length).toBe(10);
 
             // Fast-forward time to trigger the idle timeout
-            jest.advanceTimersByTime(poolInstance.idleTimeout);
+            jest.advanceTimersByTime(extendedCanvasPool.getIdleTimeout());
 
             // Should have trimmed to idle size (5)
-            expect(poolInstance.available.length).toBe(5);
+            expect(extendedCanvasPool.getAvailable().length).toBe(5);
 
             jest.useRealTimers();
         });
@@ -227,19 +224,14 @@ describe('CanvasPool', () => {
         it('should test _resetIdleTimer directly for function coverage', () => {
             jest.useFakeTimers();
 
-            const poolInstance = canvasPool as unknown as {
-                _resetIdleTimer: () => void;
-                idleTimer: ReturnType<typeof setTimeout> | null;
-            };
-
             // Call _resetIdleTimer directly
-            poolInstance._resetIdleTimer();
-            expect(poolInstance.idleTimer).not.toBeNull();
+            extendedCanvasPool.callResetIdleTimer();
+            expect(extendedCanvasPool.getIdleTimer()).not.toBeNull();
 
             // Call it again to test clearing existing timer
-            const firstTimer = poolInstance.idleTimer;
-            poolInstance._resetIdleTimer();
-            expect(poolInstance.idleTimer).not.toBe(firstTimer);
+            const firstTimer = extendedCanvasPool.getIdleTimer();
+            extendedCanvasPool.callResetIdleTimer();
+            expect(extendedCanvasPool.getIdleTimer()).not.toBe(firstTimer);
 
             jest.useRealTimers();
         });

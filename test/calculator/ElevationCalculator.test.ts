@@ -1,20 +1,32 @@
 import { ElevationCalculator } from '../../src/calculator/ElevationCalculator';
 import { TileManager } from '../../src/tile/TileManager';
 import * as ElevationFunctions from '../../src/calculator/ElevationFunctions';
-import type { Tile, Coordinates } from '../../src/types';
+import type { Coordinates, Pixel, RGBColor } from '../../src/types';
+import { Tile } from 'src/tile';
 
 // Mock TileManager
 jest.mock('../../src/tile/TileManager');
 const MockedTileManager = TileManager as jest.MockedClass<typeof TileManager>;
 
+// Extended class for testing private methods
+class ElevationCalculatorExtended extends ElevationCalculator {
+    // Expose private method as public for testing
+    public callDecodeElevation(rgb: RGBColor): number {
+        const parent = Object.getPrototypeOf(Object.getPrototypeOf(this));
+        return parent.decodeElevation.call(this, rgb);
+    }
+}
+
 describe('ElevationCalculator', () => {
     let calculator: ElevationCalculator;
+    let extendedCalculator: ElevationCalculatorExtended;
     let mockTileManager: jest.Mocked<TileManager>;
     let mockTile: Tile;
 
     beforeEach(() => {
-        mockTileManager = new MockedTileManager('', 0, 0) as jest.Mocked<TileManager>;
+        mockTileManager = new MockedTileManager('', 0) as jest.Mocked<TileManager>;
         calculator = new ElevationCalculator(mockTileManager);
+        extendedCalculator = new ElevationCalculatorExtended(mockTileManager);
 
         // Create mock ImageData with specific elevation pattern
         const data = new Uint8ClampedArray(256 * 256 * 4);
@@ -42,16 +54,20 @@ describe('ElevationCalculator', () => {
 
         const mockImageData = new ImageData(data, 256, 256);
 
-        const mockImageBitmap = {
-            close: jest.fn(),
-            width: 256,
-            height: 256,
-        } as unknown as ImageBitmap;
-
         mockTile = {
-            data: mockImageData,
-            bitmap: mockImageBitmap,
-        };
+            close: jest.fn(),
+            getRGBFromImageData: jest.fn((position: Pixel): RGBColor => {
+                const x = Math.floor(position.x);
+                const y = Math.floor(position.y);
+                const index = (y * mockImageData.width + x) * 4;
+
+                return {
+                    red: mockImageData.data[index],
+                    green: mockImageData.data[index + 1],
+                    blue: mockImageData.data[index + 2],
+                };
+            }),
+        } as jest.Mocked<Tile>;
 
         mockTileManager.getTile = jest.fn().mockResolvedValue(mockTile);
     });
@@ -215,7 +231,7 @@ describe('ElevationCalculator', () => {
 
             const elevation = await calculator.getElevation(coords, 12);
 
-            // Should maintain precision from ElevationDecoder
+            // Should maintain precision from calculator
             expect(elevation).toBeCloseTo(1000, 2); // Within 0.01m
         });
 
@@ -234,6 +250,85 @@ describe('ElevationCalculator', () => {
             results.forEach(elevation => {
                 expect(typeof elevation).toBe('number');
                 expect(isFinite(elevation)).toBe(true);
+            });
+        });
+    });
+
+    describe('decodeElevation method', () => {
+        it('should decode elevation from RGB values using Terrarium encoding', () => {
+            const rgb: RGBColor = { red: 128, green: 0, blue: 0 };
+            const elevation = extendedCalculator.callDecodeElevation(rgb);
+
+            // 128 * 256 + 0 + 0/256 - 32768 = 32768 - 32768 = 0
+            expect(elevation).toBe(0);
+        });
+
+        it('should handle sea level elevation (zero)', () => {
+            const rgb: RGBColor = { red: 128, green: 0, blue: 0 };
+            const elevation = extendedCalculator.callDecodeElevation(rgb);
+            expect(elevation).toBe(0);
+        });
+
+        it('should handle positive elevation', () => {
+            const rgb: RGBColor = { red: 129, green: 0, blue: 0 };
+            const elevation = extendedCalculator.callDecodeElevation(rgb);
+
+            // 129 * 256 + 0 + 0/256 - 32768 = 33024 - 32768 = 256
+            expect(elevation).toBe(256);
+        });
+
+        it('should handle negative elevation (below sea level)', () => {
+            const rgb: RGBColor = { red: 127, green: 255, blue: 255 };
+            const elevation = extendedCalculator.callDecodeElevation(rgb);
+
+            // 127 * 256 + 255 + 255/256 - 32768 = 32767.996... - 32768 ≈ -0.004
+            expect(elevation).toBeCloseTo(-0.004, 2);
+        });
+
+        it('should handle maximum elevation', () => {
+            const rgb: RGBColor = { red: 255, green: 255, blue: 255 };
+            const elevation = extendedCalculator.callDecodeElevation(rgb);
+
+            // 255 * 256 + 255 + 255/256 - 32768 = 65535.996... - 32768 ≈ 32767.996
+            expect(elevation).toBeCloseTo(32767.996, 2);
+        });
+
+        it('should handle minimum elevation', () => {
+            const rgb: RGBColor = { red: 0, green: 0, blue: 0 };
+            const elevation = extendedCalculator.callDecodeElevation(rgb);
+
+            // 0 * 256 + 0 + 0/256 - 32768 = -32768
+            expect(elevation).toBe(-32768);
+        });
+
+        it('should round elevation to 2 decimal places', () => {
+            const rgb: RGBColor = { red: 128, green: 1, blue: 128 };
+            const elevation = extendedCalculator.callDecodeElevation(rgb);
+
+            // 128 * 256 + 1 + 128/256 - 32768 = 32769.5 - 32768 = 1.5
+            expect(elevation).toBe(1.5);
+        });
+
+        it('should handle fractional blue values', () => {
+            const rgb: RGBColor = { red: 128, green: 0, blue: 64 };
+            const elevation = extendedCalculator.callDecodeElevation(rgb);
+
+            // 128 * 256 + 0 + 64/256 - 32768 = 32768.25 - 32768 = 0.25
+            expect(elevation).toBe(0.25);
+        });
+
+        it('should be consistent with known test values', () => {
+            // Test some known elevation encodings
+            // Formula: elevation = (red * 256 + green + blue / 256) - 32768
+            const testCases = [
+                { rgb: { red: 130, green: 100, blue: 50 }, expected: 612.2 }, // 130*256 + 100 + 50/256 - 32768
+                { rgb: { red: 120, green: 200, blue: 150 }, expected: -1847.41 }, // 120*256 + 200 + 150/256 - 32768
+                { rgb: { red: 140, green: 50, blue: 200 }, expected: 3122.78 }, // 140*256 + 50 + 200/256 - 32768
+            ];
+
+            testCases.forEach(({ rgb, expected }) => {
+                const result = extendedCalculator.callDecodeElevation(rgb);
+                expect(result).toBeCloseTo(expected, 2);
             });
         });
     });

@@ -6,3 +6,5 @@ build/
 *.min.js
 package-lock.json
 CHANGELOG.md
+.claude/
+.serena/

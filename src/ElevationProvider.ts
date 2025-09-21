@@ -33,16 +33,11 @@ export class ElevationProvider {
             tileUrlTemplate:
                 config.tileUrlTemplate ??
                 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
-            timeout: config.timeout ?? 5000,
         };
         logger.dir('Config :', this.config);
 
         this.validateConfig();
-        this.tileManager = new TileManager(
-            this.config.tileUrlTemplate,
-            this.config.timeout,
-            this.config.cacheSize
-        );
+        this.tileManager = new TileManager(this.config.tileUrlTemplate, this.config.cacheSize);
         this.calculator = new ElevationCalculator(this.tileManager);
         this.batchCalculator = new BatchCalculator(this.calculator);
     }
@@ -125,22 +120,11 @@ export class ElevationProvider {
     }
 
     // ============================================================================
-    // PUBLIC API - CACHE MANAGEMENT
-    // ============================================================================
-
-    /**
-     * Clear tile cache
-     */
-    public clearCache(): void {
-        this.tileManager.clearCache();
-    }
-
-    // ============================================================================
     // PRIVATE - VALIDATION
     // ============================================================================
 
     private validateConfig(): void {
-        const { zoomLevel, cacheSize, timeout } = this.config;
+        const { zoomLevel, cacheSize } = this.config;
 
         if (!Number.isInteger(zoomLevel) || zoomLevel < 0 || zoomLevel > 15) {
             throw new Error(
@@ -150,10 +134,6 @@ export class ElevationProvider {
 
         if (!Number.isInteger(cacheSize) || cacheSize <= 0) {
             throw new Error(`Invalid cache size: ${cacheSize}. Must be a positive integer`);
-        }
-
-        if (!Number.isInteger(timeout) || timeout <= 0) {
-            throw new Error(`Invalid timeout: ${timeout}. Must be a positive integer`);
         }
     }
 }

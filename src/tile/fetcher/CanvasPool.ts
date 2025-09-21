@@ -10,8 +10,9 @@ const logger: Logger = createLogger('tile/fetcher/CanvasPool');
  * Canvas pool for efficient canvas reuse and memory management
  * Automatically trims excess canvases after idle period
  */
-export class CanvasPool {
-    private available: HTMLCanvasElement[] = [];
+export class CanvasPool<T> {
+    private readonly builder: () => T;
+    private available: T[] = [];
     private readonly idleSize: number = 5;
     private readonly idleTimeout: number = 30000; // 30 seconds
     private idleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -19,15 +20,19 @@ export class CanvasPool {
     private totalAcquired: number = 0;
     private totalReleased: number = 0;
 
+    constructor(builder: () => T) {
+        this.builder = builder;
+    }
+
     /**
      * Acquire a canvas from the pool (creates new if none available)
      */
-    public acquire(): HTMLCanvasElement {
+    public acquire(): T {
         this.totalAcquired++;
         let canvas = this.available.pop();
 
         if (!canvas) {
-            canvas = document.createElement('canvas');
+            canvas = this.builder();
             this.totalCreated++;
             logger.debug(
                 'Canvas created - new canvas (total created: %d, pool size: %d)',
@@ -50,7 +55,7 @@ export class CanvasPool {
     /**
      * Return a canvas to the pool for reuse
      */
-    public release(canvas: HTMLCanvasElement): void {
+    public release(canvas: T): void {
         if (canvas) {
             this.totalReleased++;
             this.available.push(canvas);

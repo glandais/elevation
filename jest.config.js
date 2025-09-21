@@ -10,7 +10,6 @@ module.exports = {
     moduleNameMapper: {
         '\\.(css|less|scss|sass)$': '<rootDir>/test/__mocks__/styleMock.js',
     },
-    transformIgnorePatterns: ['node_modules/(?!(leaflet)/)'],
     coverageThreshold: {
         global: {
             branches: 80,

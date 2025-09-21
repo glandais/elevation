@@ -35,7 +35,7 @@ describe('BatchCalculator', () => {
         jest.clearAllMocks();
 
         // Mock TileManager
-        mockTileManager = new MockedTileManager('', 0, 0) as jest.Mocked<TileManager>;
+        mockTileManager = new MockedTileManager('', 0) as jest.Mocked<TileManager>;
 
         // Mock ElevationCalculator
         mockElevationCalculator = new MockedElevationCalculator(

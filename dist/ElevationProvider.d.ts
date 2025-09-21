@@ -35,10 +35,6 @@ export declare class ElevationProvider {
      * @param options - Optional parameters
      */
     getElevationsAlong(path: Coordinates[], options?: GetElevationsAlongOptions): Promise<CoordinatesElevation[]>;
-    /**
-     * Clear tile cache
-     */
-    clearCache(): void;
     private validateConfig;
 }
 //# sourceMappingURL=ElevationProvider.d.ts.map

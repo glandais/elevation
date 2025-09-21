@@ -4,6 +4,8 @@
 // This allows us to test the logger functionality
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (global as any).__DEV__ = true;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(global as any).__NODE__ = false;
 
 // Global mock for Logger to silence console output during tests
 // Only applies to imports from '../src/utils/Logger' and '../src/utils'

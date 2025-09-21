@@ -1,19 +1,32 @@
+import { Tile } from '../../src/tile';
 import { TileManager } from '../../src/tile/TileManager';
-import TileFetcher from '../../src/tile/fetcher';
 import { Cache } from '../../src/tile/cache/Cache';
-import type { TileCoordinates, Tile } from '../../src/types';
+import { TileLoader } from '../../src/tile/fetcher/TileLoader';
+import type { TileCoordinates, Pixel } from '../../src/types';
 
 // Mock dependencies
-jest.mock('../../src/tile/fetcher');
 jest.mock('../../src/tile/cache/Cache');
+jest.mock('../../src/tile/fetcher/TileLoader');
 
-const MockedTileFetcher = TileFetcher as jest.MockedClass<typeof TileFetcher>;
+// Mock the dynamic imports for browser and Node.js tile fetchers
+jest.mock('../../src/tile/fetcher/browser/BrowserTileFetcher', () => ({
+    BrowserTileFetcher: jest.fn().mockImplementation(() => ({
+        fetchTile: jest.fn(),
+    })),
+}));
+
+jest.mock('../../src/tile/fetcher/nodejs/NodeJsTileFetcher', () => ({
+    NodeJsTileFetcher: jest.fn().mockImplementation(() => ({
+        fetchTile: jest.fn(),
+    })),
+}));
+
 const MockedCache = Cache as jest.MockedClass<typeof Cache>;
+const MockedTileLoader = TileLoader as jest.MockedClass<typeof TileLoader>;
 
 describe('TileManager', () => {
-    let mockFetchTile: jest.MockedFunction<(tileCoords: TileCoordinates) => Promise<Tile>>;
+    let mockLoadTile: jest.MockedFunction<(tileCoords: TileCoordinates) => Promise<Tile>>;
     let mockCacheGet: jest.MockedFunction<(k: TileCoordinates) => Promise<Tile>>;
-    let mockCacheClear: jest.MockedFunction<() => void>;
     let mockTile: Tile;
 
     beforeEach(() => {
@@ -31,29 +44,27 @@ describe('TileManager', () => {
 
         const mockImageData = new ImageData(data, 256, 256);
 
-        const mockImageBitmap = {
-            close: jest.fn(),
-            width: 256,
-            height: 256,
-        } as unknown as ImageBitmap;
-
+        // Create proper Tile interface implementation
         mockTile = {
-            data: mockImageData,
-            bitmap: mockImageBitmap,
-        };
+            close: jest.fn(),
+            getRGBFromImageData: jest.fn((position: Pixel) => {
+                const x = Math.floor(position.x);
+                const y = Math.floor(position.y);
+                const index = (y * 256 + x) * 4;
 
-        mockFetchTile = jest.fn().mockResolvedValue(mockTile) as jest.MockedFunction<
-            (tileCoords: TileCoordinates) => Promise<Tile>
-        >;
-        MockedTileFetcher.prototype.loadTile = mockFetchTile;
+                return {
+                    red: mockImageData.data[index],
+                    green: mockImageData.data[index + 1],
+                    blue: mockImageData.data[index + 2],
+                };
+            }),
+        } as jest.Mocked<Tile>;
 
-        mockCacheGet = jest.fn().mockResolvedValue(mockTile) as jest.MockedFunction<
-            (k: TileCoordinates) => Promise<Tile>
-        >;
-        mockCacheClear = jest.fn();
+        mockLoadTile = jest.fn().mockResolvedValue(mockTile);
+        MockedTileLoader.prototype.loadTile = mockLoadTile;
 
+        mockCacheGet = jest.fn().mockResolvedValue(mockTile);
         MockedCache.prototype.get = mockCacheGet;
-        MockedCache.prototype.clear = mockCacheClear;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (MockedCache.prototype as any).has = jest.fn().mockReturnValue(false);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -63,50 +74,68 @@ describe('TileManager', () => {
     describe('constructor', () => {
         it('should create TileManager with provided parameters', () => {
             const tileUrlTemplate = 'https://example.com/{z}/{x}/{y}.png';
-            const timeout = 3000;
             const cacheSize = 50;
 
-            const manager = new TileManager(tileUrlTemplate, timeout, cacheSize);
+            const manager = new TileManager(tileUrlTemplate, cacheSize);
 
             expect(manager).toBeDefined();
-            expect(MockedTileFetcher).toHaveBeenCalledWith(tileUrlTemplate, timeout);
+            // Cache is lazily initialized, so constructor doesn't create dependencies yet
+        });
+
+        it('should initialize cache lazily when getTile is called', async () => {
+            const manager = new TileManager('https://test.com/{z}/{x}/{y}.png', 100);
+            const tileCoords: TileCoordinates = { z: 12, x: 100, y: 200 };
+
+            await manager.getTile(tileCoords);
+
+            // Verify that cache was created with correct parameters
             expect(MockedCache).toHaveBeenCalledWith(
-                cacheSize,
+                100,
                 expect.any(Function), // keyMapper function
                 expect.any(Function), // valueBuilder function
                 expect.any(Function) // cleanup function
             );
+            expect(MockedTileLoader).toHaveBeenCalledWith(
+                'https://test.com/{z}/{x}/{y}.png',
+                expect.any(Object) // TileFetcher instance
+            );
         });
 
-        it('should create cache with correct key mapping function', () => {
-            new TileManager('https://test.com/{z}/{x}/{y}.png', 5000, 10);
+        it('should create cache with correct key mapping function', async () => {
+            const manager = new TileManager('https://test.com/{z}/{x}/{y}.png', 10);
+            const tileCoords: TileCoordinates = { z: 12, x: 100, y: 200 };
+
+            await manager.getTile(tileCoords);
 
             // Get the key mapper function that was passed to Cache constructor
             const cacheConstructorCall = (MockedCache as unknown as jest.Mock).mock.calls[0];
             const keyMapperFunction = cacheConstructorCall[1];
 
             // Test the key mapping function
-            const tileCoords: TileCoordinates = { z: 12, x: 100, y: 200 };
             const key = keyMapperFunction(tileCoords);
-
             expect(key).toBe('12/100/200');
         });
 
         it('should create cache with correct value builder function', async () => {
-            new TileManager('https://test.com/{z}/{x}/{y}.png', 5000, 10);
+            const manager = new TileManager('https://test.com/{z}/{x}/{y}.png', 10);
+            const tileCoords: TileCoordinates = { z: 12, x: 100, y: 200 };
+
+            await manager.getTile(tileCoords);
 
             // Get the value builder function that was passed to Cache constructor
             const cacheConstructorCall = (MockedCache as unknown as jest.Mock).mock.calls[0];
             const valueBuilderFunction = cacheConstructorCall[2];
 
-            const tileCoords: TileCoordinates = { z: 12, x: 100, y: 200 };
             await valueBuilderFunction(tileCoords);
 
-            expect(mockFetchTile).toHaveBeenCalledWith(tileCoords);
+            expect(mockLoadTile).toHaveBeenCalledWith(tileCoords);
         });
 
-        it('should create cache with cleanup function that closes ImageBitmap', () => {
-            new TileManager('https://test.com/{z}/{x}/{y}.png', 5000, 10);
+        it('should create cache with cleanup function that closes tiles', async () => {
+            const manager = new TileManager('https://test.com/{z}/{x}/{y}.png', 10);
+            const tileCoords: TileCoordinates = { z: 12, x: 100, y: 200 };
+
+            await manager.getTile(tileCoords);
 
             // Get the cleanup function that was passed to Cache constructor
             const cacheConstructorCall = (MockedCache as unknown as jest.Mock).mock.calls[0];
@@ -114,8 +143,8 @@ describe('TileManager', () => {
 
             const mockCloseFn = jest.fn();
             const testTile: Tile = {
-                data: mockTile.data,
-                bitmap: { close: mockCloseFn } as unknown as ImageBitmap,
+                close: mockCloseFn,
+                getRGBFromImageData: jest.fn(),
             };
 
             cleanupFunction(testTile);
@@ -128,7 +157,7 @@ describe('TileManager', () => {
         let manager: TileManager;
 
         beforeEach(() => {
-            manager = new TileManager('https://test.com/{z}/{x}/{y}.png', 5000, 10);
+            manager = new TileManager('https://test.com/{z}/{x}/{y}.png', 10);
         });
 
         it('should delegate to cache.get', async () => {
@@ -162,36 +191,26 @@ describe('TileManager', () => {
             await expect(manager.getTile(tileCoords)).rejects.toThrow('Cache error');
         });
 
-        it('should handle network errors from TileFetcher', async () => {
-            // Simulate cache miss triggering value builder (TileFetcher.loadTile)
-            mockFetchTile.mockRejectedValueOnce(new Error('Network timeout'));
+        it('should handle network errors from TileLoader', async () => {
+            // Simulate cache miss triggering value builder (TileLoader.loadTile)
+            mockLoadTile.mockRejectedValueOnce(new Error('Network timeout'));
             mockCacheGet.mockRejectedValueOnce(new Error('Network timeout'));
 
             const tileCoords: TileCoordinates = { z: 10, x: 50, y: 75 };
 
             await expect(manager.getTile(tileCoords)).rejects.toThrow('Network timeout');
         });
-    });
 
-    describe('clearCache', () => {
-        let manager: TileManager;
+        it('should reuse cache instance on subsequent calls', async () => {
+            const tileCoords1: TileCoordinates = { z: 10, x: 50, y: 75 };
+            const tileCoords2: TileCoordinates = { z: 10, x: 51, y: 75 };
 
-        beforeEach(() => {
-            manager = new TileManager('https://test.com/{z}/{x}/{y}.png', 5000, 10);
-        });
+            await manager.getTile(tileCoords1);
+            await manager.getTile(tileCoords2);
 
-        it('should delegate to cache.clear', () => {
-            manager.clearCache();
-
-            expect(mockCacheClear).toHaveBeenCalled();
-        });
-
-        it('should be callable multiple times', () => {
-            manager.clearCache();
-            manager.clearCache();
-            manager.clearCache();
-
-            expect(mockCacheClear).toHaveBeenCalledTimes(3);
+            // Cache should only be created once
+            expect(MockedCache).toHaveBeenCalledTimes(1);
+            expect(mockCacheGet).toHaveBeenCalledTimes(2);
         });
     });
 
@@ -199,7 +218,7 @@ describe('TileManager', () => {
         let manager: TileManager;
 
         beforeEach(() => {
-            manager = new TileManager('https://tiles.example.com/{z}/{x}/{y}.png', 2000, 5);
+            manager = new TileManager('https://tiles.example.com/{z}/{x}/{y}.png', 5);
         });
 
         it('should handle concurrent tile requests', async () => {
@@ -207,11 +226,16 @@ describe('TileManager', () => {
             const tileCoords2: TileCoordinates = { z: 12, x: 101, y: 200 };
             const tileCoords3: TileCoordinates = { z: 12, x: 100, y: 201 };
 
+            // Create different mock tiles for each request
+            const mockTile1 = { ...mockTile, close: jest.fn() };
+            const mockTile2 = { ...mockTile, close: jest.fn() };
+            const mockTile3 = { ...mockTile, close: jest.fn() };
+
             // Simulate different tiles returned for different coordinates
             mockCacheGet
-                .mockResolvedValueOnce(mockTile)
-                .mockResolvedValueOnce({ ...mockTile })
-                .mockResolvedValueOnce({ ...mockTile });
+                .mockResolvedValueOnce(mockTile1)
+                .mockResolvedValueOnce(mockTile2)
+                .mockResolvedValueOnce(mockTile3);
 
             const promises = [
                 manager.getTile(tileCoords1),
@@ -228,66 +252,75 @@ describe('TileManager', () => {
             expect(mockCacheGet).toHaveBeenCalledWith(tileCoords3);
         });
 
-        it('should handle cache operations with different tile URL templates', () => {
-            new TileManager('https://server1.com/{z}/{x}/{y}.png', 5000, 10);
-            new TileManager('https://server2.com/{z}/{x}/{y}.png', 3000, 20);
+        it('should handle different cache sizes', async () => {
+            const manager1 = new TileManager('https://server1.com/{z}/{x}/{y}.png', 10);
+            const manager2 = new TileManager('https://server2.com/{z}/{x}/{y}.png', 20);
 
-            expect(MockedTileFetcher).toHaveBeenCalledWith(
-                'https://server1.com/{z}/{x}/{y}.png',
-                5000
-            );
-            expect(MockedTileFetcher).toHaveBeenCalledWith(
-                'https://server2.com/{z}/{x}/{y}.png',
-                3000
-            );
-            expect(MockedCache).toHaveBeenCalledTimes(3); // Including the previous test setups
+            const tileCoords: TileCoordinates = { z: 10, x: 50, y: 75 };
+
+            // Trigger cache initialization for both managers
+            await manager1.getTile(tileCoords);
+            await manager2.getTile(tileCoords);
+
+            // Verify both caches were created with correct sizes
+            const cacheCalls = (MockedCache as unknown as jest.Mock).mock.calls;
+            expect(cacheCalls.some(call => call[0] === 10)).toBe(true);
+            expect(cacheCalls.some(call => call[0] === 20)).toBe(true);
         });
 
-        it('should properly initialize all dependencies', () => {
-            new TileManager('https://test.com/{z}/{x}/{y}.png', 1000, 100);
+        it('should properly initialize dependencies when getTile is called', async () => {
+            const manager = new TileManager('https://test.com/{z}/{x}/{y}.png', 100);
+            const tileCoords: TileCoordinates = { z: 10, x: 50, y: 75 };
 
-            expect(MockedTileFetcher).toHaveBeenCalledWith(
-                'https://test.com/{z}/{x}/{y}.png',
-                1000
-            );
+            await manager.getTile(tileCoords);
+
             expect(MockedCache).toHaveBeenCalledWith(
                 100,
                 expect.any(Function),
                 expect.any(Function),
                 expect.any(Function)
             );
+            expect(MockedTileLoader).toHaveBeenCalledWith(
+                'https://test.com/{z}/{x}/{y}.png',
+                expect.any(Object)
+            );
         });
     });
 
     describe('error handling', () => {
-        beforeEach(() => {
-            // This will be used for error handling tests
-        });
-
-        it('should handle TileFetcher initialization errors', () => {
-            MockedTileFetcher.mockImplementationOnce(() => {
-                throw new Error('TileFetcher initialization failed');
-            });
-
-            expect(() => {
-                new TileManager('invalid-url', 5000, 10);
-            }).toThrow('TileFetcher initialization failed');
-        });
-
-        it('should handle Cache initialization errors', () => {
+        it('should handle Cache initialization errors during getTile', async () => {
             MockedCache.mockImplementationOnce(() => {
                 throw new Error('Cache initialization failed');
             });
 
-            expect(() => {
-                new TileManager('https://test.com/{z}/{x}/{y}.png', 5000, 10);
-            }).toThrow('Cache initialization failed');
+            const manager = new TileManager('https://test.com/{z}/{x}/{y}.png', 10);
+            const tileCoords: TileCoordinates = { z: 10, x: 50, y: 75 };
+
+            await expect(manager.getTile(tileCoords)).rejects.toThrow(
+                'Cache initialization failed'
+            );
+        });
+
+        it('should handle TileLoader initialization errors during getTile', async () => {
+            MockedTileLoader.mockImplementationOnce(() => {
+                throw new Error('TileLoader initialization failed');
+            });
+
+            const manager = new TileManager('https://test.com/{z}/{x}/{y}.png', 10);
+            const tileCoords: TileCoordinates = { z: 10, x: 50, y: 75 };
+
+            await expect(manager.getTile(tileCoords)).rejects.toThrow(
+                'TileLoader initialization failed'
+            );
         });
     });
 
     describe('memory management', () => {
-        it('should call ImageBitmap.close() in cleanup function', () => {
-            new TileManager('https://test.com/{z}/{x}/{y}.png', 5000, 10);
+        it('should call tile.close() in cleanup function', async () => {
+            const manager = new TileManager('https://test.com/{z}/{x}/{y}.png', 10);
+            const tileCoords: TileCoordinates = { z: 10, x: 50, y: 75 };
+
+            await manager.getTile(tileCoords);
 
             // Extract the cleanup function from the Cache constructor
             const cacheConstructorCall = (MockedCache as unknown as jest.Mock).mock.calls[0];
@@ -297,13 +330,13 @@ describe('TileManager', () => {
             const mockClose2 = jest.fn();
 
             const tile1: Tile = {
-                data: mockTile.data,
-                bitmap: { close: mockClose1 } as unknown as ImageBitmap,
+                close: mockClose1,
+                getRGBFromImageData: jest.fn(),
             };
 
             const tile2: Tile = {
-                data: mockTile.data,
-                bitmap: { close: mockClose2 } as unknown as ImageBitmap,
+                close: mockClose2,
+                getRGBFromImageData: jest.fn(),
             };
 
             cleanupFunction(tile1);

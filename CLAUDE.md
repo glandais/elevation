@@ -4,14 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a TypeScript library (`@glandais/elevation`) for retrieving elevation data from geographic coordinates using terrain RGB tiles. The library fetches elevation tiles from AWS S3 and decodes RGB-encoded elevation data.
+This is a TypeScript library (`@glandais/elevation`) for retrieving elevation data from geographic coordinates using terrain RGB tiles. The library fetches elevation tiles from AWS S3 and decodes RGB-encoded elevation data. Supports both browser and Node.js environments through environment-specific implementations.
 
 ## Key Commands
 
 ### Development
 
 ```bash
-npm run build          # Build library with Vite (ES, UMD, IIFE formats)
+npm run build          # Build library for both browser and Node.js
+npm run build:clean    # Clean dist directory
+npm run build:browser  # Build browser-specific bundles (ES, UMD, IIFE)
+npm run build:node     # Build Node.js-specific bundles (ES, CommonJS)
+npm run build:combine  # Combine browser and Node.js builds
+npm run build:dev      # Development build with logging enabled
 npm run typecheck      # Type checking with TypeScript
 npm run lint           # Lint with ESLint
 npm run lint:fix       # Auto-fix linting issues
@@ -40,21 +45,27 @@ The library follows a modular architecture with clear separation of concerns:
 
 - **ElevationProvider** (`src/ElevationProvider.ts`): Main API class that coordinates all operations
 - **Cache** (`src/cache/Cache.ts`): LRU cache implementation for tile data
-- **TileFetcher** (`src/fetcher/TileFetcher.ts`): Handles HTTP requests to fetch terrain tiles
+- **Tile** (`src/tile/Tile.ts`): Abstract interface for tile handling across environments
+- **TileManager** (`src/tile/TileManager.ts`): Manages tile fetching with dynamic environment detection
+- **TileLoader** (`src/tile/fetcher/TileLoader.ts`): Coordinates tile loading from URL templates
+- **TileFetcher** (`src/tile/fetcher/TileFetcher.ts`): Abstract interface for environment-specific fetching
+  - **BrowserTileFetcher** (`src/tile/fetcher/browser/BrowserTileFetcher.ts`): Browser implementation using native APIs
+  - **NodeJsTileFetcher** (`src/tile/fetcher/nodejs/NodeJsTileFetcher.ts`): Node.js implementation using canvas package
 - **CoordinateConverter** (`src/converter/CoordinateConverter.ts`): Converts between WGS84 and Web Mercator tile coordinates
-- **ElevationDecoder** (`src/decoder/ElevationDecoder.ts`): Decodes RGB pixels to elevation values using Terrarium encoding
+- **ElevationCalculator** (`src/calculator/ElevationCalculator.ts`): Calculates elevations with RGB decoding integrated
 
 ### Data Flow
 
 1. User requests elevation for latitude/longitude
 2. CoordinateConverter transforms WGS84 to tile coordinates (z/x/y)
-3. Cache checks for cached tile data
-4. If not cached, TileFetcher retrieves PNG tile from AWS S3
-5. ElevationDecoder extracts elevation from RGB pixel values
-6. Optional bilinear interpolation for smoother results
-7. For elevation profiling: BatchCalculator generates coordinate sequences
-8. Optional distance-based smoothing using ElevationSmoother
-9. Optional Douglas-Peucker filtering for profile simplification
+3. TileManager checks environment (`__NODE__` flag) and loads appropriate fetcher
+4. Cache checks for cached tile data (lazily initialized on first use)
+5. If not cached, environment-specific TileFetcher retrieves PNG tile from AWS S3
+6. Tile implementation extracts RGB values and decodes elevation using Terrarium formula
+7. Optional bilinear interpolation for smoother results
+8. For elevation profiling: BatchCalculator generates coordinate sequences
+9. Optional distance-based smoothing using ElevationSmoother
+10. Optional Douglas-Peucker filtering for profile simplification
 
 ### Key Technical Details
 
@@ -78,7 +89,6 @@ https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png
 
 - Zoom Level: 12 (approximately 30m resolution)
 - Cache Size: 100 tiles maximum
-- Timeout: 5000ms for HTTP requests
 
 ### Logging Strategy
 
@@ -87,9 +97,11 @@ The library implements a zero-overhead logging system for development debugging 
 **Implementation Details:**
 
 1. **Build-Time Dead Code Elimination**
-    - Uses `__DEV__` constant defined in Vite configuration
+    - Uses `__DEV__` and `__NODE__` constants defined in Vite configuration
     - Development builds: `__DEV__ = true` (logging enabled)
     - Production builds: `__DEV__ = false` (all logging code removed by bundler)
+    - Node.js builds: `__NODE__ = true` (loads Node.js-specific implementations)
+    - Browser builds: `__NODE__ = false` (loads browser-specific implementations)
     - Zero runtime overhead in production
 
 2. **Logger Architecture**
@@ -116,7 +128,7 @@ The library implements a zero-overhead logging system for development debugging 
     // All these calls are eliminated in production
     logger.debug('Cache lookup', { key, found });
     logger.info('Tile fetched', { z, x, y });
-    logger.warn('Request timeout', { url, timeout });
+    logger.warn('Request failed', { url, error });
     logger.error('Decode failed', error);
     ```
 
@@ -129,11 +141,11 @@ The library implements a zero-overhead logging system for development debugging 
 
 ## Important Constraints
 
-1. **Zero Runtime Dependencies**: This library must remain completely dependency-free. All functionality must be implemented using browser-native APIs only. Do not add any runtime dependencies to package.json.
+1. **Minimal Dependencies**: Browser builds have zero runtime dependencies. Node.js builds require optional dependencies (`canvas`, `node-fetch`, `abort-controller`) that are dynamically imported.
 2. **Attribution Required**: Any usage must include attribution to data sources (SRTM, GMTED, NED, ETOPO1) and Mapzen/Tilezen processing
-3. **Browser-Only**: Library uses browser-native ImageData API, not compatible with Node.js
+3. **Cross-Platform**: Library supports both browser (native APIs) and Node.js (with canvas package) environments
 4. **Coordinate Limits**: Latitude must be between -85.0511 and 85.0511 (Web Mercator bounds)
-5. **Memory Usage**: Each tile uses ~262KB (256×256×4 bytes)
+5. **Memory Usage**: Each tile uses ~262KB (256×256×4 bytes) in both environments
 
 ## Testing Strategy
 
@@ -310,7 +322,7 @@ describe('Protected method tests', () => {
 - **ElevationProvider Methods**: All public methods with options interfaces
 - **Batch Operations**: setElevations, getElevationsAlong
 - **Configuration Validation**: Constructor options and validation logic
-- **Cache Management**: clearCache functionality
+- **Cache Management**: LRU eviction and memory management
 
 #### Algorithm Testing
 
@@ -328,7 +340,7 @@ describe('Protected method tests', () => {
 #### Infrastructure Testing
 
 - **Cache Behavior**: LRU eviction, memory management, performance
-- **Tile Fetching**: HTTP request handling, timeout management, error recovery
+- **Tile Fetching**: HTTP request handling, environment-specific fetching, error recovery
 - **Canvas Pool**: Resource management and cleanup
 
 #### Error Handling and Edge Cases
@@ -347,8 +359,7 @@ test/
 ├── setup.ts                          # Global test setup and mocks
 ├── calculator/                       # Calculator module tests
 │   ├── BatchCalculator.test.ts
-│   ├── ElevationCalculator.test.ts
-│   └── ElevationDecoder.test.ts
+│   └── ElevationCalculator.test.ts
 ├── utils/                            # Utility class tests
 │   ├── Distance.test.ts
 │   ├── ElevationSmoother.test.ts

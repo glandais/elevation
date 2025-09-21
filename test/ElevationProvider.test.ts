@@ -2,7 +2,7 @@ import { ElevationProvider } from '../src/ElevationProvider';
 import { TileManager } from '../src/tile/TileManager';
 import { ElevationCalculator, BatchCalculator } from '../src/calculator';
 import { toPixel } from '../src/calculator/ElevationFunctions';
-import type { ElevationProviderConfig, Tile, Coordinates } from '../src/types';
+import type { ElevationProviderConfig, Coordinates } from '../src/types';
 
 // Mock dependencies
 jest.mock('../src/tile/TileManager');
@@ -20,38 +20,12 @@ jest.spyOn(ElevationCalculator.prototype, 'getElevation').mockImplementation(
 
 describe('ElevationProvider', () => {
     let mockTileManager: jest.Mocked<TileManager>;
-    let mockTile: Tile;
 
     beforeEach(() => {
         jest.clearAllMocks();
 
-        // Create mock ImageData with known elevation values
-        const data = new Uint8ClampedArray(256 * 256 * 4);
-        // Fill with sea level (128, 0, 0) for simplicity
-        for (let i = 0; i < data.length; i += 4) {
-            data[i] = 128; // Red - sea level
-            data[i + 1] = 0; // Green
-            data[i + 2] = 0; // Blue
-            data[i + 3] = 255; // Alpha
-        }
-
-        const mockImageData = new ImageData(data, 256, 256);
-
-        const mockImageBitmap = {
-            close: jest.fn(),
-            width: 256,
-            height: 256,
-        } as unknown as ImageBitmap;
-
-        mockTile = {
-            data: mockImageData,
-            bitmap: mockImageBitmap,
-        };
-
         // Mock TileManager
-        mockTileManager = new MockedTileManager('', 0, 0) as jest.Mocked<TileManager>;
-        mockTileManager.getTile = jest.fn().mockResolvedValue(mockTile);
-        mockTileManager.clearCache = jest.fn();
+        mockTileManager = new MockedTileManager('', 0) as jest.Mocked<TileManager>;
 
         // Configure mock implementation for ElevationCalculator methods
         // Allow validation errors to pass through but mock successful calculations
@@ -79,7 +53,6 @@ describe('ElevationProvider', () => {
             expect(config.tileUrlTemplate).toBe(
                 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'
             );
-            expect(config.timeout).toBe(5000);
         });
 
         it('should create provider with custom config', () => {
@@ -87,7 +60,6 @@ describe('ElevationProvider', () => {
                 zoomLevel: 10,
                 cacheSize: 50,
                 tileUrlTemplate: 'https://custom.tiles.com/{z}/{x}/{y}.png',
-                timeout: 3000,
             };
 
             const provider = new ElevationProvider(customConfig);
@@ -96,13 +68,11 @@ describe('ElevationProvider', () => {
             expect(config.zoomLevel).toBe(10);
             expect(config.cacheSize).toBe(50);
             expect(config.tileUrlTemplate).toBe('https://custom.tiles.com/{z}/{x}/{y}.png');
-            expect(config.timeout).toBe(3000);
         });
 
         it('should create provider with partial config', () => {
             const partialConfig: ElevationProviderConfig = {
                 zoomLevel: 8,
-                timeout: 2000,
             };
 
             const provider = new ElevationProvider(partialConfig);
@@ -110,7 +80,6 @@ describe('ElevationProvider', () => {
 
             expect(config.zoomLevel).toBe(8);
             expect(config.cacheSize).toBe(100); // Default
-            expect(config.timeout).toBe(2000);
         });
 
         it('should throw error for invalid zoom level', () => {
@@ -138,20 +107,6 @@ describe('ElevationProvider', () => {
 
             expect(() => new ElevationProvider({ cacheSize: 1.5 })).toThrow(
                 'Invalid cache size: 1.5. Must be a positive integer'
-            );
-        });
-
-        it('should throw error for invalid timeout', () => {
-            expect(() => new ElevationProvider({ timeout: 0 })).toThrow(
-                'Invalid timeout: 0. Must be a positive integer'
-            );
-
-            expect(() => new ElevationProvider({ timeout: -1000 })).toThrow(
-                'Invalid timeout: -1000. Must be a positive integer'
-            );
-
-            expect(() => new ElevationProvider({ timeout: 1.5 })).toThrow(
-                'Invalid timeout: 1.5. Must be a positive integer'
             );
         });
 
@@ -356,33 +311,6 @@ describe('ElevationProvider', () => {
         });
     });
 
-    describe('cache management', () => {
-        let provider: ElevationProvider;
-
-        beforeEach(() => {
-            provider = new ElevationProvider({ cacheSize: 2 });
-        });
-
-        it('should cache tiles between requests', async () => {
-            mockCalculator.getElevation.mockResolvedValue(150);
-
-            await provider.getElevation(0, 0);
-            await provider.getElevation(0, 0); // Same tile
-
-            expect(mockCalculator.getElevation).toHaveBeenCalledTimes(2);
-        });
-
-        it('should clear cache when requested', async () => {
-            mockCalculator.getElevation.mockResolvedValue(150);
-
-            await provider.getElevation(0, 0);
-            provider.clearCache();
-            await provider.getElevation(0, 0);
-
-            expect(mockTileManager.clearCache).toHaveBeenCalled();
-        });
-    });
-
     describe('configuration', () => {
         it('should return readonly config', () => {
             const provider = new ElevationProvider({ zoomLevel: 10 });
@@ -452,7 +380,6 @@ describe('ElevationProvider', () => {
                 cacheSize: 1,
                 zoomLevel: 1,
                 tileUrlTemplate: 'https://test.example.com/{z}/{x}/{y}.png',
-                timeout: 1000,
             });
 
             await provider.getElevation(0, 0);
@@ -461,7 +388,6 @@ describe('ElevationProvider', () => {
             // Verify TileManager was initialized with correct parameters
             expect(MockedTileManager).toHaveBeenCalledWith(
                 'https://test.example.com/{z}/{x}/{y}.png',
-                1000,
                 1
             );
 
@@ -494,23 +420,6 @@ describe('ElevationProvider', () => {
             expect(mockCalculator.getElevation).toHaveBeenCalledTimes(3);
         });
 
-        it('should test cache cleanup function execution', async () => {
-            mockCalculator.getElevation.mockResolvedValue(300);
-
-            const provider = new ElevationProvider({
-                cacheSize: 2,
-                zoomLevel: 3,
-            });
-
-            await provider.getElevation(0, 0);
-            await provider.getElevation(30, 60);
-            await provider.getElevation(60, 120); // Should trigger cache eviction
-
-            // Test manual cache clear
-            provider.clearCache();
-            expect(mockTileManager.clearCache).toHaveBeenCalled();
-        });
-
         it('should exercise tile URL generation with custom template', async () => {
             mockCalculator.getElevation.mockResolvedValue(150);
 
@@ -524,7 +433,6 @@ describe('ElevationProvider', () => {
             // Verify TileManager was initialized with custom template
             expect(MockedTileManager).toHaveBeenCalledWith(
                 'https://custom.tiles.example/{z}/{x}/{y}.png',
-                5000, // Default timeout
                 100 // Default cache size
             );
         });
@@ -551,10 +459,6 @@ describe('ElevationProvider', () => {
 
             expect(provider2).toBeDefined();
             expect(provider2.getConfig().tileUrlTemplate).toBe('https://test.com/{z}/{x}/{y}.png');
-
-            // Test cache clear functionality
-            provider2.clearCache();
-            expect(mockTileManager.clearCache).toHaveBeenCalled();
         });
     });
 

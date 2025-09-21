@@ -22,14 +22,12 @@ describe('index exports', () => {
             zoomLevel: 12,
             cacheSize: 100,
             tileUrlTemplate: 'https://example.com/{z}/{x}/{y}.png',
-            timeout: 5000,
         };
 
         expect(config).toBeDefined();
         expect(typeof config.zoomLevel).toBe('number');
         expect(typeof config.cacheSize).toBe('number');
         expect(typeof config.tileUrlTemplate).toBe('string');
-        expect(typeof config.timeout).toBe('number');
     });
 
     it('should export FilterOptions type correctly', () => {

@@ -23,7 +23,7 @@ body {
     padding: 8px 0;
     background: white;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .header h1 {
@@ -42,7 +42,7 @@ body {
     background: white;
     border-radius: 8px;
     padding: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .controls-row {
@@ -72,11 +72,11 @@ body {
     font-size: 0.85rem;
 }
 
-.control-line input[type="range"] {
+.control-line input[type='range'] {
     width: 80px;
 }
 
-.control-line input[type="number"] {
+.control-line input[type='number'] {
     width: 50px;
     padding: 2px 4px;
     border: 1px solid #ddd;
@@ -89,12 +89,11 @@ body {
     color: #666;
 }
 
-
 .map-container {
     background: white;
     border-radius: 8px;
     padding: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
     flex: 1;
@@ -104,7 +103,7 @@ body {
     background: white;
     border-radius: 8px;
     padding: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 #map {
@@ -163,7 +162,7 @@ h3 {
     margin-bottom: 12px;
 }
 
-.filter-checkbox input[type="checkbox"] {
+.filter-checkbox input[type='checkbox'] {
     margin-right: 8px;
 }
 
@@ -184,19 +183,18 @@ h3 {
     margin-top: 4px;
 }
 
-.filter-value input[type="range"] {
+.filter-value input[type='range'] {
     flex: 1;
     min-width: 100px;
 }
 
-.filter-value input[type="number"] {
+.filter-value input[type='number'] {
     width: 70px;
     padding: 4px 6px;
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 0.9rem;
 }
-
 
 .elevation-display {
     font-weight: 600;
@@ -315,7 +313,7 @@ h3 {
     color: #333;
 }
 
-.filter-option input[type="range"] {
+.filter-option input[type='range'] {
     width: 100%;
     height: 6px;
     background: #ddd;
@@ -323,7 +321,7 @@ h3 {
     outline: none;
 }
 
-.filter-option input[type="range"]::-webkit-slider-thumb {
+.filter-option input[type='range']::-webkit-slider-thumb {
     appearance: none;
     width: 18px;
     height: 18px;
@@ -332,7 +330,7 @@ h3 {
     cursor: pointer;
 }
 
-.filter-option input[type="range"]::-moz-range-thumb {
+.filter-option input[type='range']::-moz-range-thumb {
     width: 18px;
     height: 18px;
     background: #2c5aa0;
@@ -347,7 +345,7 @@ h3 {
     gap: 10px;
 }
 
-.filter-value input[type="number"] {
+.filter-value input[type='number'] {
     width: 80px;
     padding: 4px 8px;
     border: 1px solid #ddd;
@@ -362,12 +360,11 @@ h3 {
     margin-bottom: 10px;
 }
 
-.filter-checkbox input[type="checkbox"] {
+.filter-checkbox input[type='checkbox'] {
     width: 18px;
     height: 18px;
     cursor: pointer;
 }
-
 
 .controls h3 {
     margin: 0 0 10px 0;

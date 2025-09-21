@@ -17,10 +17,10 @@ A TypeScript library for retrieving elevation data from geographic coordinates u
 
 - 🗺️ **High-precision elevation data** from SRTM, GMTED, NED, and ETOPO1 sources
 - 🚀 **High-performance caching** with LRU cache for optimal memory usage
-- 📱 **Browser-native** with no external dependencies
+- 🌐 **Cross-platform support** for Browser and Node.js environments
 - 🎯 **TypeScript-first** with complete type definitions
 - 🔧 **Configurable zoom levels** (0-15) for different resolution requirements
-- 📦 **Multiple build formats** (ES modules, UMD, IIFE)
+- 📦 **Multiple build formats** (ES modules, CommonJS, UMD, IIFE)
 - 🧪 **Thoroughly tested** with >95% code coverage
 - 🌍 **Bilinear interpolation** for smoother elevation values
 - 📈 **Elevation profiling** between coordinates and along multi-point paths
@@ -30,6 +30,8 @@ A TypeScript library for retrieving elevation data from geographic coordinates u
 ## Installation
 
 ### npm
+
+#### Browser
 
 ```bash
 npm install @glandais/elevation
@@ -43,6 +45,22 @@ import ElevationProvider, { Coordinates } from '@glandais/elevation';
 const { ElevationProvider } = require('@glandais/elevation');
 // or
 const ElevationProvider = require('@glandais/elevation').default;
+```
+
+#### Node.js
+
+For Node.js environments, install with optional dependencies:
+
+```bash
+npm install @glandais/elevation canvas node-fetch abort-controller
+```
+
+```javascript
+// ES6 import
+import ElevationProvider from '@glandais/elevation';
+
+// CommonJS
+const { ElevationProvider } = require('@glandais/elevation');
 ```
 
 ### CDN
@@ -127,7 +145,6 @@ const elevationProvider = new window.Elevation.ElevationProvider();
 const elevationProvider = new ElevationProvider({
     zoomLevel: 12, // Tile zoom level (default: 12 for ~30m resolution)
     cacheSize: 100, // Maximum tiles in memory cache (default: 100)
-    timeout: 5000, // Request timeout in milliseconds (default: 5000)
     tileUrlTemplate: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
 });
 
@@ -142,12 +159,6 @@ await elevationProvider.setElevations(coordinates);
 console.log('Elevations:', elevations); // [elevation1, elevation2, elevation3]
 ```
 
-### Cache Management
-
-```typescript
-// Clear cache when needed
-elevationProvider.clearCache();
-```
 
 ### Elevation Profiling
 
@@ -232,7 +243,6 @@ new ElevationProvider(config?: ElevationProviderConfig)
 | ----------------- | -------- | ---------- | -------------------------------------------------- |
 | `zoomLevel`       | `number` | `12`       | Tile zoom level (0-15). Higher = better resolution |
 | `cacheSize`       | `number` | `100`      | Maximum tiles in memory cache                      |
-| `timeout`         | `number` | `5000`     | Request timeout in milliseconds                    |
 | `tileUrlTemplate` | `string` | AWS S3 URL | Custom tile URL template                           |
 
 #### Methods
@@ -287,14 +297,6 @@ const smoothedProfile = await elevationProvider.getElevationsAlong(path, {
 });
 ```
 
-##### `clearCache(): void`
-
-Clear the tile cache.
-
-```typescript
-elevationProvider.clearCache();
-```
-
 ##### `getConfig(): ElevationProviderConfig`
 
 Get current configuration.
@@ -324,7 +326,6 @@ console.log(attribution.text);
 interface ElevationProviderConfig {
     readonly zoomLevel?: number;
     readonly cacheSize?: number;
-    readonly timeout?: number;
     readonly tileUrlTemplate?: string;
 }
 
@@ -390,12 +391,21 @@ The library uses terrain data processed from multiple sources:
 - **NED** (National Elevation Dataset) - US high-resolution data
 - **ETOPO1** - Global relief model for bathymetry
 
-## Browser Compatibility
+## Platform Compatibility
+
+### Browser Support
 
 - Chrome/Edge: Last 2 versions
 - Firefox: Last 2 versions
 - Safari: Last 2 versions
 - Mobile browsers: iOS Safari 14+, Chrome Android
+
+### Node.js Support
+
+- Node.js 18+ with optional dependencies:
+  - `canvas`: For image processing
+  - `node-fetch`: For HTTP requests (Node.js < 18)
+  - `abort-controller`: For request cancellation (Node.js < 15)
 
 ## Performance Considerations
 
@@ -448,7 +458,6 @@ Common errors:
 - Invalid coordinates (latitude: -85.0511 to 85.0511, longitude: -180 to 180)
 - Network timeouts or failures
 - Invalid configuration parameters
-- Browser environment not supported
 
 ## Attribution Requirements
 

@@ -57,18 +57,6 @@ export interface ElevationProviderConfig {
      * Default: AWS S3 Terrarium tiles
      */
     readonly tileUrlTemplate?: string;
-    /**
-     * Request timeout in milliseconds
-     * Default: 5000
-     */
-    readonly timeout?: number;
-}
-/**
- * Tile data with ImageBitmap for proper memory management
- */
-export interface Tile {
-    readonly data: ImageData;
-    readonly bitmap: ImageBitmap;
 }
 /**
  * Attribution information for elevation data
