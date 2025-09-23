@@ -37,7 +37,7 @@
         "build:node": "BUILD_TARGET=node vite build",
         "build:combine": "cp dist/browser/* dist/ && cp dist/node/index.node.* dist/ && rm -rf dist/browser dist/node",
         "build:dev": "vite build --mode development",
-        "check": "npm run lint:fix && npm run lint && npm run typecheck && npm run test:all && npm run build",
+        "check": "npm run format && npm run lint:fix && npm run lint && npm run typecheck && npm run test:all && npm run build",
         "test": "jest",
         "test:watch": "jest --watch",
         "test:coverage": "jest --coverage",

@@ -49,8 +49,8 @@ The library follows a modular architecture with clear separation of concerns:
 - **TileManager** (`src/tile/TileManager.ts`): Manages tile fetching with dynamic environment detection
 - **TileLoader** (`src/tile/fetcher/TileLoader.ts`): Coordinates tile loading from URL templates
 - **TileFetcher** (`src/tile/fetcher/TileFetcher.ts`): Abstract interface for environment-specific fetching
-  - **BrowserTileFetcher** (`src/tile/fetcher/browser/BrowserTileFetcher.ts`): Browser implementation using native APIs
-  - **NodeJsTileFetcher** (`src/tile/fetcher/nodejs/NodeJsTileFetcher.ts`): Node.js implementation using canvas package
+    - **BrowserTileFetcher** (`src/tile/fetcher/browser/BrowserTileFetcher.ts`): Browser implementation using native APIs
+    - **NodeJsTileFetcher** (`src/tile/fetcher/nodejs/NodeJsTileFetcher.ts`): Node.js implementation using canvas package
 - **CoordinateConverter** (`src/converter/CoordinateConverter.ts`): Converts between WGS84 and Web Mercator tile coordinates
 - **ElevationCalculator** (`src/calculator/ElevationCalculator.ts`): Calculates elevations with RGB decoding integrated
 
