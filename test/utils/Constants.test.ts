@@ -37,14 +37,5 @@ describe('Constants', () => {
         it('should have correct minimum smoothing points', () => {
             expect(ALGORITHM_CONSTANTS.MIN_SMOOTHING_POINTS).toBe(3);
         });
-
-        it('should have correct minimum segment distance', () => {
-            expect(ALGORITHM_CONSTANTS.MIN_SEGMENT_DISTANCE).toBe(1);
-        });
-
-        it('should have positive values', () => {
-            expect(ALGORITHM_CONSTANTS.MIN_SMOOTHING_POINTS).toBeGreaterThan(0);
-            expect(ALGORITHM_CONSTANTS.MIN_SEGMENT_DISTANCE).toBeGreaterThan(0);
-        });
     });
 });

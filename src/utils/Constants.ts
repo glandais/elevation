@@ -26,6 +26,4 @@ export const MATH_CONSTANTS = {
 export const ALGORITHM_CONSTANTS = {
     /** Minimum points needed for smoothing operations */
     MIN_SMOOTHING_POINTS: 3,
-    /** Minimum segment distance in meters for path processing */
-    MIN_SEGMENT_DISTANCE: 1,
 } as const;

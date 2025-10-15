@@ -10,7 +10,6 @@ import { ElevationCalculator } from './ElevationCalculator';
 import { DouglasPeucker } from '../utils/DouglasPeucker';
 import { ElevationSmoother } from '../utils/ElevationSmoother';
 import { Distance } from '../utils/Distance';
-import { ALGORITHM_CONSTANTS } from '../utils/Constants';
 import { createLogger, Logger, LogLevel } from '../utils';
 import { Flux } from './Reactive';
 import { toTileCoordinates } from './ElevationFunctions';
@@ -79,6 +78,7 @@ export class BatchCalculator {
         path: Coordinates[],
         zoomLevel: number,
         step: number,
+        minDistance: number,
         interpolation: boolean,
         smoothingOptions?: SmoothingOptions,
         filterOptions?: FilterOptions
@@ -109,7 +109,7 @@ export class BatchCalculator {
         const coordGenTimer = 'coordinate-generation';
         logger.timeLevel(LogLevel.DEBUG, coordGenTimer);
 
-        let coordinates = Array.from(this.generateCoordinatesAlong(path, step));
+        let coordinates = Array.from(this.generateCoordinatesAlong(path, step, minDistance));
 
         logger.timeEndLevel(LogLevel.DEBUG, coordGenTimer);
         logger.debug('Generated %d coordinates along path', coordinates.length);
@@ -204,7 +204,8 @@ export class BatchCalculator {
      */
     private *generateCoordinatesAlong(
         path: Coordinates[],
-        step: number
+        step: number,
+        minDistance: number
     ): Generator<CoordinatesElevation, void, unknown> {
         if (path.length < 2) {
             logger.debug('Path generation skipped - insufficient waypoints: %d', path.length);
@@ -222,13 +223,13 @@ export class BatchCalculator {
             const segmentDistance = Distance.haversine(path[i], path[i + 1]);
 
             // Skip very short segments (< 1 meter)
-            if (segmentDistance < ALGORITHM_CONSTANTS.MIN_SEGMENT_DISTANCE) {
+            if (segmentDistance < minDistance) {
                 skippedSegments++;
                 logger.debug(
                     'Segment %d skipped - distance too short: %.2fm (minimum: %.2fm)',
                     i + 1,
                     segmentDistance,
-                    ALGORITHM_CONSTANTS.MIN_SEGMENT_DISTANCE
+                    minDistance
                 );
                 continue;
             }

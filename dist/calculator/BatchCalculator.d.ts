@@ -13,7 +13,7 @@ export declare class BatchCalculator {
      * @param smoothingOptions - Optional distance-based smoothing options
      * @param filterOptions - Optional filtering options using Douglas-Peucker algorithm
      */
-    getElevationsAlong(path: Coordinates[], zoomLevel: number, step: number, interpolation: boolean, smoothingOptions?: SmoothingOptions, filterOptions?: FilterOptions): Promise<CoordinatesElevation[]>;
+    getElevationsAlong(path: Coordinates[], zoomLevel: number, step: number, minDistance: number, interpolation: boolean, smoothingOptions?: SmoothingOptions, filterOptions?: FilterOptions): Promise<CoordinatesElevation[]>;
     /**
      * Generate coordinates along a path with multiple waypoints
      * @param path - Array of coordinates defining the path

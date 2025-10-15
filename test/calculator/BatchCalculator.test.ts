@@ -103,7 +103,7 @@ describe('BatchCalculator', () => {
             ];
             mockElevationCalculator.getElevation.mockResolvedValue(100);
 
-            const result = await batchCalculator.getElevationsAlong(path, 10, 50, true);
+            const result = await batchCalculator.getElevationsAlong(path, 10, 50, 10, true);
 
             expect(result.length).toBeGreaterThan(4); // Should have intermediate points
             expect(result[0]).toEqual(
@@ -127,6 +127,7 @@ describe('BatchCalculator', () => {
                 path,
                 10,
                 50, // 50m step
+                10,
                 true
             );
 
@@ -157,11 +158,12 @@ describe('BatchCalculator', () => {
                     [{ latitude: 45.0, longitude: 0.0 }],
                     10,
                     50,
+                    10,
                     true
                 )
             ).rejects.toThrow('Path must contain at least 2 coordinates');
 
-            await expect(batchCalculator.getElevationsAlong([], 10, 50, true)).rejects.toThrow(
+            await expect(batchCalculator.getElevationsAlong([], 10, 50, 10, true)).rejects.toThrow(
                 'Path must contain at least 2 coordinates'
             );
         });
@@ -172,9 +174,9 @@ describe('BatchCalculator', () => {
                 { latitude: 45.001, longitude: 0.001 },
             ];
 
-            await expect(batchCalculator.getElevationsAlong(path, 10, 0.5, true)).rejects.toThrow(
-                'Step is too small'
-            );
+            await expect(
+                batchCalculator.getElevationsAlong(path, 10, 0.5, 10, true)
+            ).rejects.toThrow('Step is too small');
         });
 
         it('should handle path with all segments shorter than 1 meter', async () => {
@@ -185,7 +187,7 @@ describe('BatchCalculator', () => {
             ];
             mockElevationCalculator.getElevation.mockResolvedValue(100);
 
-            const result = await batchCalculator.getElevationsAlong(path, 10, 50, true);
+            const result = await batchCalculator.getElevationsAlong(path, 10, 50, 10, true);
 
             // Should still include all waypoints even if segments are skipped
             expect(result.length).toBeGreaterThanOrEqual(1);
@@ -210,6 +212,7 @@ describe('BatchCalculator', () => {
                 path,
                 10,
                 30, // Small step to ensure multiple points per segment
+                10,
                 true
             );
 
@@ -240,6 +243,7 @@ describe('BatchCalculator', () => {
                 path,
                 8, // zoomLevel
                 50,
+                10,
                 false // interpolation
             );
 
@@ -265,6 +269,7 @@ describe('BatchCalculator', () => {
                 path,
                 10,
                 100, // 100m step
+                10,
                 true
             );
 
@@ -406,6 +411,7 @@ describe('BatchCalculator', () => {
                     path,
                     12, // zoomLevel
                     100, // smaller step to generate more elevation points
+                    10,
                     true, // interpolation
                     undefined, // smoothingOptions
                     { enabled: true } // filterOptions with defaults - will use tolerance=10, zExaggeration=3
@@ -427,6 +433,7 @@ describe('BatchCalculator', () => {
                     path,
                     12, // zoomLevel
                     25, // step
+                    10,
                     true, // interpolation
                     undefined, // smoothingOptions
                     { enabled: false } // filterOptions disabled
@@ -447,6 +454,7 @@ describe('BatchCalculator', () => {
                     shortPath,
                     12, // zoomLevel
                     1000, // large step to ensure <=2 points
+                    10,
                     true, // interpolation
                     undefined, // smoothingOptions
                     { enabled: true, tolerance: 10, zExaggeration: 3 } // filtering enabled
@@ -469,6 +477,7 @@ describe('BatchCalculator', () => {
                     path,
                     12, // zoomLevel
                     100, // step
+                    10,
                     true, // interpolation
                     undefined, // smoothingOptions
                     { enabled: true, tolerance: 15, zExaggeration: 2 } // explicit values
@@ -490,6 +499,7 @@ describe('BatchCalculator', () => {
                     path,
                     12, // zoomLevel
                     100, // step
+                    10,
                     true, // interpolation
                     undefined, // smoothingOptions
                     { enabled: true, zExaggeration: 2 } // tolerance undefined, will use default 10
@@ -511,6 +521,7 @@ describe('BatchCalculator', () => {
                     path,
                     12, // zoomLevel
                     100, // step
+                    10,
                     true, // interpolation
                     undefined, // smoothingOptions
                     { enabled: true, tolerance: 15 } // zExaggeration undefined, will use default 3
@@ -540,6 +551,7 @@ describe('BatchCalculator', () => {
                 path,
                 12, // zoomLevel
                 100, // step
+                10,
                 true, // interpolation
                 { enabled: true }, // smoothingOptions - no windowSize, should use default 50
                 undefined // filterOptions
@@ -563,6 +575,7 @@ describe('BatchCalculator', () => {
                 path,
                 12, // zoomLevel
                 100, // step
+                10,
                 true, // interpolation
                 { enabled: true, windowSize: 75 }, // smoothingOptions with custom windowSize
                 undefined // filterOptions
@@ -585,6 +598,7 @@ describe('BatchCalculator', () => {
                 path,
                 12, // zoomLevel
                 100, // step
+                10,
                 true, // interpolation
                 { enabled: false, windowSize: 50 }, // smoothingOptions disabled
                 undefined // filterOptions
@@ -605,6 +619,7 @@ describe('BatchCalculator', () => {
                 path,
                 12, // zoomLevel
                 100, // step
+                10,
                 true, // interpolation
                 { enabled: true, windowSize: 50 }, // smoothingOptions enabled
                 undefined // filterOptions

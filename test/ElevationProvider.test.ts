@@ -494,6 +494,7 @@ describe('ElevationProvider', () => {
                 path,
                 12, // default zoomLevel
                 25, // custom step
+                1,
                 false, // custom interpolation
                 undefined, // smoothingOptions
                 { enabled: true, tolerance: 15 } // custom filterOptions
@@ -514,6 +515,7 @@ describe('ElevationProvider', () => {
                 path,
                 12, // default zoomLevel
                 10, // default step
+                1,
                 false, // custom interpolation
                 undefined, // smoothingOptions
                 undefined // no filterOptions

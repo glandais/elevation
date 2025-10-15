@@ -24,7 +24,5 @@ export declare const MATH_CONSTANTS: {
 export declare const ALGORITHM_CONSTANTS: {
     /** Minimum points needed for smoothing operations */
     readonly MIN_SMOOTHING_POINTS: 3;
-    /** Minimum segment distance in meters for path processing */
-    readonly MIN_SEGMENT_DISTANCE: 1;
 };
 //# sourceMappingURL=Constants.d.ts.map

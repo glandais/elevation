@@ -106,6 +106,7 @@ export class ElevationProvider {
         options?: GetElevationsAlongOptions
     ): Promise<CoordinatesElevation[]> {
         const step = options?.step ?? 10;
+        const minDistance = options?.minDistance ?? 1;
         const interpolation = options?.interpolation ?? true;
         const smoothingOptions = options?.smoothingOptions;
         const filterOptions = options?.filterOptions;
@@ -113,6 +114,7 @@ export class ElevationProvider {
             path,
             this.config.zoomLevel,
             step,
+            minDistance,
             interpolation,
             smoothingOptions,
             filterOptions

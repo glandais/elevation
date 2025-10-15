@@ -139,6 +139,7 @@ export interface GetElevationsAlongOptions {
      * Default: 10
      */
     readonly step?: number;
+    readonly minDistance?: number;
     /**
      * Use bilinear interpolation for smoother results
      * Default: true
