@@ -1,3 +1,10 @@
+## [3.1.1](https://github.com/glandais/elevation/compare/v3.1.0...v3.1.1) (2025-10-15)
+
+
+### Bug Fixes
+
+* remove dist ([5504e96](https://github.com/glandais/elevation/commit/5504e967c449cab10122e5a2460c15b81a0edafc))
+
 # [3.1.0](https://github.com/glandais/elevation/compare/v3.0.1...v3.1.0) (2025-10-15)
 
 

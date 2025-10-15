@@ -1,0 +1,1 @@
+{"version":3,"file":"NodeJsTileFetcher.d.ts","sourceRoot":"","sources":["../../../../src/tile/fetcher/nodejs/NodeJsTileFetcher.ts"],"names":[],"mappings":"AAAA,OAAO,EAAc,WAAW,EAAE,MAAM,IAAI,CAAC;AAE7C,OAAO,EAAE,IAAI,EAAE,MAAM,OAAO,CAAC;AAG7B,qBAAa,iBAAkB,YAAW,WAAW;IACjD,OAAO,CAAC,QAAQ,CAAC,UAAU,CAAqB;;IAMhD;;;;;OAKG;IACU,SAAS,CAAC,GAAG,EAAE,MAAM,GAAG,OAAO,CAAC,IAAI,CAAC;CAwBrD"}
