@@ -1,3 +1,10 @@
+# [3.1.0](https://github.com/glandais/elevation/compare/v3.0.1...v3.1.0) (2025-10-15)
+
+
+### Features
+
+* add minDistance in options ([6755bec](https://github.com/glandais/elevation/commit/6755bec58ac69c3a96d61e34be980f80ff8c0c24))
+
 ## [3.0.1](https://github.com/glandais/elevation/compare/v3.0.0...v3.0.1) (2025-09-21)
 
 
