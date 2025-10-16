@@ -1225,6 +1225,7 @@ const re = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
 }, Symbol.toStringTag, { value: "Module" }));
 export {
   he as ElevationProvider,
+  ie as ElevationSmoother,
   he as default
 };
 //# sourceMappingURL=index.node.mjs.map

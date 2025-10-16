@@ -1233,6 +1233,7 @@ const oe = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
 }, Symbol.toStringTag, { value: "Module" }));
 export {
   le as ElevationProvider,
+  ee as ElevationSmoother,
   le as default
 };
 //# sourceMappingURL=index.esm.js.map

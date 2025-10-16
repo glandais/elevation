@@ -1,3 +1,10 @@
+## [3.1.2](https://github.com/glandais/elevation/compare/v3.1.1...v3.1.2) (2025-10-16)
+
+
+### Bug Fixes
+
+* export ElevationSmoother ([782b0b9](https://github.com/glandais/elevation/commit/782b0b91d4928008a67a712595c8557b20a2941b))
+
 ## [3.1.1](https://github.com/glandais/elevation/compare/v3.1.0...v3.1.1) (2025-10-15)
 
 
