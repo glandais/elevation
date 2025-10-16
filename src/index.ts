@@ -1,6 +1,7 @@
 // Main API exports
 export { ElevationProvider } from './ElevationProvider';
 export { ElevationProvider as default } from './ElevationProvider';
+export { ElevationSmoother } from './utils/ElevationSmoother';
 
 // Type exports
 export type {
