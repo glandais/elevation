@@ -1,3 +1,10 @@
+## [3.1.3](https://github.com/glandais/elevation/compare/v3.1.2...v3.1.3) (2025-10-17)
+
+
+### Performance Improvements
+
+* elevation cache per tile ([32064b5](https://github.com/glandais/elevation/commit/32064b531212905a908ab2cd5e0bc7056a5e15df))
+
 ## [3.1.2](https://github.com/glandais/elevation/compare/v3.1.1...v3.1.2) (2025-10-16)
 
 
