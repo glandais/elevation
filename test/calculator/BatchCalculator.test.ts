@@ -391,7 +391,9 @@ describe('BatchCalculator', () => {
                 ).generateCoordinatesAlong(path, 50);
                 const points: Coordinates[] = Array.from(generator);
 
-                expect(points).toHaveLength(0);
+                // Single-point path now yields the point (logic changed from < 2 to === 0)
+                expect(points).toHaveLength(1);
+                expect(points[0]).toEqual(asCoordinatesElevation(path[0]));
             });
         });
 

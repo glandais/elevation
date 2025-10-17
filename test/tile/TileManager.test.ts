@@ -47,17 +47,32 @@ describe('TileManager', () => {
         // Create proper Tile interface implementation
         mockTile = {
             close: jest.fn(),
-            getRGBFromImageData: jest.fn((position: Pixel) => {
-                const x = Math.floor(position.x);
-                const y = Math.floor(position.y);
-                const index = (y * 256 + x) * 4;
-
+            width: 256,
+            height: 256,
+            cache: new Float64Array(256 * 256),
+            getRGBFromImageData: jest.fn((index: number) => {
                 return {
                     red: mockImageData.data[index],
                     green: mockImageData.data[index + 1],
                     blue: mockImageData.data[index + 2],
                 };
             }),
+            getElevation: jest.fn((position: Pixel): number => {
+                const x = Math.floor(position.x);
+                const y = Math.floor(position.y);
+                const index = (y * 256 + x) * 4;
+
+                const rgb = {
+                    red: mockImageData.data[index],
+                    green: mockImageData.data[index + 1],
+                    blue: mockImageData.data[index + 2],
+                };
+
+                // Decode elevation using Terrarium formula
+                const elevation = rgb.red * 256 + rgb.green + rgb.blue / 256 - 32768;
+                return Math.round(elevation * 100) / 100;
+            }),
+            decodeElevation: jest.fn(),
         } as jest.Mocked<Tile>;
 
         mockLoadTile = jest.fn().mockResolvedValue(mockTile);
@@ -144,7 +159,12 @@ describe('TileManager', () => {
             const mockCloseFn = jest.fn();
             const testTile: Tile = {
                 close: mockCloseFn,
+                width: 256,
+                height: 256,
+                cache: new Float64Array(256 * 256),
                 getRGBFromImageData: jest.fn(),
+                getElevation: jest.fn(),
+                decodeElevation: jest.fn(),
             };
 
             cleanupFunction(testTile);
@@ -227,9 +247,33 @@ describe('TileManager', () => {
             const tileCoords3: TileCoordinates = { z: 12, x: 100, y: 201 };
 
             // Create different mock tiles for each request
-            const mockTile1 = { ...mockTile, close: jest.fn() };
-            const mockTile2 = { ...mockTile, close: jest.fn() };
-            const mockTile3 = { ...mockTile, close: jest.fn() };
+            const mockTile1: Tile = {
+                close: jest.fn(),
+                width: 256,
+                height: 256,
+                cache: new Float64Array(256 * 256),
+                getRGBFromImageData: jest.fn(),
+                getElevation: jest.fn(),
+                decodeElevation: jest.fn(),
+            };
+            const mockTile2: Tile = {
+                close: jest.fn(),
+                width: 256,
+                height: 256,
+                cache: new Float64Array(256 * 256),
+                getRGBFromImageData: jest.fn(),
+                getElevation: jest.fn(),
+                decodeElevation: jest.fn(),
+            };
+            const mockTile3: Tile = {
+                close: jest.fn(),
+                width: 256,
+                height: 256,
+                cache: new Float64Array(256 * 256),
+                getRGBFromImageData: jest.fn(),
+                getElevation: jest.fn(),
+                decodeElevation: jest.fn(),
+            };
 
             // Simulate different tiles returned for different coordinates
             mockCacheGet
@@ -331,12 +375,22 @@ describe('TileManager', () => {
 
             const tile1: Tile = {
                 close: mockClose1,
+                width: 256,
+                height: 256,
+                cache: new Float64Array(256 * 256),
                 getRGBFromImageData: jest.fn(),
+                getElevation: jest.fn(),
+                decodeElevation: jest.fn(),
             };
 
             const tile2: Tile = {
                 close: mockClose2,
+                width: 256,
+                height: 256,
+                cache: new Float64Array(256 * 256),
                 getRGBFromImageData: jest.fn(),
+                getElevation: jest.fn(),
+                decodeElevation: jest.fn(),
             };
 
             cleanupFunction(tile1);

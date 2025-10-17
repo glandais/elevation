@@ -1,5 +1,5 @@
 import { toPixel, normalizePixel } from './ElevationFunctions';
-import type { Pixel, Coordinates, RGBColor } from '../types';
+import type { Pixel, Coordinates } from '../types';
 import type { TileManager } from '../tile';
 
 export class ElevationCalculator {
@@ -78,18 +78,6 @@ export class ElevationCalculator {
      */
     private async getElevationFromPixel(pixel: Pixel): Promise<number> {
         const cachedTile = await this.tileManager.getTile(pixel.tile);
-        const rgb = cachedTile.getRGBFromImageData(pixel);
-        return this.decodeElevation(rgb);
-    }
-
-    /**
-     * Decode elevation from RGB values using Terrarium encoding
-     * Formula: elevation = (red * 256 + green + blue / 256) - 32768
-     * @param rgb - RGB color values from terrain tile pixel
-     * @returns Elevation in meters, rounded to 2 decimal places
-     */
-    private decodeElevation(rgb: RGBColor): number {
-        const elevation = rgb.red * 256 + rgb.green + rgb.blue / 256 - 32768;
-        return Math.round(elevation * 100) / 100; // Round to 2 decimal places for precision
+        return cachedTile.getElevation(pixel);
     }
 }

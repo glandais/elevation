@@ -14,11 +14,16 @@ describe('TileLoader', () => {
         // Create mock tile
         mockTile = {
             close: jest.fn(),
+            width: 256,
+            height: 256,
+            cache: new Float64Array(256 * 256),
             getRGBFromImageData: jest.fn().mockReturnValue({
                 red: 128,
                 green: 0,
                 blue: 0,
             }),
+            getElevation: jest.fn(),
+            decodeElevation: jest.fn(),
         } as jest.Mocked<Tile>;
 
         // Create mock TileFetcher
@@ -147,19 +152,24 @@ describe('TileLoader', () => {
             ];
 
             // Create different mock tiles for each request
-            const mockTiles = tileCoords.map((_, index) => ({
+            const mockTiles: Tile[] = tileCoords.map((_, index) => ({
                 close: jest.fn(),
+                width: 256,
+                height: 256,
+                cache: new Float64Array(256 * 256),
                 getRGBFromImageData: jest.fn().mockReturnValue({
                     red: 128 + index,
                     green: 0,
                     blue: 0,
                 }),
+                getElevation: jest.fn(),
+                decodeElevation: jest.fn(),
             }));
 
             mockTileFetcher.fetchTile
-                .mockResolvedValueOnce(mockTiles[0] as Tile)
-                .mockResolvedValueOnce(mockTiles[1] as Tile)
-                .mockResolvedValueOnce(mockTiles[2] as Tile);
+                .mockResolvedValueOnce(mockTiles[0])
+                .mockResolvedValueOnce(mockTiles[1])
+                .mockResolvedValueOnce(mockTiles[2]);
 
             const promises = tileCoords.map(coords => tileLoader.loadTile(coords));
             const results = await Promise.all(promises);

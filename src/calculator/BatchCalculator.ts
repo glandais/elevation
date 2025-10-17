@@ -207,11 +207,10 @@ export class BatchCalculator {
         step: number,
         minDistance: number
     ): Generator<CoordinatesElevation, void, unknown> {
-        if (path.length < 2) {
+        if (path.length === 0) {
             logger.debug('Path generation skipped - insufficient waypoints: %d', path.length);
             return;
         }
-
         logger.debug('Generating coordinates - waypoints: %d, step: %dm', path.length, step);
 
         // Yield the first point
