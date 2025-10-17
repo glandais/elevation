@@ -28,9 +28,11 @@ export class BatchCalculator {
         zoomLevel: number,
         interpolation: boolean
     ): Promise<void> {
+        logger.debug('setElevations');
         const pointsPerTile: Record<string, Coordinates[]> = {};
         const tileCoordinatesMap: Map<string, TileCoordinates> = new Map();
 
+        logger.timeLevel(LogLevel.DEBUG, 'points-per-tile');
         // Helper function to create a unique key for tile coordinates
         const tileKey = (tile: TileCoordinates): string => `${tile.z}/${tile.x}/${tile.y}`;
 
@@ -47,11 +49,15 @@ export class BatchCalculator {
             }
             array.push(point);
         }
-
         const tiles = Array.from(tileCoordinatesMap.values());
-        await Flux.from(tiles)
-            .mapAsync(async tile => {
+        logger.timeEndLevel(LogLevel.DEBUG, 'points-per-tile');
+
+        logger.timeLevel(LogLevel.DEBUG, 'get-elevations');
+        await Flux.forEach(
+            tiles,
+            async tile => {
                 const key = tileKey(tile);
+                logger.timeLevel(LogLevel.DEBUG, 'get-elevations-' + key);
                 const points: Coordinates[] = pointsPerTile[key];
                 for (const point of points) {
                     point.elevation = await this.elevationCalculator.getElevation(
@@ -60,9 +66,11 @@ export class BatchCalculator {
                         interpolation
                     );
                 }
-                return tile;
-            }, 10)
-            .countProcessed();
+                logger.timeEndLevel(LogLevel.DEBUG, 'get-elevations-' + key);
+            },
+            10
+        );
+        logger.timeEndLevel(LogLevel.DEBUG, 'get-elevations');
     }
 
     /**
@@ -105,13 +113,7 @@ export class BatchCalculator {
         }
 
         // Generate coordinates along the entire path
-        logger.debug('Generating coordinates along path');
-        const coordGenTimer = 'coordinate-generation';
-        logger.timeLevel(LogLevel.DEBUG, coordGenTimer);
-
         let coordinates = Array.from(this.generateCoordinatesAlong(path, step, minDistance));
-
-        logger.timeEndLevel(LogLevel.DEBUG, coordGenTimer);
         logger.debug('Generated %d coordinates along path', coordinates.length);
 
         // Get elevations for all coordinates
@@ -213,6 +215,9 @@ export class BatchCalculator {
         }
         logger.debug('Generating coordinates - waypoints: %d, step: %dm', path.length, step);
 
+        const coordGenTimer = 'coordinate-generation';
+        logger.timeLevel(LogLevel.DEBUG, coordGenTimer);
+
         // Yield the first point
         yield asCoordinatesElevation(path[0]);
         let totalGenerated = 1;
@@ -233,12 +238,9 @@ export class BatchCalculator {
                 continue;
             }
 
-            logger.debug('Processing segment %d - distance: %.2fm', i + 1, segmentDistance);
-
             // Generate intermediate points for this segment
             // Skip the first point (already yielded from previous segment)
             let isFirst = true;
-            let segmentGenerated = 0;
             for (const coord of this.generateCoordinatesBetween(path[i], path[i + 1], step)) {
                 if (isFirst) {
                     isFirst = false;
@@ -246,11 +248,9 @@ export class BatchCalculator {
                 }
                 yield coord;
                 totalGenerated++;
-                segmentGenerated++;
             }
-
-            logger.debug('Segment %d completed - generated: %d points', i + 1, segmentGenerated);
         }
+        logger.timeEndLevel(LogLevel.DEBUG, coordGenTimer);
 
         if (skippedSegments > 0) {
             logger.debug(

@@ -57,6 +57,17 @@ export class Cache<K, T> {
     // PUBLIC API - CACHE OPERATIONS
     // ========================================================================
 
+    public getDirect(k: K): T | undefined {
+        const key = this.keyMapper(k);
+        const cachedItem = this.cache.get(key);
+
+        if (cachedItem) {
+            this.moveToFront(key);
+            return cachedItem;
+        }
+        return undefined;
+    }
+
     /**
      * Get item from cache or build if not present
      * @param k - Key to retrieve

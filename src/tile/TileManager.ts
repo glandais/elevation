@@ -12,12 +12,21 @@ export class TileManager {
         private readonly cacheSize: number
     ) {}
 
-    public async getTile(tileCoords: TileCoordinates): Promise<Tile> {
-        const createdCache = await this.checkCache();
-        return await createdCache.get(tileCoords);
+    public getTileDirect(tileCoords: TileCoordinates): Tile | undefined {
+        if (this.cache) {
+            return this.cache.getDirect(tileCoords);
+        }
+        return undefined;
     }
 
-    private async checkCache(): Promise<Cache<TileCoordinates, Tile>> {
+    public async getTile(tileCoords: TileCoordinates): Promise<Tile> {
+        if (this.cache) {
+            return await this.cache.get(tileCoords);
+        }
+        return Promise.reject(new Error('Cache not initialized'));
+    }
+
+    async initCache(): Promise<Cache<TileCoordinates, Tile>> {
         if (!this.cache) {
             let tileFetcher: TileFetcher;
             if (__NODE__) {

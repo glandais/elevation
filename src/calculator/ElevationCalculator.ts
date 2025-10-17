@@ -77,7 +77,10 @@ export class ElevationCalculator {
      * Get elevation for a specific pixel (internal helper)
      */
     private async getElevationFromPixel(pixel: Pixel): Promise<number> {
-        const cachedTile = await this.tileManager.getTile(pixel.tile);
+        let cachedTile = this.tileManager.getTileDirect(pixel.tile);
+        if (!cachedTile) {
+            cachedTile = await this.tileManager.getTile(pixel.tile);
+        }
         return cachedTile.getElevation(pixel);
     }
 }

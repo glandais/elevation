@@ -74,6 +74,7 @@ export class ElevationProvider {
         longitude: number,
         options?: GetElevationOptions
     ): Promise<number> {
+        await this.tileManager.initCache();
         const interpolation = options?.interpolation ?? true;
         const coords: Coordinates = { latitude, longitude };
         return await this.calculator.getElevation(coords, this.config.zoomLevel, interpolation);
@@ -92,6 +93,7 @@ export class ElevationProvider {
         coordinates: Iterable<Coordinates>,
         options?: SetElevationsOptions
     ): Promise<void> {
+        await this.tileManager.initCache();
         const interpolation = options?.interpolation ?? true;
         await this.batchCalculator.setElevations(coordinates, this.config.zoomLevel, interpolation);
     }
@@ -105,6 +107,7 @@ export class ElevationProvider {
         path: Coordinates[],
         options?: GetElevationsAlongOptions
     ): Promise<CoordinatesElevation[]> {
+        await this.tileManager.initCache();
         const step = options?.step ?? 10;
         const minDistance = options?.minDistance ?? 1;
         const interpolation = options?.interpolation ?? true;

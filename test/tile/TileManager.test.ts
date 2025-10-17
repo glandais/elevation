@@ -97,11 +97,10 @@ describe('TileManager', () => {
             // Cache is lazily initialized, so constructor doesn't create dependencies yet
         });
 
-        it('should initialize cache lazily when getTile is called', async () => {
+        it('should initialize cache lazily when initCache is called', async () => {
             const manager = new TileManager('https://test.com/{z}/{x}/{y}.png', 100);
-            const tileCoords: TileCoordinates = { z: 12, x: 100, y: 200 };
 
-            await manager.getTile(tileCoords);
+            await manager.initCache();
 
             // Verify that cache was created with correct parameters
             expect(MockedCache).toHaveBeenCalledWith(
@@ -120,7 +119,7 @@ describe('TileManager', () => {
             const manager = new TileManager('https://test.com/{z}/{x}/{y}.png', 10);
             const tileCoords: TileCoordinates = { z: 12, x: 100, y: 200 };
 
-            await manager.getTile(tileCoords);
+            await manager.initCache();
 
             // Get the key mapper function that was passed to Cache constructor
             const cacheConstructorCall = (MockedCache as unknown as jest.Mock).mock.calls[0];
@@ -135,7 +134,7 @@ describe('TileManager', () => {
             const manager = new TileManager('https://test.com/{z}/{x}/{y}.png', 10);
             const tileCoords: TileCoordinates = { z: 12, x: 100, y: 200 };
 
-            await manager.getTile(tileCoords);
+            await manager.initCache();
 
             // Get the value builder function that was passed to Cache constructor
             const cacheConstructorCall = (MockedCache as unknown as jest.Mock).mock.calls[0];
@@ -148,9 +147,8 @@ describe('TileManager', () => {
 
         it('should create cache with cleanup function that closes tiles', async () => {
             const manager = new TileManager('https://test.com/{z}/{x}/{y}.png', 10);
-            const tileCoords: TileCoordinates = { z: 12, x: 100, y: 200 };
 
-            await manager.getTile(tileCoords);
+            await manager.initCache();
 
             // Get the cleanup function that was passed to Cache constructor
             const cacheConstructorCall = (MockedCache as unknown as jest.Mock).mock.calls[0];
@@ -176,8 +174,9 @@ describe('TileManager', () => {
     describe('getTile', () => {
         let manager: TileManager;
 
-        beforeEach(() => {
+        beforeEach(async () => {
             manager = new TileManager('https://test.com/{z}/{x}/{y}.png', 10);
+            await manager.initCache();
         });
 
         it('should delegate to cache.get', async () => {
@@ -237,8 +236,9 @@ describe('TileManager', () => {
     describe('integration scenarios', () => {
         let manager: TileManager;
 
-        beforeEach(() => {
+        beforeEach(async () => {
             manager = new TileManager('https://tiles.example.com/{z}/{x}/{y}.png', 5);
+            await manager.initCache();
         });
 
         it('should handle concurrent tile requests', async () => {
@@ -303,7 +303,9 @@ describe('TileManager', () => {
             const tileCoords: TileCoordinates = { z: 10, x: 50, y: 75 };
 
             // Trigger cache initialization for both managers
+            await manager1.initCache();
             await manager1.getTile(tileCoords);
+            await manager2.initCache();
             await manager2.getTile(tileCoords);
 
             // Verify both caches were created with correct sizes
@@ -312,11 +314,10 @@ describe('TileManager', () => {
             expect(cacheCalls.some(call => call[0] === 20)).toBe(true);
         });
 
-        it('should properly initialize dependencies when getTile is called', async () => {
+        it('should properly initialize dependencies when initCache is called', async () => {
             const manager = new TileManager('https://test.com/{z}/{x}/{y}.png', 100);
-            const tileCoords: TileCoordinates = { z: 10, x: 50, y: 75 };
 
-            await manager.getTile(tileCoords);
+            await manager.initCache();
 
             expect(MockedCache).toHaveBeenCalledWith(
                 100,
@@ -332,39 +333,32 @@ describe('TileManager', () => {
     });
 
     describe('error handling', () => {
-        it('should handle Cache initialization errors during getTile', async () => {
+        it('should handle Cache initialization errors during initCache', async () => {
             MockedCache.mockImplementationOnce(() => {
                 throw new Error('Cache initialization failed');
             });
 
             const manager = new TileManager('https://test.com/{z}/{x}/{y}.png', 10);
-            const tileCoords: TileCoordinates = { z: 10, x: 50, y: 75 };
 
-            await expect(manager.getTile(tileCoords)).rejects.toThrow(
-                'Cache initialization failed'
-            );
+            await expect(manager.initCache()).rejects.toThrow('Cache initialization failed');
         });
 
-        it('should handle TileLoader initialization errors during getTile', async () => {
+        it('should handle TileLoader initialization errors during initCache', async () => {
             MockedTileLoader.mockImplementationOnce(() => {
                 throw new Error('TileLoader initialization failed');
             });
 
             const manager = new TileManager('https://test.com/{z}/{x}/{y}.png', 10);
-            const tileCoords: TileCoordinates = { z: 10, x: 50, y: 75 };
 
-            await expect(manager.getTile(tileCoords)).rejects.toThrow(
-                'TileLoader initialization failed'
-            );
+            await expect(manager.initCache()).rejects.toThrow('TileLoader initialization failed');
         });
     });
 
     describe('memory management', () => {
         it('should call tile.close() in cleanup function', async () => {
             const manager = new TileManager('https://test.com/{z}/{x}/{y}.png', 10);
-            const tileCoords: TileCoordinates = { z: 10, x: 50, y: 75 };
 
-            await manager.getTile(tileCoords);
+            await manager.initCache();
 
             // Extract the cleanup function from the Cache constructor
             const cacheConstructorCall = (MockedCache as unknown as jest.Mock).mock.calls[0];

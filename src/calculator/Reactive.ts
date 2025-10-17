@@ -1,47 +1,48 @@
 // reactive.ts
-export type AsyncFn<T, R> = (item: T) => Promise<R>;
+export type AsyncConsumer<T> = (item: T) => Promise<void>;
 
-export class Flux<T> {
-    private source: AsyncIterable<T>;
+type Inflight = Promise<{ ok: true } | { ok: false; error: unknown }>;
 
-    private constructor(source: AsyncIterable<T>) {
-        this.source = source;
+export class Flux {
+    private static async wrap(p: Promise<void>): Inflight {
+        try {
+            await p;
+            return { ok: true as const };
+        } catch (e) {
+            return { ok: false as const, error: e };
+        }
     }
 
-    static from<T>(arr: Iterable<T>): Flux<T> {
-        async function* gen() {
-            for (const item of arr) {
-                yield item;
-            }
+    private static async getFirst(inflight: Inflight[]): Promise<void> {
+        const { idx, res } = await Promise.race(
+            inflight.map((it, idx) => it.then(res => ({ idx, res })))
+        );
+        inflight.splice(idx, 1);
+        if (res.ok) {
+            return;
+        } else {
+            throw res.error;
         }
-        return new Flux(gen());
     }
 
-    mapAsync<R>(fn: AsyncFn<T, R>, maxParallel = 1): Flux<R> {
-        const source = this.source;
-        async function* gen() {
-            const inflight: Promise<R>[] = [];
-            for await (const item of source) {
-                const p = fn(item);
-                inflight.push(p);
+    static async forEach<T>(
+        from: Iterable<T>,
+        fn: AsyncConsumer<T>,
+        maxParallel = 1
+    ): Promise<void> {
+        const inflight: Inflight[] = [];
 
-                if (inflight.length >= maxParallel) {
-                    yield await inflight.shift()!;
-                }
-            }
-            while (inflight.length > 0) {
-                yield await inflight.shift()!;
+        for (const item of from) {
+            inflight.push(Flux.wrap(fn(item)));
+
+            if (inflight.length >= maxParallel) {
+                await Flux.getFirst(inflight);
             }
         }
-        return new Flux(gen());
-    }
 
-    async countProcessed(): Promise<number> {
-        let count = 0;
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        for await (const _ of this.source) {
-            count++;
+        while (inflight.length > 0) {
+            await Flux.getFirst(inflight);
         }
-        return count;
+        return;
     }
 }
