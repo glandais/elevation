@@ -1,3 +1,10 @@
+## [3.1.4](https://github.com/glandais/elevation/compare/v3.1.3...v3.1.4) (2025-10-17)
+
+
+### Performance Improvements
+
+* remove some awaits ([c15cde0](https://github.com/glandais/elevation/commit/c15cde07f302d4909471f23f46b11102539076ec))
+
 ## [3.1.3](https://github.com/glandais/elevation/compare/v3.1.2...v3.1.3) (2025-10-17)
 
 
