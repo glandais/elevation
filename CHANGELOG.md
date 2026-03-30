@@ -1,3 +1,10 @@
+# [3.2.0](https://github.com/glandais/elevation/compare/v3.1.4...v3.2.0) (2026-03-30)
+
+
+### Features
+
+* add mapterhorn.com as default tile provider with configurable tile size and attribution ([700df1a](https://github.com/glandais/elevation/commit/700df1a140112996ee3ab46b042e340989f1e9bc))
+
 ## [3.1.4](https://github.com/glandais/elevation/compare/v3.1.3...v3.1.4) (2025-10-17)
 
 
