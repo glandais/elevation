@@ -33,7 +33,7 @@ describe('ElevationProvider', () => {
             async (coords, zoomLevel, _interpolation = true) => {
                 // Let the toPixel method run for validation - it will throw if invalid
                 // Use the exported toPixel function from ElevationFunctions
-                toPixel(coords, zoomLevel);
+                toPixel(coords, zoomLevel, 256);
 
                 return 0; // Default return value
             }
@@ -50,9 +50,8 @@ describe('ElevationProvider', () => {
 
             expect(config.zoomLevel).toBe(12);
             expect(config.cacheSize).toBe(100);
-            expect(config.tileUrlTemplate).toBe(
-                'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'
-            );
+            expect(config.tileUrlTemplate).toBe('https://tiles.mapterhorn.com/{z}/{x}/{y}.webp');
+            expect(config.tileSize).toBe(512);
         });
 
         it('should create provider with custom config', () => {
@@ -107,6 +106,29 @@ describe('ElevationProvider', () => {
 
             expect(() => new ElevationProvider({ cacheSize: 1.5 })).toThrow(
                 'Invalid cache size: 1.5. Must be a positive integer'
+            );
+        });
+
+        it('should create provider with custom tileSize', () => {
+            const provider = new ElevationProvider({ tileSize: 512 });
+            expect(provider.getConfig().tileSize).toBe(512);
+        });
+
+        it('should throw error for invalid tile size', () => {
+            expect(() => new ElevationProvider({ tileSize: 0 })).toThrow(
+                'Invalid tile size: 0. Must be a positive power of 2'
+            );
+
+            expect(() => new ElevationProvider({ tileSize: -256 })).toThrow(
+                'Invalid tile size: -256. Must be a positive power of 2'
+            );
+
+            expect(() => new ElevationProvider({ tileSize: 300 })).toThrow(
+                'Invalid tile size: 300. Must be a positive power of 2'
+            );
+
+            expect(() => new ElevationProvider({ tileSize: 1.5 })).toThrow(
+                'Invalid tile size: 1.5. Must be a positive power of 2'
             );
         });
 
@@ -331,8 +353,9 @@ describe('ElevationProvider', () => {
     });
 
     describe('attribution', () => {
-        it('should return attribution information', () => {
-            const attribution = ElevationProvider.getAttribution();
+        it('should return default attribution information', () => {
+            const provider = new ElevationProvider();
+            const attribution = provider.getAttribution();
 
             expect(attribution).toHaveProperty('text');
             expect(attribution).toHaveProperty('url');
@@ -342,9 +365,20 @@ describe('ElevationProvider', () => {
             expect(attribution.url).toContain('http');
         });
 
+        it('should return custom attribution when configured', () => {
+            const provider = new ElevationProvider({
+                attribution: { text: 'Custom attribution', url: 'https://example.com/attribution' },
+            });
+
+            const attribution = provider.getAttribution();
+            expect(attribution.text).toBe('Custom attribution');
+            expect(attribution.url).toBe('https://example.com/attribution');
+        });
+
         it('should return consistent attribution', () => {
-            const attr1 = ElevationProvider.getAttribution();
-            const attr2 = ElevationProvider.getAttribution();
+            const provider = new ElevationProvider();
+            const attr1 = provider.getAttribution();
+            const attr2 = provider.getAttribution();
 
             expect(attr1).toEqual(attr2);
         });

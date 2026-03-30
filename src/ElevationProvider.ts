@@ -31,14 +31,18 @@ export class ElevationProvider {
             zoomLevel: config.zoomLevel ?? 12,
             cacheSize: config.cacheSize ?? 100,
             tileUrlTemplate:
-                config.tileUrlTemplate ??
-                'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
+                config.tileUrlTemplate ?? 'https://tiles.mapterhorn.com/{z}/{x}/{y}.webp',
+            tileSize: config.tileSize ?? 512,
+            attribution: config.attribution ?? {
+                text: 'Mapterhorn elevation data. See mapterhorn.com/attribution/ for details.',
+                url: 'https://mapterhorn.com/attribution/',
+            },
         };
         logger.dir('Config :', this.config);
 
         this.validateConfig();
         this.tileManager = new TileManager(this.config.tileUrlTemplate, this.config.cacheSize);
-        this.calculator = new ElevationCalculator(this.tileManager);
+        this.calculator = new ElevationCalculator(this.tileManager, this.config.tileSize);
         this.batchCalculator = new BatchCalculator(this.calculator);
     }
 
@@ -52,11 +56,8 @@ export class ElevationProvider {
     /**
      * Get attribution information for elevation data
      */
-    public static getAttribution(): Attribution {
-        return {
-            text: 'Elevation data from multiple sources including SRTM, GMTED, NED and ETOPO1. Data processing by Mapzen/Tilezen.',
-            url: 'https://github.com/tilezen/joerd',
-        };
+    public getAttribution(): Attribution {
+        return this.config.attribution;
     }
 
     // ============================================================================
@@ -139,6 +140,11 @@ export class ElevationProvider {
 
         if (!Number.isInteger(cacheSize) || cacheSize <= 0) {
             throw new Error(`Invalid cache size: ${cacheSize}. Must be a positive integer`);
+        }
+
+        const { tileSize } = this.config;
+        if (!Number.isInteger(tileSize) || tileSize <= 0 || (tileSize & (tileSize - 1)) !== 0) {
+            throw new Error(`Invalid tile size: ${tileSize}. Must be a positive power of 2`);
         }
     }
 }

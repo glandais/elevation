@@ -187,7 +187,7 @@ describe('ElevationCalculator', () => {
             const elevation = await calculator.getElevation(coords, zoomLevel, false);
 
             // Verify the non-interpolated path was taken (lines 25-27)
-            expect(toPixelSpy).toHaveBeenCalledWith(coords, zoomLevel);
+            expect(toPixelSpy).toHaveBeenCalledWith(coords, zoomLevel, 256);
             expect(getElevationFromPixelSpy).toHaveBeenCalledWith({
                 tile: { z: 12, x: 2048, y: 2048 },
                 x: 128,

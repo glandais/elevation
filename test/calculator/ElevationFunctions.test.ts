@@ -10,7 +10,7 @@ describe('ElevationFunctions', () => {
                 y: 64,
             };
 
-            const result = normalizePixel(pixel);
+            const result = normalizePixel(pixel, 256);
 
             expect(result).toEqual({
                 tile: { z: 12, x: 100, y: 200 },
@@ -26,7 +26,7 @@ describe('ElevationFunctions', () => {
                 y: 128,
             };
 
-            const result = normalizePixel(pixel);
+            const result = normalizePixel(pixel, 256);
 
             expect(result.x).toBe(255);
             expect(result.tile.x).toBe(99);
@@ -41,7 +41,7 @@ describe('ElevationFunctions', () => {
                 y: -1,
             };
 
-            const result = normalizePixel(pixel);
+            const result = normalizePixel(pixel, 256);
 
             expect(result.x).toBe(128);
             expect(result.tile.x).toBe(100);
@@ -56,7 +56,7 @@ describe('ElevationFunctions', () => {
                 y: 128,
             };
 
-            const result = normalizePixel(pixel);
+            const result = normalizePixel(pixel, 256);
 
             expect(result.x).toBe(0);
             expect(result.tile.x).toBe(101);
@@ -71,7 +71,7 @@ describe('ElevationFunctions', () => {
                 y: 256,
             };
 
-            const result = normalizePixel(pixel);
+            const result = normalizePixel(pixel, 256);
 
             expect(result.x).toBe(128);
             expect(result.tile.x).toBe(100);
@@ -86,7 +86,7 @@ describe('ElevationFunctions', () => {
                 y: -10,
             };
 
-            const result = normalizePixel(pixel);
+            const result = normalizePixel(pixel, 256);
 
             expect(result.tile.x).toBe(0); // Clamped to minimum
             expect(result.tile.y).toBe(0); // Clamped to minimum
@@ -100,7 +100,7 @@ describe('ElevationFunctions', () => {
                 y: 300, // Will cause tile y to exceed bounds
             };
 
-            const result = normalizePixel(pixel);
+            const result = normalizePixel(pixel, 256);
 
             expect(result.tile.x).toBe(3); // Clamped to maximum (2^2 - 1 = 3)
             expect(result.tile.y).toBe(3); // Clamped to maximum
@@ -114,7 +114,7 @@ describe('ElevationFunctions', () => {
                 y: 300,
             };
 
-            const result = normalizePixel(pixel);
+            const result = normalizePixel(pixel, 256);
 
             // x: -10 → 246, tileX: 8-1 = 7
             expect(result.x).toBe(246);
@@ -133,7 +133,7 @@ describe('ElevationFunctions', () => {
                 y: -1,
             };
 
-            const result0 = normalizePixel(pixel0);
+            const result0 = normalizePixel(pixel0, 256);
             expect(result0.tile.x).toBe(0); // Clamped to valid range
             expect(result0.tile.y).toBe(0); // Clamped to valid range
 
@@ -144,7 +144,7 @@ describe('ElevationFunctions', () => {
                 y: 256,
             };
 
-            const result15 = normalizePixel(pixel15);
+            const result15 = normalizePixel(pixel15, 256);
             expect(result15.tile.x).toBe(32767); // Should remain at max
             expect(result15.tile.y).toBe(32767); // Should remain at max
         });

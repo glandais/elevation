@@ -68,6 +68,17 @@ export interface ElevationProviderConfig {
      * Default: AWS S3 Terrarium tiles
      */
     readonly tileUrlTemplate?: string;
+
+    /**
+     * Tile size in pixels (default: 256)
+     * Use 512 for providers like mapterhorn.com
+     */
+    readonly tileSize?: number;
+
+    /**
+     * Attribution for the tile data source
+     */
+    readonly attribution?: Attribution;
 }
 
 /**

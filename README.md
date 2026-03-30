@@ -146,6 +146,7 @@ const elevationProvider = new ElevationProvider({
     zoomLevel: 12, // Tile zoom level (default: 12 for ~30m resolution)
     cacheSize: 100, // Maximum tiles in memory cache (default: 100)
     tileUrlTemplate: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
+    tileSize: 256,
 });
 
 // Batch elevation requests
@@ -460,36 +461,38 @@ Common errors:
 
 ## Attribution Requirements
 
-**IMPORTANT**: This library uses elevation data that requires proper attribution. You must include the following attribution in your application:
-
-### Required Attribution Text
-
-```
-Elevation data from multiple sources including SRTM, GMTED, NED and ETOPO1.
-Data processing by Mapzen/Tilezen.
-See https://github.com/tilezen/joerd for details.
-```
+**IMPORTANT**: Attribution is required by the tile data provider. The default configuration uses [mapterhorn.com](https://mapterhorn.com/) tiles — see [mapterhorn.com/attribution/](https://mapterhorn.com/attribution/) for their requirements.
 
 ### Implementation
 
 ```typescript
+const provider = new ElevationProvider();
+
 // Get attribution programmatically
-const attribution = ElevationProvider.getAttribution();
+const attribution = provider.getAttribution();
 
 // Display in your application's footer, about page, or credits
 document.getElementById('attribution').textContent = attribution.text;
-
-// Or include in your application's legal notices
-console.log('Data attribution:', attribution.text);
 console.log('More info:', attribution.url);
 ```
 
-### Legal Requirements
+### Custom Attribution
 
-- Attribution must be visible to end users
-- Include in documentation, about pages, or credits
-- Required for all applications using this library
-- See [Joerd attribution requirements](https://github.com/tilezen/joerd/blob/master/docs/attribution.md) for complete details
+When using a custom tile source, pass its attribution in the config:
+
+```typescript
+const provider = new ElevationProvider({
+    tileUrlTemplate: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
+    tileSize: 256,
+    attribution: {
+        text: 'Elevation data from SRTM, GMTED, NED and ETOPO1. Data processing by Mapzen/Tilezen.',
+        url: 'https://github.com/tilezen/joerd',
+    },
+});
+```
+
+- See [Joerd attribution requirements](https://github.com/tilezen/joerd/blob/master/docs/attribution.md) when using Tilezen/AWS tiles
+- See [Mapterhorn attribution requirements](https://mapterhorn.com/attribution/) when using mapterhorn.com tiles
 
 ## Development
 
@@ -650,4 +653,4 @@ See [CHANGELOG.md](CHANGELOG.md) for version history and updates.
 
 ---
 
-**Data Attribution**: Elevation data from multiple sources including SRTM, GMTED, NED and ETOPO1. Data processing by Mapzen/Tilezen. See https://github.com/tilezen/joerd for details.
+**Data Attribution**: Default tile data provided by [Mapterhorn](https://mapterhorn.com/) — see [mapterhorn.com/attribution/](https://mapterhorn.com/attribution/) for requirements.

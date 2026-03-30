@@ -4,9 +4,11 @@ import type { TileManager } from '../tile';
 
 export class ElevationCalculator {
     private readonly tileManager: TileManager;
+    private readonly tileSize: number;
 
-    constructor(tileManager: TileManager) {
+    constructor(tileManager: TileManager, tileSize: number = 256) {
         this.tileManager = tileManager;
+        this.tileSize = tileSize;
     }
 
     // ========================================================================
@@ -22,7 +24,7 @@ export class ElevationCalculator {
             if (interpolation) {
                 return await this.getInterpolatedElevationInternal(coords, zoomLevel);
             } else {
-                const pixel = toPixel(coords, zoomLevel);
+                const pixel = toPixel(coords, zoomLevel, this.tileSize);
                 return await this.getElevationFromPixel(pixel);
             }
         } catch (error) {
@@ -41,7 +43,7 @@ export class ElevationCalculator {
         coords: Coordinates,
         zoomLevel: number
     ): Promise<number> {
-        const pixel = toPixel(coords, zoomLevel);
+        const pixel = toPixel(coords, zoomLevel, this.tileSize);
         const pixelFloat = {
             tile: pixel.tile,
             x: pixel.x,
@@ -56,16 +58,16 @@ export class ElevationCalculator {
         const dy = pixelFloat.y - y0;
 
         const p00 = await this.getElevationFromPixel(
-            normalizePixel({ tile: pixelFloat.tile, x: x0, y: y0 })
+            normalizePixel({ tile: pixelFloat.tile, x: x0, y: y0 }, this.tileSize)
         );
         const p10 = await this.getElevationFromPixel(
-            normalizePixel({ tile: pixelFloat.tile, x: x1, y: y0 })
+            normalizePixel({ tile: pixelFloat.tile, x: x1, y: y0 }, this.tileSize)
         );
         const p01 = await this.getElevationFromPixel(
-            normalizePixel({ tile: pixelFloat.tile, x: x0, y: y1 })
+            normalizePixel({ tile: pixelFloat.tile, x: x0, y: y1 }, this.tileSize)
         );
         const p11 = await this.getElevationFromPixel(
-            normalizePixel({ tile: pixelFloat.tile, x: x1, y: y1 })
+            normalizePixel({ tile: pixelFloat.tile, x: x1, y: y1 }, this.tileSize)
         );
 
         const top = p00 * (1 - dx) + p10 * dx;
