@@ -1,7 +1,5 @@
 import { Coordinates, Pixel, TileCoordinates, TileCoordinatesFloat } from 'src/types';
 
-const TILE_SIZE = 256;
-
 // ========================================================================
 // INTERNAL FUNCTIONS (exported for tests)
 // ========================================================================
@@ -34,7 +32,7 @@ export function isValidZoomLevel(zoom: number): boolean {
     return Number.isInteger(zoom) && zoom >= 0 && zoom <= 15;
 }
 
-export function normalizePixel(pixel: Pixel): Pixel {
+export function normalizePixel(pixel: Pixel, tileSize: number): Pixel {
     let { x, y } = pixel;
     const tile = pixel.tile;
     let tileX = tile.x;
@@ -42,19 +40,19 @@ export function normalizePixel(pixel: Pixel): Pixel {
     const z = tile.z;
 
     if (x < 0) {
-        x += TILE_SIZE;
+        x += tileSize;
         tileX -= 1;
     }
-    if (x >= TILE_SIZE) {
-        x -= TILE_SIZE;
+    if (x >= tileSize) {
+        x -= tileSize;
         tileX += 1;
     }
     if (y < 0) {
-        y += TILE_SIZE;
+        y += tileSize;
         tileY -= 1;
     }
-    if (y >= TILE_SIZE) {
-        y -= TILE_SIZE;
+    if (y >= tileSize) {
+        y -= tileSize;
         tileY += 1;
     }
 
@@ -119,12 +117,12 @@ export function toTileCoordinates(coords: Coordinates, z: number): TileCoordinat
  * @param z - Zoom level (0-15)
  * @returns Pixel coordinates within the appropriate tile
  */
-export function toPixel(coords: Coordinates, z: number): Pixel {
+export function toPixel(coords: Coordinates, z: number, tileSize: number): Pixel {
     const tile = toTileCoordinatesFloat(coords, z);
 
     // Calculate pixel coordinates within the tile
-    const x = Math.floor((tile.xFloat - tile.x) * TILE_SIZE);
-    const y = Math.floor((tile.yFloat - tile.y) * TILE_SIZE);
+    const x = Math.floor((tile.xFloat - tile.x) * tileSize);
+    const y = Math.floor((tile.yFloat - tile.y) * tileSize);
 
     return {
         tile: {
@@ -132,7 +130,7 @@ export function toPixel(coords: Coordinates, z: number): Pixel {
             x: tile.x,
             y: tile.y,
         },
-        x: Math.max(0, Math.min(TILE_SIZE - 1, x)),
-        y: Math.max(0, Math.min(TILE_SIZE - 1, y)),
+        x: Math.max(0, Math.min(tileSize - 1, x)),
+        y: Math.max(0, Math.min(tileSize - 1, y)),
     };
 }

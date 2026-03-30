@@ -82,13 +82,15 @@ elevation = (red * 256 + green + blue / 256) - 32768
 **Tile URL Pattern:**
 
 ```
-https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png
+https://tiles.mapterhorn.com/{z}/{x}/{y}.webp
 ```
 
 **Default Configuration:**
 
 - Zoom Level: 12 (approximately 30m resolution)
 - Cache Size: 100 tiles maximum
+- Tile Size: 512 pixels
+- Attribution: mapterhorn.com (see https://mapterhorn.com/attribution/)
 
 ### Logging Strategy
 
@@ -142,10 +144,10 @@ The library implements a zero-overhead logging system for development debugging 
 ## Important Constraints
 
 1. **Minimal Dependencies**: Browser builds have zero runtime dependencies. Node.js builds require optional dependencies (`canvas`, `node-fetch`, `abort-controller`) that are dynamically imported.
-2. **Attribution Required**: Any usage must include attribution to data sources (SRTM, GMTED, NED, ETOPO1) and Mapzen/Tilezen processing
+2. **Attribution Required**: Any usage must include attribution per the tile provider. Default is mapterhorn.com — see https://mapterhorn.com/attribution/. Attribution is configurable via `ElevationProviderConfig.attribution`
 3. **Cross-Platform**: Library supports both browser (native APIs) and Node.js (with canvas package) environments
 4. **Coordinate Limits**: Latitude must be between -85.0511 and 85.0511 (Web Mercator bounds)
-5. **Memory Usage**: Each tile uses ~262KB (256×256×4 bytes) in both environments
+5. **Memory Usage**: Each tile uses ~1MB (512×512×4 bytes) with the default tile size in both environments
 
 ## Testing Strategy
 
