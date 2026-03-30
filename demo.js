@@ -30,6 +30,11 @@ const gpxUploadBtn = document.getElementById('gpx-upload-btn');
 const loadSampleBtn = document.getElementById('load-sample-btn');
 const gpxStatus = document.getElementById('gpx-status');
 
+// Relief controls
+const reliefOffBtn = document.getElementById('relief-off');
+const reliefHillshadeBtn = document.getElementById('relief-hillshade');
+const reliefSlopeBtn = document.getElementById('relief-slope');
+
 // Smoothing controls
 const enableSmoothingCheckbox = document.getElementById('enable-smoothing');
 const smoothingWindowSlider = document.getElementById('smoothing-window-slider');
@@ -42,6 +47,7 @@ const zExaggerationSlider = document.getElementById('z-exaggeration-slider');
 const zExaggerationInput = document.getElementById('z-exaggeration-input');
 
 // State
+let currentReliefLayer = null;
 let currentMode = 'point'; // 'point' or 'path'
 let currentMarker = null;
 let pathPoints = [];
@@ -216,6 +222,27 @@ function loadGPXTrack(trackPoints) {
 
     // Generate elevation profile
     updateElevationProfile();
+}
+
+// Relief layer
+function setReliefMode(mode) {
+    if (currentReliefLayer) {
+        map.removeLayer(currentReliefLayer);
+        currentReliefLayer = null;
+    }
+
+    reliefOffBtn.className = mode === 'off' ? 'primary' : 'secondary';
+    reliefHillshadeBtn.className = mode === 'hillshade' ? 'primary' : 'secondary';
+    reliefSlopeBtn.className = mode === 'slope' ? 'primary' : 'secondary';
+
+    if (mode === 'hillshade' || mode === 'slope') {
+        currentReliefLayer = L.gridLayer
+            .relief({
+                mode,
+                opacity: 0.6,
+            })
+            .addTo(map);
+    }
 }
 
 // Mode switching
@@ -560,6 +587,10 @@ async function handlePathClick(e) {
 }
 
 // Event listeners
+reliefOffBtn.addEventListener('click', () => setReliefMode('off'));
+reliefHillshadeBtn.addEventListener('click', () => setReliefMode('hillshade'));
+reliefSlopeBtn.addEventListener('click', () => setReliefMode('slope'));
+
 pointModeBtn.addEventListener('click', () => setMode('point'));
 pathModeBtn.addEventListener('click', () => setMode('path'));
 clearPathBtn.addEventListener('click', clearPath);
@@ -629,3 +660,4 @@ map.on('click', function (e) {
 
 // Initialize
 setMode('path');
+setReliefMode('hillshade');
