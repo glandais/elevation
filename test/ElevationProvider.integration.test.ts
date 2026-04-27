@@ -1,4 +1,6 @@
 import { BrowserTile } from '../src/tile/fetcher/browser/BrowserTile';
+import { BrowserTileFetcher } from '../src/tile/fetcher/browser/BrowserTileFetcher';
+import { TileLoader } from '../src/tile/fetcher/TileLoader';
 import { ElevationProvider } from '../src/ElevationProvider';
 import type { TileCoordinates } from '../src/types';
 
@@ -6,10 +8,9 @@ import type { TileCoordinates } from '../src/types';
 
 describe('ElevationProvider Integration - Constructor Function Coverage', () => {
     it('should execute cleanup function (line 43) during cache eviction', async () => {
-        const closeSpy = jest.fn();
+        const closeSpy = vi.fn();
 
         // Mock only TileFetcher, let Cache be real
-        const { BrowserTileFetcher } = require('../src/tile/fetcher/browser/BrowserTileFetcher');
         const originalFetchTile = BrowserTileFetcher.prototype.fetchTile;
 
         const createMockTile = (): BrowserTile =>
@@ -18,7 +19,7 @@ describe('ElevationProvider Integration - Constructor Function Coverage', () => 
                 { close: closeSpy } as unknown as ImageBitmap
             );
 
-        BrowserTileFetcher.prototype.fetchTile = jest
+        BrowserTileFetcher.prototype.fetchTile = vi
             .fn()
             .mockImplementation(() => Promise.resolve(createMockTile()));
 
@@ -40,16 +41,15 @@ describe('ElevationProvider Integration - Constructor Function Coverage', () => 
     });
 
     it('should execute key mapper and value builder functions (lines 47-48)', async () => {
-        const { TileLoader } = require('../src/tile/fetcher/TileLoader');
         const originalLoadTile = TileLoader.prototype.loadTile;
 
         const createMockTile = (): BrowserTile =>
             new BrowserTile(
                 new ImageData(new Uint8ClampedArray(256 * 256 * 4).fill(128), 256, 256),
-                { close: jest.fn() } as unknown as ImageBitmap
+                { close: vi.fn() } as unknown as ImageBitmap
             );
 
-        const mockLoadTile = jest.fn().mockResolvedValue(createMockTile());
+        const mockLoadTile = vi.fn().mockResolvedValue(createMockTile());
         TileLoader.prototype.loadTile = mockLoadTile;
 
         try {

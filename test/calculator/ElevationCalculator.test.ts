@@ -1,20 +1,21 @@
+import type { Mocked, MockedClass } from 'vitest';
 import { ElevationCalculator } from '../../src/calculator/ElevationCalculator';
 import { TileManager } from '../../src/tile/TileManager';
 import * as ElevationFunctions from '../../src/calculator/ElevationFunctions';
 import type { Coordinates, Pixel } from '../../src/types';
-import { Tile } from 'src/tile';
+import { Tile } from '../../src/tile';
 
 // Mock TileManager
-jest.mock('../../src/tile/TileManager');
-const MockedTileManager = TileManager as jest.MockedClass<typeof TileManager>;
+vi.mock('../../src/tile/TileManager');
+const MockedTileManager = TileManager as MockedClass<typeof TileManager>;
 
 describe('ElevationCalculator', () => {
     let calculator: ElevationCalculator;
-    let mockTileManager: jest.Mocked<TileManager>;
-    let mockTile: jest.Mocked<Tile>;
+    let mockTileManager: Mocked<TileManager>;
+    let mockTile: Mocked<Tile>;
 
     beforeEach(() => {
-        mockTileManager = new MockedTileManager('', 0) as jest.Mocked<TileManager>;
+        mockTileManager = new MockedTileManager('', 0) as Mocked<TileManager>;
         calculator = new ElevationCalculator(mockTileManager);
 
         // Create mock ImageData with specific elevation pattern
@@ -44,18 +45,18 @@ describe('ElevationCalculator', () => {
         const mockImageData = new ImageData(data, 256, 256);
 
         mockTile = {
-            close: jest.fn(),
+            close: vi.fn(),
             width: 256,
             height: 256,
             cache: new Float64Array(256 * 256),
-            getRGBFromImageData: jest.fn((index: number) => {
+            getRGBFromImageData: vi.fn((index: number) => {
                 return {
                     red: mockImageData.data[index],
                     green: mockImageData.data[index + 1],
                     blue: mockImageData.data[index + 2],
                 };
             }),
-            getElevation: jest.fn((position: Pixel): number => {
+            getElevation: vi.fn((position: Pixel): number => {
                 const x = Math.floor(position.x);
                 const y = Math.floor(position.y);
                 const index = (y * mockImageData.width + x) * 4;
@@ -70,10 +71,10 @@ describe('ElevationCalculator', () => {
                 const elevation = rgb.red * 256 + rgb.green + rgb.blue / 256 - 32768;
                 return Math.round(elevation * 100) / 100;
             }),
-            decodeElevation: jest.fn(),
-        } as jest.Mocked<Tile>;
+            decodeElevation: vi.fn(),
+        } as Mocked<Tile>;
 
-        mockTileManager.getTile = jest.fn().mockResolvedValue(mockTile);
+        mockTileManager.getTile = vi.fn().mockResolvedValue(mockTile);
     });
 
     describe('getElevation', () => {
@@ -166,18 +167,18 @@ describe('ElevationCalculator', () => {
             const zoomLevel = 12;
 
             // Spy on the exported toPixel function to verify the correct execution path
-            const toPixelSpy = jest.spyOn(ElevationFunctions, 'toPixel').mockReturnValue({
+            const toPixelSpy = vi.spyOn(ElevationFunctions, 'toPixel').mockReturnValue({
                 tile: { z: 12, x: 2048, y: 2048 },
                 x: 128,
                 y: 128,
             });
 
-            const getElevationFromPixelSpy = jest
+            const getElevationFromPixelSpy = vi
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 .spyOn(calculator as any, 'getElevationFromPixel')
                 .mockResolvedValue(1500);
 
-            const getInterpolatedElevationInternalSpy = jest.spyOn(
+            const getInterpolatedElevationInternalSpy = vi.spyOn(
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 calculator as any,
                 'getInterpolatedElevationInternal'
@@ -207,13 +208,13 @@ describe('ElevationCalculator', () => {
             const zoomLevel = 12;
 
             // Spy on the private methods to verify the correct execution path
-            const getInterpolatedElevationInternalSpy = jest
+            const getInterpolatedElevationInternalSpy = vi
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 .spyOn(calculator as any, 'getInterpolatedElevationInternal')
                 .mockResolvedValue(1750);
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const getElevationFromPixelSpy = jest.spyOn(calculator as any, 'getElevationFromPixel');
+            const getElevationFromPixelSpy = vi.spyOn(calculator as any, 'getElevationFromPixel');
 
             // Call with interpolation = true (default)
             const elevation = await calculator.getElevation(coords, zoomLevel, true);

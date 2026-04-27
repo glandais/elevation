@@ -1,3 +1,4 @@
+import type { Mock, Mocked, MockedClass, MockedFunction } from 'vitest';
 import { Tile } from '../../src/tile';
 import { TileManager } from '../../src/tile/TileManager';
 import { Cache } from '../../src/tile/cache/Cache';
@@ -5,32 +6,32 @@ import { TileLoader } from '../../src/tile/fetcher/TileLoader';
 import type { TileCoordinates, Pixel } from '../../src/types';
 
 // Mock dependencies
-jest.mock('../../src/tile/cache/Cache');
-jest.mock('../../src/tile/fetcher/TileLoader');
+vi.mock('../../src/tile/cache/Cache');
+vi.mock('../../src/tile/fetcher/TileLoader');
 
 // Mock the dynamic imports for browser and Node.js tile fetchers
-jest.mock('../../src/tile/fetcher/browser/BrowserTileFetcher', () => ({
-    BrowserTileFetcher: jest.fn().mockImplementation(() => ({
-        fetchTile: jest.fn(),
-    })),
+vi.mock('../../src/tile/fetcher/browser/BrowserTileFetcher', () => ({
+    BrowserTileFetcher: vi.fn(function () {
+        return { fetchTile: vi.fn() };
+    }),
 }));
 
-jest.mock('../../src/tile/fetcher/nodejs/NodeJsTileFetcher', () => ({
-    NodeJsTileFetcher: jest.fn().mockImplementation(() => ({
-        fetchTile: jest.fn(),
-    })),
+vi.mock('../../src/tile/fetcher/nodejs/NodeJsTileFetcher', () => ({
+    NodeJsTileFetcher: vi.fn(function () {
+        return { fetchTile: vi.fn() };
+    }),
 }));
 
-const MockedCache = Cache as jest.MockedClass<typeof Cache>;
-const MockedTileLoader = TileLoader as jest.MockedClass<typeof TileLoader>;
+const MockedCache = Cache as MockedClass<typeof Cache>;
+const MockedTileLoader = TileLoader as MockedClass<typeof TileLoader>;
 
 describe('TileManager', () => {
-    let mockLoadTile: jest.MockedFunction<(tileCoords: TileCoordinates) => Promise<Tile>>;
-    let mockCacheGet: jest.MockedFunction<(k: TileCoordinates) => Promise<Tile>>;
+    let mockLoadTile: MockedFunction<(tileCoords: TileCoordinates) => Promise<Tile>>;
+    let mockCacheGet: MockedFunction<(k: TileCoordinates) => Promise<Tile>>;
     let mockTile: Tile;
 
     beforeEach(() => {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
 
         // Create mock ImageData with known elevation values
         const data = new Uint8ClampedArray(256 * 256 * 4);
@@ -46,18 +47,18 @@ describe('TileManager', () => {
 
         // Create proper Tile interface implementation
         mockTile = {
-            close: jest.fn(),
+            close: vi.fn(),
             width: 256,
             height: 256,
             cache: new Float64Array(256 * 256),
-            getRGBFromImageData: jest.fn((index: number) => {
+            getRGBFromImageData: vi.fn((index: number) => {
                 return {
                     red: mockImageData.data[index],
                     green: mockImageData.data[index + 1],
                     blue: mockImageData.data[index + 2],
                 };
             }),
-            getElevation: jest.fn((position: Pixel): number => {
+            getElevation: vi.fn((position: Pixel): number => {
                 const x = Math.floor(position.x);
                 const y = Math.floor(position.y);
                 const index = (y * 256 + x) * 4;
@@ -72,18 +73,18 @@ describe('TileManager', () => {
                 const elevation = rgb.red * 256 + rgb.green + rgb.blue / 256 - 32768;
                 return Math.round(elevation * 100) / 100;
             }),
-            decodeElevation: jest.fn(),
-        } as jest.Mocked<Tile>;
+            decodeElevation: vi.fn(),
+        } as Mocked<Tile>;
 
-        mockLoadTile = jest.fn().mockResolvedValue(mockTile);
+        mockLoadTile = vi.fn().mockResolvedValue(mockTile);
         MockedTileLoader.prototype.loadTile = mockLoadTile;
 
-        mockCacheGet = jest.fn().mockResolvedValue(mockTile);
+        mockCacheGet = vi.fn().mockResolvedValue(mockTile);
         MockedCache.prototype.get = mockCacheGet;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (MockedCache.prototype as any).has = jest.fn().mockReturnValue(false);
+        (MockedCache.prototype as any).has = vi.fn().mockReturnValue(false);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (MockedCache.prototype as any).getKeys = jest.fn().mockReturnValue([]);
+        (MockedCache.prototype as any).getKeys = vi.fn().mockReturnValue([]);
     });
 
     describe('constructor', () => {
@@ -122,7 +123,7 @@ describe('TileManager', () => {
             await manager.initCache();
 
             // Get the key mapper function that was passed to Cache constructor
-            const cacheConstructorCall = (MockedCache as unknown as jest.Mock).mock.calls[0];
+            const cacheConstructorCall = (MockedCache as unknown as Mock).mock.calls[0];
             const keyMapperFunction = cacheConstructorCall[1];
 
             // Test the key mapping function
@@ -137,7 +138,7 @@ describe('TileManager', () => {
             await manager.initCache();
 
             // Get the value builder function that was passed to Cache constructor
-            const cacheConstructorCall = (MockedCache as unknown as jest.Mock).mock.calls[0];
+            const cacheConstructorCall = (MockedCache as unknown as Mock).mock.calls[0];
             const valueBuilderFunction = cacheConstructorCall[2];
 
             await valueBuilderFunction(tileCoords);
@@ -151,18 +152,18 @@ describe('TileManager', () => {
             await manager.initCache();
 
             // Get the cleanup function that was passed to Cache constructor
-            const cacheConstructorCall = (MockedCache as unknown as jest.Mock).mock.calls[0];
+            const cacheConstructorCall = (MockedCache as unknown as Mock).mock.calls[0];
             const cleanupFunction = cacheConstructorCall[3];
 
-            const mockCloseFn = jest.fn();
+            const mockCloseFn = vi.fn();
             const testTile: Tile = {
                 close: mockCloseFn,
                 width: 256,
                 height: 256,
                 cache: new Float64Array(256 * 256),
-                getRGBFromImageData: jest.fn(),
-                getElevation: jest.fn(),
-                decodeElevation: jest.fn(),
+                getRGBFromImageData: vi.fn(),
+                getElevation: vi.fn(),
+                decodeElevation: vi.fn(),
             };
 
             cleanupFunction(testTile);
@@ -248,31 +249,31 @@ describe('TileManager', () => {
 
             // Create different mock tiles for each request
             const mockTile1: Tile = {
-                close: jest.fn(),
+                close: vi.fn(),
                 width: 256,
                 height: 256,
                 cache: new Float64Array(256 * 256),
-                getRGBFromImageData: jest.fn(),
-                getElevation: jest.fn(),
-                decodeElevation: jest.fn(),
+                getRGBFromImageData: vi.fn(),
+                getElevation: vi.fn(),
+                decodeElevation: vi.fn(),
             };
             const mockTile2: Tile = {
-                close: jest.fn(),
+                close: vi.fn(),
                 width: 256,
                 height: 256,
                 cache: new Float64Array(256 * 256),
-                getRGBFromImageData: jest.fn(),
-                getElevation: jest.fn(),
-                decodeElevation: jest.fn(),
+                getRGBFromImageData: vi.fn(),
+                getElevation: vi.fn(),
+                decodeElevation: vi.fn(),
             };
             const mockTile3: Tile = {
-                close: jest.fn(),
+                close: vi.fn(),
                 width: 256,
                 height: 256,
                 cache: new Float64Array(256 * 256),
-                getRGBFromImageData: jest.fn(),
-                getElevation: jest.fn(),
-                decodeElevation: jest.fn(),
+                getRGBFromImageData: vi.fn(),
+                getElevation: vi.fn(),
+                decodeElevation: vi.fn(),
             };
 
             // Simulate different tiles returned for different coordinates
@@ -309,7 +310,7 @@ describe('TileManager', () => {
             await manager2.getTile(tileCoords);
 
             // Verify both caches were created with correct sizes
-            const cacheCalls = (MockedCache as unknown as jest.Mock).mock.calls;
+            const cacheCalls = (MockedCache as unknown as Mock).mock.calls;
             expect(cacheCalls.some(call => call[0] === 10)).toBe(true);
             expect(cacheCalls.some(call => call[0] === 20)).toBe(true);
         });
@@ -361,20 +362,20 @@ describe('TileManager', () => {
             await manager.initCache();
 
             // Extract the cleanup function from the Cache constructor
-            const cacheConstructorCall = (MockedCache as unknown as jest.Mock).mock.calls[0];
+            const cacheConstructorCall = (MockedCache as unknown as Mock).mock.calls[0];
             const cleanupFunction = cacheConstructorCall[3];
 
-            const mockClose1 = jest.fn();
-            const mockClose2 = jest.fn();
+            const mockClose1 = vi.fn();
+            const mockClose2 = vi.fn();
 
             const tile1: Tile = {
                 close: mockClose1,
                 width: 256,
                 height: 256,
                 cache: new Float64Array(256 * 256),
-                getRGBFromImageData: jest.fn(),
-                getElevation: jest.fn(),
-                decodeElevation: jest.fn(),
+                getRGBFromImageData: vi.fn(),
+                getElevation: vi.fn(),
+                decodeElevation: vi.fn(),
             };
 
             const tile2: Tile = {
@@ -382,9 +383,9 @@ describe('TileManager', () => {
                 width: 256,
                 height: 256,
                 cache: new Float64Array(256 * 256),
-                getRGBFromImageData: jest.fn(),
-                getElevation: jest.fn(),
-                decodeElevation: jest.fn(),
+                getRGBFromImageData: vi.fn(),
+                getElevation: vi.fn(),
+                decodeElevation: vi.fn(),
             };
 
             cleanupFunction(tile1);

@@ -1,5 +1,7 @@
 // Test setup
 
+import { vi } from 'vitest';
+
 // Define __DEV__ as true for tests to enable logging in test environment
 // This allows us to test the logger functionality
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -10,34 +12,34 @@
 // Global mock for Logger to silence console output during tests
 // Only applies to imports from '../src/utils/Logger' and '../src/utils'
 // The Logger.test.ts file will override this mock for its own testing
-jest.mock('../src/utils/Logger', () => ({
-    createLogger: jest.fn(() => ({
-        trace: jest.fn(),
-        debug: jest.fn(),
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        timeLevel: jest.fn(),
-        timeEndLevel: jest.fn(),
-        time: jest.fn(),
-        timeEnd: jest.fn(),
-        dirLevel: jest.fn(),
-        dir: jest.fn(),
-        clear: jest.fn(),
+vi.mock('../src/utils/Logger', () => ({
+    createLogger: vi.fn(() => ({
+        trace: vi.fn(),
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+        timeLevel: vi.fn(),
+        timeEndLevel: vi.fn(),
+        time: vi.fn(),
+        timeEnd: vi.fn(),
+        dirLevel: vi.fn(),
+        dir: vi.fn(),
+        clear: vi.fn(),
     })),
-    Logger: jest.fn().mockImplementation(() => ({
-        trace: jest.fn(),
-        debug: jest.fn(),
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        timeLevel: jest.fn(),
-        timeEndLevel: jest.fn(),
-        time: jest.fn(),
-        timeEnd: jest.fn(),
-        dirLevel: jest.fn(),
-        dir: jest.fn(),
-        clear: jest.fn(),
+    Logger: vi.fn().mockImplementation(() => ({
+        trace: vi.fn(),
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+        timeLevel: vi.fn(),
+        timeEndLevel: vi.fn(),
+        time: vi.fn(),
+        timeEnd: vi.fn(),
+        dirLevel: vi.fn(),
+        dir: vi.fn(),
+        clear: vi.fn(),
     })),
     LogLevel: {
         ERROR: 0,
@@ -71,9 +73,9 @@ global.ImageData = class ImageData {
 
 // Mock canvas for TileFetcher tests
 Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
-    value: jest.fn().mockReturnValue({
-        drawImage: jest.fn(),
-        getImageData: jest.fn().mockReturnValue(new ImageData(256, 256)),
+    value: vi.fn().mockReturnValue({
+        drawImage: vi.fn(),
+        getImageData: vi.fn().mockReturnValue(new ImageData(256, 256)),
     }),
     writable: true,
 });

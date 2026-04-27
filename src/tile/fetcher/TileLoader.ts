@@ -28,9 +28,13 @@ export class TileLoader {
         } catch (error) {
             logger.timeEndLevel(LogLevel.DEBUG, fetchTimer);
             if (error instanceof Error) {
-                throw new Error(`Failed to fetch tile from ${tileUrl}: ${error.message}`);
+                throw new Error(`Failed to fetch tile from ${tileUrl}: ${error.message}`, {
+                    cause: error,
+                });
             }
-            throw new Error(`Failed to fetch tile from ${tileUrl}: Unknown error`);
+            throw new Error(`Failed to fetch tile from ${tileUrl}: Unknown error`, {
+                cause: error,
+            });
         }
     }
 

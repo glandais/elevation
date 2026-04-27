@@ -1,3 +1,4 @@
+import type { Mocked } from 'vitest';
 import { TileLoader } from '../../../src/tile/fetcher/TileLoader';
 import type { TileFetcher } from '../../../src/tile/fetcher/TileFetcher';
 import type { TileCoordinates } from '../../../src/types';
@@ -5,31 +6,31 @@ import { Tile } from '../../../src/tile';
 
 describe('TileLoader', () => {
     let tileLoader: TileLoader;
-    let mockTileFetcher: jest.Mocked<TileFetcher>;
+    let mockTileFetcher: Mocked<TileFetcher>;
     let mockTile: Tile;
 
     beforeEach(() => {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
 
         // Create mock tile
         mockTile = {
-            close: jest.fn(),
+            close: vi.fn(),
             width: 256,
             height: 256,
             cache: new Float64Array(256 * 256),
-            getRGBFromImageData: jest.fn().mockReturnValue({
+            getRGBFromImageData: vi.fn().mockReturnValue({
                 red: 128,
                 green: 0,
                 blue: 0,
             }),
-            getElevation: jest.fn(),
-            decodeElevation: jest.fn(),
-        } as jest.Mocked<Tile>;
+            getElevation: vi.fn(),
+            decodeElevation: vi.fn(),
+        } as Mocked<Tile>;
 
         // Create mock TileFetcher
         mockTileFetcher = {
-            fetchTile: jest.fn().mockResolvedValue(mockTile),
-        } as jest.Mocked<TileFetcher>;
+            fetchTile: vi.fn().mockResolvedValue(mockTile),
+        } as Mocked<TileFetcher>;
 
         // Create TileLoader with mock fetcher
         tileLoader = new TileLoader('https://example.com/{z}/{x}/{y}.png', mockTileFetcher);
@@ -153,17 +154,17 @@ describe('TileLoader', () => {
 
             // Create different mock tiles for each request
             const mockTiles: Tile[] = tileCoords.map((_, index) => ({
-                close: jest.fn(),
+                close: vi.fn(),
                 width: 256,
                 height: 256,
                 cache: new Float64Array(256 * 256),
-                getRGBFromImageData: jest.fn().mockReturnValue({
+                getRGBFromImageData: vi.fn().mockReturnValue({
                     red: 128 + index,
                     green: 0,
                     blue: 0,
                 }),
-                getElevation: jest.fn(),
-                decodeElevation: jest.fn(),
+                getElevation: vi.fn(),
+                decodeElevation: vi.fn(),
             }));
 
             mockTileFetcher.fetchTile

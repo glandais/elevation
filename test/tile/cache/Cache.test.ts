@@ -56,11 +56,11 @@ class CacheExtended<K, T> extends Cache<K, T> {
 describe('Cache', () => {
     let cache: Cache<string, string>;
     const mockKeyMapper = (key: string) => key;
-    const mockValueBuilder = jest.fn((key: string) => Promise.resolve(`value-${key}`));
-    const mockCleanupFn = jest.fn();
+    const mockValueBuilder = vi.fn((key: string) => Promise.resolve(`value-${key}`));
+    const mockCleanupFn = vi.fn();
 
     beforeEach(() => {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
         cache = new Cache<string, string>(3, mockKeyMapper, mockValueBuilder, mockCleanupFn);
     });
 
@@ -115,7 +115,7 @@ describe('Cache', () => {
 
         it('should handle race condition where item appears during lock acquisition', async () => {
             // Create a cache with a slow value builder to test race conditions
-            const slowBuilder = jest.fn().mockImplementation(async (key: string) => {
+            const slowBuilder = vi.fn().mockImplementation(async (key: string) => {
                 // Simulate slow build
                 await new Promise(resolve => setTimeout(resolve, 10));
                 return `value-${key}`;
@@ -174,7 +174,7 @@ describe('Cache', () => {
             await cache.get('key3');
 
             // Reset mock to track only the next call
-            jest.clearAllMocks();
+            vi.clearAllMocks();
 
             // Access key1 again - this should hit moveToFront path
             const result = await cache.get('key1');
@@ -196,7 +196,7 @@ describe('Cache', () => {
             expect(mockValueBuilder).toHaveBeenCalledTimes(1);
 
             // Reset mocks to isolate the second call
-            jest.clearAllMocks();
+            vi.clearAllMocks();
 
             // Access the same item again - should trigger moveToFront code path
             const result2 = await cache.get('testKey');
@@ -211,7 +211,7 @@ describe('Cache', () => {
 
         it('should exercise double-check locking pattern in get method', async () => {
             // This test targets the specific lines 75-76 in the double-check locking pattern
-            const specialBuilder = jest.fn(async (key: string) => {
+            const specialBuilder = vi.fn(async (key: string) => {
                 // Add some async work to ensure we go through the lock path
                 await new Promise(resolve => setTimeout(resolve, 1));
                 return `special-${key}`;
@@ -232,7 +232,7 @@ describe('Cache', () => {
 
             // Mock the lock.acquire to simulate finding the item during the locked phase
             const originalAcquire = cacheInstance.lock.acquire;
-            cacheInstance.lock.acquire = jest
+            cacheInstance.lock.acquire = vi
                 .fn()
                 .mockImplementation(async (lockKey: string, fn: () => Promise<string>) => {
                     // Simulate the item appearing in cache during lock acquisition
@@ -250,7 +250,7 @@ describe('Cache', () => {
         });
 
         it('should handle valueBuilder errors', async () => {
-            const errorBuilder = jest.fn().mockRejectedValue(new Error('Build failed'));
+            const errorBuilder = vi.fn().mockRejectedValue(new Error('Build failed'));
             const errorCache = new Cache<string, string>(3, mockKeyMapper, errorBuilder);
 
             await expect(errorCache.get('key1')).rejects.toThrow('Build failed');
@@ -490,7 +490,7 @@ describe('Cache', () => {
             let currentlyLoading = 0;
             let maxConcurrent = 0;
 
-            const slowBuilder = jest.fn().mockImplementation(async (key: string) => {
+            const slowBuilder = vi.fn().mockImplementation(async (key: string) => {
                 currentlyLoading++;
                 maxConcurrent = Math.max(maxConcurrent, currentlyLoading);
 
@@ -521,7 +521,7 @@ describe('Cache', () => {
 
         it('should handle race condition in ReentrantLock', async () => {
             let buildCount = 0;
-            const raceBuilder = jest.fn().mockImplementation(async (key: string) => {
+            const raceBuilder = vi.fn().mockImplementation(async (key: string) => {
                 buildCount++;
                 // Small delay to create race conditions
                 await new Promise(resolve => setTimeout(resolve, 10));
@@ -549,7 +549,7 @@ describe('Cache', () => {
 
         it('should queue operations when at capacity and process them sequentially', async () => {
             const processOrder: string[] = [];
-            const queueBuilder = jest.fn().mockImplementation(async (key: string) => {
+            const queueBuilder = vi.fn().mockImplementation(async (key: string) => {
                 processOrder.push(`start-${key}`);
                 await new Promise(resolve => setTimeout(resolve, 30));
                 processOrder.push(`end-${key}`);
@@ -583,7 +583,7 @@ describe('Cache', () => {
 
         it('should handle waitQueue edge cases', async () => {
             // Test empty waitQueue branch in releaseLoadingSlot
-            const emptyBuilder = jest.fn().mockResolvedValue('test-value');
+            const emptyBuilder = vi.fn().mockResolvedValue('test-value');
             const testCache = new Cache<string, string>(5, mockKeyMapper, emptyBuilder);
 
             // Single operation should not trigger queue

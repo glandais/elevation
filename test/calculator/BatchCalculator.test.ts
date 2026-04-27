@@ -1,3 +1,4 @@
+import type { Mocked, MockedClass } from 'vitest';
 import { BatchCalculator } from '../../src/calculator/BatchCalculator';
 import { ElevationCalculator } from '../../src/calculator/ElevationCalculator';
 import { TileManager } from '../../src/tile/TileManager';
@@ -5,13 +6,11 @@ import { Distance } from '../../src/utils/Distance';
 import { asCoordinatesElevation, type Coordinates } from '../../src/types';
 
 // Mock dependencies
-jest.mock('../../src/tile/TileManager');
-jest.mock('../../src/calculator/ElevationCalculator');
+vi.mock('../../src/tile/TileManager');
+vi.mock('../../src/calculator/ElevationCalculator');
 
-const MockedTileManager = TileManager as jest.MockedClass<typeof TileManager>;
-const MockedElevationCalculator = ElevationCalculator as jest.MockedClass<
-    typeof ElevationCalculator
->;
+const MockedTileManager = TileManager as MockedClass<typeof TileManager>;
+const MockedElevationCalculator = ElevationCalculator as MockedClass<typeof ElevationCalculator>;
 
 // Type for accessing private methods in tests
 interface BatchCalculatorTestable {
@@ -27,25 +26,29 @@ interface BatchCalculatorTestable {
 }
 
 describe('BatchCalculator', () => {
-    let mockTileManager: jest.Mocked<TileManager>;
-    let mockElevationCalculator: jest.Mocked<ElevationCalculator>;
+    let mockTileManager: Mocked<TileManager>;
+    let mockElevationCalculator: Mocked<ElevationCalculator>;
     let batchCalculator: BatchCalculator;
 
     beforeEach(() => {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
 
         // Mock TileManager
-        mockTileManager = new MockedTileManager('', 0) as jest.Mocked<TileManager>;
+        mockTileManager = new MockedTileManager('', 0) as Mocked<TileManager>;
 
         // Mock ElevationCalculator
         mockElevationCalculator = new MockedElevationCalculator(
             mockTileManager
-        ) as jest.Mocked<ElevationCalculator>;
-        mockElevationCalculator.getElevation = jest.fn();
+        ) as Mocked<ElevationCalculator>;
+        mockElevationCalculator.getElevation = vi.fn();
 
         // Configure mocks to return our instances
-        MockedTileManager.mockImplementation(() => mockTileManager);
-        MockedElevationCalculator.mockImplementation(() => mockElevationCalculator);
+        MockedTileManager.mockImplementation(function () {
+            return mockTileManager;
+        } as unknown as () => TileManager);
+        MockedElevationCalculator.mockImplementation(function () {
+            return mockElevationCalculator;
+        } as unknown as () => ElevationCalculator);
 
         batchCalculator = new BatchCalculator(mockElevationCalculator);
     });

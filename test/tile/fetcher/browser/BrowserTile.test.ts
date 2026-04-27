@@ -30,7 +30,7 @@ describe('BrowserTile', () => {
             imageData = new ImageData(data, 2, 2);
 
             mockBitmap = {
-                close: jest.fn(),
+                close: vi.fn(),
                 width: 2,
                 height: 2,
             } as unknown as ImageBitmap;
@@ -85,7 +85,7 @@ describe('BrowserTile', () => {
 
             const largeImageData = new ImageData(data, size, size);
             const largeMockBitmap = {
-                close: jest.fn(),
+                close: vi.fn(),
                 width: size,
                 height: size,
             } as unknown as ImageBitmap;
@@ -111,7 +111,7 @@ describe('BrowserTile', () => {
             const data = new Uint8ClampedArray(4);
             const imageData = new ImageData(data, 1, 1);
             const mockBitmap = {
-                close: jest.fn(),
+                close: vi.fn(),
                 width: 1,
                 height: 1,
             } as unknown as ImageBitmap;
@@ -151,7 +151,7 @@ describe('BrowserTile', () => {
             imageData = new ImageData(data, 2, 2);
 
             mockBitmap = {
-                close: jest.fn(),
+                close: vi.fn(),
                 width: 2,
                 height: 2,
             } as unknown as ImageBitmap;

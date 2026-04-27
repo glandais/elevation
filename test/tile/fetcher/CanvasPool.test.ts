@@ -43,11 +43,11 @@ describe('CanvasPool', () => {
         const canvasBuilder = () => document.createElement('canvas');
         canvasPool = new CanvasPool(canvasBuilder);
         extendedCanvasPool = new CanvasPoolExtended(canvasBuilder);
-        jest.clearAllTimers();
+        vi.clearAllTimers();
     });
 
     afterEach(() => {
-        jest.clearAllTimers();
+        vi.clearAllTimers();
     });
 
     describe('acquire and release functionality', () => {
@@ -160,17 +160,17 @@ describe('CanvasPool', () => {
 
     describe('timer functionality', () => {
         it('should set timer when acquiring canvas', () => {
-            jest.useFakeTimers();
+            vi.useFakeTimers();
 
             extendedCanvasPool.acquire();
 
             expect(extendedCanvasPool.getIdleTimer()).not.toBeNull();
 
-            jest.useRealTimers();
+            vi.useRealTimers();
         });
 
         it('should reset timer when releasing canvas', () => {
-            jest.useFakeTimers();
+            vi.useFakeTimers();
 
             const canvas = extendedCanvasPool.acquire();
             const firstTimer = extendedCanvasPool.getIdleTimer();
@@ -181,11 +181,11 @@ describe('CanvasPool', () => {
             expect(extendedCanvasPool.getIdleTimer()).not.toBe(firstTimer);
             expect(extendedCanvasPool.getIdleTimer()).not.toBeNull();
 
-            jest.useRealTimers();
+            vi.useRealTimers();
         });
 
         it('should clear existing timer before setting new one', () => {
-            jest.useFakeTimers();
+            vi.useFakeTimers();
 
             // Acquire first canvas to set timer
             extendedCanvasPool.acquire();
@@ -197,11 +197,11 @@ describe('CanvasPool', () => {
             // Timer should be different
             expect(extendedCanvasPool.getIdleTimer()).not.toBe(firstTimer);
 
-            jest.useRealTimers();
+            vi.useRealTimers();
         });
 
         it('should trigger trim after idle timeout', () => {
-            jest.useFakeTimers();
+            vi.useFakeTimers();
 
             // Add many canvases to pool
             const canvases: HTMLCanvasElement[] = [];
@@ -213,16 +213,16 @@ describe('CanvasPool', () => {
             expect(extendedCanvasPool.getAvailable().length).toBe(10);
 
             // Fast-forward time to trigger the idle timeout
-            jest.advanceTimersByTime(extendedCanvasPool.getIdleTimeout());
+            vi.advanceTimersByTime(extendedCanvasPool.getIdleTimeout());
 
             // Should have trimmed to idle size (5)
             expect(extendedCanvasPool.getAvailable().length).toBe(5);
 
-            jest.useRealTimers();
+            vi.useRealTimers();
         });
 
         it('should test _resetIdleTimer directly for function coverage', () => {
-            jest.useFakeTimers();
+            vi.useFakeTimers();
 
             // Call _resetIdleTimer directly
             extendedCanvasPool.callResetIdleTimer();
@@ -233,7 +233,7 @@ describe('CanvasPool', () => {
             extendedCanvasPool.callResetIdleTimer();
             expect(extendedCanvasPool.getIdleTimer()).not.toBe(firstTimer);
 
-            jest.useRealTimers();
+            vi.useRealTimers();
         });
     });
 });

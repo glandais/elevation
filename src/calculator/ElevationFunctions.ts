@@ -1,4 +1,4 @@
-import { Coordinates, Pixel, TileCoordinates, TileCoordinatesFloat } from 'src/types';
+import { Coordinates, Pixel, TileCoordinates, TileCoordinatesFloat } from '../types';
 
 // ========================================================================
 // INTERNAL FUNCTIONS (exported for tests)

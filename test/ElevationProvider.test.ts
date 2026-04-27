@@ -1,3 +1,4 @@
+import type { Mocked, MockedClass } from 'vitest';
 import { ElevationProvider } from '../src/ElevationProvider';
 import { TileManager } from '../src/tile/TileManager';
 import { ElevationCalculator, BatchCalculator } from '../src/calculator';
@@ -5,27 +6,27 @@ import { toPixel } from '../src/calculator/ElevationFunctions';
 import type { ElevationProviderConfig, Coordinates } from '../src/types';
 
 // Mock dependencies
-jest.mock('../src/tile/TileManager');
+vi.mock('../src/tile/TileManager');
 
-const MockedTileManager = TileManager as jest.MockedClass<typeof TileManager>;
+const MockedTileManager = TileManager as MockedClass<typeof TileManager>;
 
 // Create a manual mock that preserves static methods
 const mockCalculator = {
-    getElevation: jest.fn(),
+    getElevation: vi.fn(),
 };
 
-jest.spyOn(ElevationCalculator.prototype, 'getElevation').mockImplementation(
+vi.spyOn(ElevationCalculator.prototype, 'getElevation').mockImplementation(
     mockCalculator.getElevation
 );
 
 describe('ElevationProvider', () => {
-    let mockTileManager: jest.Mocked<TileManager>;
+    let mockTileManager: Mocked<TileManager>;
 
     beforeEach(() => {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
 
         // Mock TileManager
-        mockTileManager = new MockedTileManager('', 0) as jest.Mocked<TileManager>;
+        mockTileManager = new MockedTileManager('', 0) as Mocked<TileManager>;
 
         // Configure mock implementation for ElevationCalculator methods
         // Allow validation errors to pass through but mock successful calculations
@@ -40,7 +41,9 @@ describe('ElevationProvider', () => {
         );
 
         // Configure mocks to return our instances
-        MockedTileManager.mockImplementation(() => mockTileManager);
+        MockedTileManager.mockImplementation(function () {
+            return mockTileManager;
+        } as unknown as () => TileManager);
     });
 
     describe('constructor', () => {
@@ -498,12 +501,12 @@ describe('ElevationProvider', () => {
 
     describe('Options Interface Tests', () => {
         let provider: ElevationProvider;
-        let mockBatchCalculator: jest.Mocked<BatchCalculator>;
+        let mockBatchCalculator: Mocked<BatchCalculator>;
 
         beforeEach(() => {
             mockBatchCalculator = {
-                getElevationsAlong: jest.fn(),
-            } as unknown as jest.Mocked<BatchCalculator>;
+                getElevationsAlong: vi.fn(),
+            } as unknown as Mocked<BatchCalculator>;
 
             provider = new ElevationProvider();
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -559,15 +562,15 @@ describe('ElevationProvider', () => {
 
     describe('setElevations', () => {
         let provider: ElevationProvider;
-        let mockBatchCalculator: jest.Mocked<BatchCalculator>;
+        let mockBatchCalculator: Mocked<BatchCalculator>;
 
         beforeEach(() => {
             provider = new ElevationProvider();
 
             // Mock the batchCalculator's setElevations method
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            mockBatchCalculator = (provider as any).batchCalculator as jest.Mocked<BatchCalculator>;
-            mockBatchCalculator.setElevations = jest.fn().mockResolvedValue(undefined);
+            mockBatchCalculator = (provider as any).batchCalculator as Mocked<BatchCalculator>;
+            mockBatchCalculator.setElevations = vi.fn().mockResolvedValue(undefined);
         });
 
         it('should call batchCalculator.setElevations with default interpolation', async () => {

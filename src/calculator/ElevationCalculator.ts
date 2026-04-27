@@ -29,9 +29,9 @@ export class ElevationCalculator {
             }
         } catch (error) {
             if (error instanceof Error) {
-                throw new Error(`Failed to get elevation: ${error.message}`);
+                throw new Error(`Failed to get elevation: ${error.message}`, { cause: error });
             }
-            throw new Error('Failed to get elevation: Unknown error');
+            throw new Error('Failed to get elevation: Unknown error', { cause: error });
         }
     }
 

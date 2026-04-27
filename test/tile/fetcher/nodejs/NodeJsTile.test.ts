@@ -2,7 +2,7 @@ import { NodeTile } from '../../../../src/tile/fetcher/nodejs/NodeJsTile';
 import type { Pixel } from '../../../../src/types';
 
 // Mock canvas module for testing
-jest.mock('canvas', () => ({
+vi.mock('canvas', () => ({
     ImageData: class MockImageData {
         data: Uint8ClampedArray;
         width: number;

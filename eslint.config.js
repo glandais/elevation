@@ -35,14 +35,16 @@ module.exports = [
                 clearTimeout: 'readonly',
                 Blob: 'readonly',
                 HTMLCanvasElement: 'readonly',
-                // Jest globals
+                // Vitest globals
                 describe: 'readonly',
                 it: 'readonly',
                 test: 'readonly',
                 expect: 'readonly',
                 beforeEach: 'readonly',
                 afterEach: 'readonly',
-                jest: 'readonly',
+                beforeAll: 'readonly',
+                afterAll: 'readonly',
+                vi: 'readonly',
             },
         },
         plugins: {
@@ -100,14 +102,16 @@ module.exports = [
                 Response: 'readonly',
                 URL: 'readonly',
                 Buffer: 'readonly',
-                // Jest globals
+                // Vitest globals
                 describe: 'readonly',
                 it: 'readonly',
                 test: 'readonly',
                 expect: 'readonly',
                 beforeEach: 'readonly',
                 afterEach: 'readonly',
-                jest: 'readonly',
+                beforeAll: 'readonly',
+                afterAll: 'readonly',
+                vi: 'readonly',
             },
         },
         plugins: {
