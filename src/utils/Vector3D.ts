@@ -76,9 +76,7 @@ export class Vector3D {
     }
 
     /**
-     * Calculate perpendicular distance from this point to a line segment defined by two points
-     * Uses the formula: ||(p-a) × (p-b)|| / ||b-a||
-     * where p is this point, a and b are the line segment endpoints
+     * Calculate the shortest distance from this point to a line segment
      */
     public distanceToSegment(segmentStart: Vector3D, segmentEnd: Vector3D): number {
         const segmentVector = segmentEnd.subtract(segmentStart);
