@@ -1,3 +1,10 @@
+## [3.2.2](https://github.com/glandais/elevation/compare/v3.2.1...v3.2.2) (2026-04-30)
+
+
+### Bug Fixes
+
+* ts build ([e7c40c2](https://github.com/glandais/elevation/commit/e7c40c21735da5211344cafc170fe8f0569b534c))
+
 ## [3.2.1](https://github.com/glandais/elevation/compare/v3.2.0...v3.2.1) (2026-04-30)
 
 
