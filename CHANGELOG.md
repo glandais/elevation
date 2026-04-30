@@ -1,3 +1,10 @@
+## [3.2.1](https://github.com/glandais/elevation/compare/v3.2.0...v3.2.1) (2026-04-30)
+
+
+### Bug Fixes
+
+* correct misleading JSDoc on Vector3D.distanceToSegment ([8537dfe](https://github.com/glandais/elevation/commit/8537dfe591f8551bb5915893fd15f9c7193373a2))
+
 # [3.2.0](https://github.com/glandais/elevation/compare/v3.1.4...v3.2.0) (2026-03-30)
 
 
