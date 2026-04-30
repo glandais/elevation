@@ -35,7 +35,7 @@
         "build:clean": "rm -rf dist",
         "build:browser": "BUILD_TARGET=browser vite build",
         "build:node": "BUILD_TARGET=node vite build",
-        "build:combine": "cp dist/browser/* dist/ && cp dist/node/index.node.* dist/ && rm -rf dist/browser dist/node",
+        "build:combine": "cp -r dist/browser/. dist/ && cp dist/node/index.node.* dist/ && rm -rf dist/browser dist/node",
         "build:dev": "vite build --mode development",
         "check": "npm run format && npm run lint:fix && npm run lint && npm run typecheck && npm run test:all && npm run build",
         "test": "vitest run",
@@ -116,7 +116,7 @@
         "semantic-release-plugin-update-version-in-files": "^2.0.0",
         "serve": "^14.2.4",
         "vite": "^8.0.10",
-        "vite-plugin-dts": "^4.5.4",
+        "vite-plugin-dts": "^5.0.0",
         "vitest": "^4.0.3"
     },
     "dependencies": {

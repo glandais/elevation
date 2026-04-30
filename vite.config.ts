@@ -47,11 +47,11 @@ export default defineConfig(({ mode }) => {
                         return format === 'es' ? 'index.node.mjs' : 'index.node.js';
                     },
                 },
-                rollupOptions: {
+                rolldownOptions: {
                     external: ['canvas', 'node-fetch', 'abort-controller'],
                     output: {
                         exports: 'named',
-                        inlineDynamicImports: true,
+                        codeSplitting: false,
                     },
                 },
             },
@@ -82,11 +82,11 @@ export default defineConfig(({ mode }) => {
                         }
                     },
                 },
-                rollupOptions: {
+                rolldownOptions: {
                     external: ['canvas', 'node-fetch', 'abort-controller'],
                     output: {
                         exports: 'named',
-                        inlineDynamicImports: true,
+                        codeSplitting: false,
                         globals: {
                             canvas: 'canvas',
                             'node-fetch': 'fetch',
