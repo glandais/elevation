@@ -1,9 +1,9 @@
-import type { Mocked, MockedClass } from 'vitest';
-import { ElevationProvider } from '../src/ElevationProvider';
-import { TileManager } from '../src/tile/TileManager';
 import { ElevationCalculator, BatchCalculator } from '../src/calculator';
 import { toPixel } from '../src/calculator/ElevationFunctions';
+import { ElevationProvider } from '../src/ElevationProvider';
+import { TileManager } from '../src/tile/TileManager';
 import type { ElevationProviderConfig, Coordinates } from '../src/types';
+import type { Mocked, MockedClass } from 'vitest';
 
 // Mock dependencies
 vi.mock('../src/tile/TileManager');

@@ -2,8 +2,8 @@ import { test, expect } from '@playwright/test';
 import { ElevationProvider } from '../../src';
 import type { DouglasPeucker } from '../../src/utils/DouglasPeucker';
 import type { EcefConverter } from '../../src/utils/EcefConverter';
-import type { Vector3D } from '../../src/utils/Vector3D';
 import type { ElevationSmoother } from '../../src/utils/ElevationSmoother';
+import type { Vector3D } from '../../src/utils/Vector3D';
 
 // Extend Window interface for browser tests
 declare global {

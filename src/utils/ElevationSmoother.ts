@@ -1,6 +1,6 @@
 import { CoordinatesElevation } from '../types';
-import { Distance } from './Distance';
 import { ALGORITHM_CONSTANTS } from './Constants';
+import { Distance } from './Distance';
 import { createLogger, Logger, LogLevel } from './Logger';
 
 const logger: Logger = createLogger('utils/ElevationSmoother');

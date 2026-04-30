@@ -1,9 +1,9 @@
-import type { Mock, Mocked, MockedClass, MockedFunction } from 'vitest';
 import { Tile } from '../../src/tile';
-import { TileManager } from '../../src/tile/TileManager';
 import { Cache } from '../../src/tile/cache/Cache';
 import { TileLoader } from '../../src/tile/fetcher/TileLoader';
+import { TileManager } from '../../src/tile/TileManager';
 import type { TileCoordinates, Pixel } from '../../src/types';
+import type { Mock, Mocked, MockedClass, MockedFunction } from 'vitest';
 
 // Mock dependencies
 vi.mock('../../src/tile/cache/Cache');

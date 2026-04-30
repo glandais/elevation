@@ -1,6 +1,6 @@
 import { Coordinates } from '../types';
-import { Vector3D } from './Vector3D';
 import { EARTH_CONSTANTS } from './Constants';
+import { Vector3D } from './Vector3D';
 
 /**
  * ECEF (Earth-Centered, Earth-Fixed) coordinate converter

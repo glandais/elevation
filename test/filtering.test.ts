@@ -1,8 +1,8 @@
-import { Vector3D } from '../src/utils/Vector3D';
-import { EcefConverter } from '../src/utils/EcefConverter';
+import { Coordinates, CoordinatesElevation } from '../src/types';
 import { EARTH_CONSTANTS } from '../src/utils/Constants';
 import { DouglasPeucker } from '../src/utils/DouglasPeucker';
-import { Coordinates, CoordinatesElevation } from '../src/types';
+import { EcefConverter } from '../src/utils/EcefConverter';
+import { Vector3D } from '../src/utils/Vector3D';
 
 describe('Vector3D', () => {
     test('should calculate distance between two vectors', () => {

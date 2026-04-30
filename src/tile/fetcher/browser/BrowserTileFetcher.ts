@@ -1,6 +1,6 @@
 import { CanvasPool, TileFetcher } from '..';
-import { BrowserTile } from './BrowserTile';
 import { Tile } from '../..';
+import { BrowserTile } from './BrowserTile';
 
 // ============================================================================
 // TILE FETCHER - HTTP Client for Terrain Tiles

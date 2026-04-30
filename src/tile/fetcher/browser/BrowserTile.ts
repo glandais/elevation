@@ -1,5 +1,5 @@
-import { RGBColor } from '../../../types';
 import { Tile } from '../..';
+import { RGBColor } from '../../../types';
 export class BrowserTile extends Tile {
     constructor(
         readonly data: ImageData,

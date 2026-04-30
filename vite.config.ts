@@ -1,5 +1,4 @@
 import { defineConfig } from 'vite';
-import dts from 'vite-plugin-dts';
 import { resolve } from 'path';
 
 export default defineConfig(({ mode }) => {
@@ -10,16 +9,6 @@ export default defineConfig(({ mode }) => {
 
     // Common configuration
     const baseConfig = {
-        plugins: [
-            dts({
-                insertTypesEntry: true,
-                rollupTypes: false,
-                copyDtsFiles: false,
-                entryRoot: 'src',
-                outDir: 'dist',
-                exclude: ['test/**/*', '**/*.test.*'],
-            }),
-        ],
         define: {
             // Define __DEV__ based on build mode
             // Production build (default): __DEV__ = false, all logging code removed

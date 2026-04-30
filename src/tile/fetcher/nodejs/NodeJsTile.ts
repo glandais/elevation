@@ -1,6 +1,6 @@
 import { ImageData } from 'canvas';
-import { RGBColor } from '../../../types';
 import { Tile } from '../..';
+import { RGBColor } from '../../../types';
 export class NodeTile extends Tile {
     constructor(readonly data: ImageData) {
         super(data.width, data.height);

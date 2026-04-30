@@ -1,5 +1,6 @@
-import { TileManager } from './tile';
 import { ElevationCalculator, BatchCalculator } from './calculator';
+import { TileManager } from './tile';
+import { createLogger, Logger } from './utils';
 import type {
     Coordinates,
     CoordinatesElevation,
@@ -9,7 +10,6 @@ import type {
     GetElevationsAlongOptions,
     GetElevationOptions,
 } from './types';
-import { createLogger, Logger } from './utils';
 
 const logger: Logger = createLogger('ElevationProvider');
 

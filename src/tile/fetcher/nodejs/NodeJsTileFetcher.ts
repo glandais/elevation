@@ -1,7 +1,7 @@
-import { CanvasPool, TileFetcher } from '..';
-import { NodeTile } from './NodeJsTile';
-import { Tile } from '../..';
 import { Canvas, createCanvas, loadImage } from 'canvas';
+import { CanvasPool, TileFetcher } from '..';
+import { Tile } from '../..';
+import { NodeTile } from './NodeJsTile';
 
 export class NodeJsTileFetcher implements TileFetcher {
     private readonly canvasPool: CanvasPool<Canvas>;

@@ -1,7 +1,7 @@
+import { ElevationProvider } from '../src/ElevationProvider';
 import { BrowserTile } from '../src/tile/fetcher/browser/BrowserTile';
 import { BrowserTileFetcher } from '../src/tile/fetcher/browser/BrowserTileFetcher';
 import { TileLoader } from '../src/tile/fetcher/TileLoader';
-import { ElevationProvider } from '../src/ElevationProvider';
 import type { TileCoordinates } from '../src/types';
 
 // No mocks in this file - use real implementations except TileFetcher

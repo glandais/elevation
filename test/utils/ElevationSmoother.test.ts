@@ -1,5 +1,5 @@
-import { ElevationSmoother } from '../../src/utils/ElevationSmoother';
 import { CoordinatesElevation } from '../../src/types';
+import { ElevationSmoother } from '../../src/utils/ElevationSmoother';
 
 describe('ElevationSmoother', () => {
     describe('smooth', () => {

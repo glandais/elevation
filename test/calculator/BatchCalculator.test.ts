@@ -1,9 +1,9 @@
-import type { Mocked, MockedClass } from 'vitest';
 import { BatchCalculator } from '../../src/calculator/BatchCalculator';
 import { ElevationCalculator } from '../../src/calculator/ElevationCalculator';
 import { TileManager } from '../../src/tile/TileManager';
-import { Distance } from '../../src/utils/Distance';
 import { asCoordinatesElevation, type Coordinates } from '../../src/types';
+import { Distance } from '../../src/utils/Distance';
+import type { Mocked, MockedClass } from 'vitest';
 
 // Mock dependencies
 vi.mock('../../src/tile/TileManager');

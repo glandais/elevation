@@ -6,13 +6,13 @@ import {
     SmoothingOptions,
     TileCoordinates,
 } from '../types';
-import { ElevationCalculator } from './ElevationCalculator';
+import { createLogger, Logger, LogLevel } from '../utils';
+import { Distance } from '../utils/Distance';
 import { DouglasPeucker } from '../utils/DouglasPeucker';
 import { ElevationSmoother } from '../utils/ElevationSmoother';
-import { Distance } from '../utils/Distance';
-import { createLogger, Logger, LogLevel } from '../utils';
-import { Flux } from './Reactive';
+import { ElevationCalculator } from './ElevationCalculator';
 import { toTileCoordinates } from './ElevationFunctions';
+import { Flux } from './Reactive';
 
 const logger: Logger = createLogger('calculator/BatchCalculator');
 

@@ -1,8 +1,8 @@
-import type { Mocked } from 'vitest';
+import { Tile } from '../../../src/tile';
 import { TileLoader } from '../../../src/tile/fetcher/TileLoader';
 import type { TileFetcher } from '../../../src/tile/fetcher/TileFetcher';
 import type { TileCoordinates } from '../../../src/types';
-import { Tile } from '../../../src/tile';
+import type { Mocked } from 'vitest';
 
 describe('TileLoader', () => {
     let tileLoader: TileLoader;

@@ -1,7 +1,7 @@
-import { TileCoordinates } from '../../types';
 import { Tile } from '..';
-import { TileFetcher } from './TileFetcher';
+import { TileCoordinates } from '../../types';
 import { createLogger, Logger, LogLevel } from '../../utils';
+import { TileFetcher } from './TileFetcher';
 
 const logger: Logger = createLogger('tile/fetcher/TileLoader');
 

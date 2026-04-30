@@ -1,8 +1,8 @@
 import { Cache } from './cache';
-import type { TileCoordinates } from '../types';
-import { Tile } from './Tile';
 import { TileFetcher } from './fetcher/TileFetcher';
 import { TileLoader } from './fetcher/TileLoader';
+import { Tile } from './Tile';
+import type { TileCoordinates } from '../types';
 
 export class TileManager {
     private cache: Cache<TileCoordinates, Tile> | undefined;

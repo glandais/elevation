@@ -1,6 +1,6 @@
 import { toPixel, normalizePixel } from './ElevationFunctions';
-import type { Pixel, Coordinates } from '../types';
 import type { TileManager } from '../tile';
+import type { Pixel, Coordinates } from '../types';
 
 export class ElevationCalculator {
     private readonly tileManager: TileManager;
