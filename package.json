@@ -36,7 +36,7 @@
         "build:browser": "BUILD_TARGET=browser vite build",
         "build:node": "BUILD_TARGET=node vite build",
         "build:combine": "cp -r dist/browser/. dist/ && cp dist/node/index.node.* dist/ && rm -rf dist/browser dist/node",
-        "build:types": "node ./node_modules/@typescript/native/bin/tsc -p tsconfig.build.json",
+        "build:types": "tsc -p tsconfig.build.json",
         "build:dev": "vite build --mode development",
         "check": "npm run format && npm run lint:fix && npm run lint && npm run typecheck && npm run test:all && npm run build",
         "test": "vitest run",
@@ -46,11 +46,11 @@
         "test:browser": "npm run build:dev && playwright test",
         "test:browser:ui": "npm run build:dev && playwright test --ui",
         "test:browser:headed": "npm run build:dev && playwright test --headed",
-        "lint": "eslint src/ test/ --ext .ts",
-        "lint:fix": "eslint src/ test/ --ext .ts --fix",
-        "format": "prettier --write .",
-        "format:check": "prettier --check .",
-        "typecheck": "node ./node_modules/@typescript/native/bin/tsc --noEmit",
+        "lint": "oxlint src/ test/",
+        "lint:fix": "oxlint src/ test/ --fix",
+        "format": "oxfmt --write .",
+        "format:check": "oxfmt --check .",
+        "typecheck": "tsc --noEmit",
         "semantic-release": "semantic-release",
         "prepare": "husky",
         "prepublishOnly": "npm run build"
@@ -83,17 +83,16 @@
     },
     "lint-staged": {
         "*.{ts,js}": [
-            "eslint --fix",
-            "prettier --write"
+            "oxlint --fix",
+            "oxfmt --write"
         ],
         "*.{json,md}": [
-            "prettier --write"
+            "oxfmt --write"
         ]
     },
     "devDependencies": {
         "@commitlint/cli": "^21.0.0",
         "@commitlint/config-conventional": "^21.0.0",
-        "@eslint/js": "^10.0.1",
         "@playwright/test": "^1.55.0",
         "@semantic-release/changelog": "^7.0.0",
         "@semantic-release/exec": "^7.1.0",
@@ -101,24 +100,17 @@
         "@semantic-release/github": "^12.0.0",
         "@semantic-release/npm": "^13.1.1",
         "@types/node": "^26.0.1",
-        "@typescript-eslint/eslint-plugin": "^8.59.1",
-        "@typescript-eslint/parser": "^8.59.1",
-        "@typescript/native": "npm:typescript@^7.0.2",
         "@vitest/coverage-v8": "^4.1.5",
-        "eslint": "^10.2.1",
-        "eslint-config-prettier": "^10.1.8",
-        "eslint-import-resolver-typescript": "^4.4.4",
-        "eslint-plugin-import-x": "^4.16.2",
-        "eslint-plugin-prettier": "^5.5.4",
         "husky": "^9.1.7",
         "jsdom": "^30.0.0",
         "lint-staged": "^17.0.4",
+        "oxfmt": "^0.60.0",
+        "oxlint": "^1.75.0",
         "playwright": "^1.55.0",
-        "prettier": "^3.6.2",
         "semantic-release": "^25.0.1",
         "semantic-release-plugin-update-version-in-files": "^2.0.0",
         "serve": "^14.2.4",
-        "typescript": "^6.0.3",
+        "typescript": "^7.0.2",
         "vite": "^8.0.10",
         "vitest": "^4.1.5"
     },

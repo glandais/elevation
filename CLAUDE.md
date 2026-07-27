@@ -18,9 +18,9 @@ npm run build:node     # Build Node.js-specific bundles (ES, CommonJS)
 npm run build:combine  # Combine browser and Node.js builds
 npm run build:dev      # Development build with logging enabled
 npm run typecheck      # Type checking with TypeScript
-npm run lint           # Lint with ESLint
+npm run lint           # Lint with oxlint
 npm run lint:fix       # Auto-fix linting issues
-npm run format         # Format with Prettier
+npm run format         # Format with oxfmt
 ```
 
 ### Testing
@@ -299,7 +299,7 @@ describe('Protected method tests', () => {
 2. **Name Differentiation**: Use different method names (e.g., `callRemoveFromLRU`) to avoid TypeScript conflicts with private methods
 3. **Prototype Chain Access**: Use `Object.getPrototypeOf()` pattern to access private methods safely
 4. **Property Access Methods**: Use getter/setter methods rather than direct property access for private fields
-5. **ESLint Suppression**: Add appropriate `eslint-disable-next-line` comments for necessary `any` types
+5. **Lint Suppression**: Add appropriate `eslint-disable-next-line` comments for necessary `any` types (oxlint understands the legacy `@typescript-eslint/*` rule names used in these comments)
 6. **Comprehensive Coverage**: Ensure all edge cases and private method branches are tested
 7. **Encapsulation Preservation**: Keep the extended class in test files only, maintaining proper encapsulation in source code
 
@@ -505,7 +505,7 @@ const profile = await elevationProvider.getElevationsAlong(pathPoints, {
 2. ✅ **Coverage Target**: Must achieve ~100% test coverage (minimum 98%)
 3. ✅ **Quality Check**: `npm run check` must pass without any errors or warnings
 4. ✅ **TypeScript**: No TypeScript errors (`npm run typecheck`)
-5. ✅ **Linting**: No ESLint errors or warnings (`npm run lint`)
+5. ✅ **Linting**: No oxlint errors or warnings (`npm run lint`)
 6. ✅ **Formatting**: Code properly formatted (`npm run format`)
 7. ✅ **Build Success**: Distribution files build successfully (`npm run build`)
 8. ✅ **Browser Tests**: Browser tests pass (`npm run test:browser`)
@@ -565,7 +565,7 @@ Refactor ElevationProvider API to use modern TypeScript patterns:
 
 The project has pre-commit hooks that automatically:
 
-- Run ESLint with auto-fix
-- Run Prettier formatting
+- Run oxlint with auto-fix
+- Run oxfmt formatting
 - Build the distribution files
 - Validate commit message format

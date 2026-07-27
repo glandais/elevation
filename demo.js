@@ -1,6 +1,3 @@
-/* eslint-env browser */
-/* global L, Chart, gpxParser, FileReader */
-
 // Initialize the map
 const map = L.map('map').setView([45.8, 8.6], 7);
 
