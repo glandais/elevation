@@ -599,6 +599,31 @@ npm run dev:watch        # Watches and rebuilds library on changes
 4. Edit TypeScript files in `src/` - they'll automatically rebuild
 5. Refresh browser to see changes in the demo
 
+#### Standalone script demo (Node.js / Deno / Bun)
+
+`demo/mont-blanc.mjs` queries the elevation of Mont Blanc from a server-side runtime. It imports
+the published library straight from the network (`@latest` on jsDelivr) — nothing to build first —
+and runs on the three runtimes:
+
+```bash
+cd demo
+
+node mont-blanc.mjs
+deno --allow-net --allow-ffi --allow-env --allow-read mont-blanc.mjs
+bun mont-blanc.mjs
+```
+
+Each runtime needs a different mechanism, all implemented in the script itself:
+
+| Runtime | How the remote module is loaded                                                                                                                                                         |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Node.js | An ESM loader hook (`node:module` `register`) fetches `https://` URLs — network imports were removed in Node 22 — and resolves bare specifiers against the script's own `node_modules`. |
+| Bun     | A `Bun.plugin` handles the `https` namespace and routes bare specifiers to `Bun.resolveSync`.                                                                                           |
+| Deno    | Deno imports URLs natively but rejects bare specifiers inside a remote module, so the source is fetched and `sharp`/`canvas` are rewritten to `npm:` specifiers.                        |
+
+Node.js and Bun require the native optional dependencies (`sharp`, `canvas`) to be installed
+(`npm install` at the repository root); Deno downloads them from npm on its own.
+
 ### Scripts
 
 ```bash
