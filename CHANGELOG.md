@@ -1,3 +1,10 @@
+## [3.2.3](https://github.com/glandais/elevation/compare/v3.2.2...v3.2.3) (2026-07-28)
+
+
+### Bug Fixes
+
+* decode WebP tiles in Node.js with sharp ([33c7ecc](https://github.com/glandais/elevation/commit/33c7ecc18a1e21afda573f20a359e51bebc9d3bd))
+
 ## [3.2.2](https://github.com/glandais/elevation/compare/v3.2.1...v3.2.2) (2026-04-30)
 
 
