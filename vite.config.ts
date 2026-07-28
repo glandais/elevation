@@ -37,7 +37,7 @@ export default defineConfig(({ mode }) => {
                     },
                 },
                 rolldownOptions: {
-                    external: ['canvas', 'node-fetch', 'abort-controller'],
+                    external: ['canvas', 'sharp', 'node-fetch', 'abort-controller'],
                     output: {
                         exports: 'named',
                         codeSplitting: false,
@@ -72,12 +72,13 @@ export default defineConfig(({ mode }) => {
                     },
                 },
                 rolldownOptions: {
-                    external: ['canvas', 'node-fetch', 'abort-controller'],
+                    external: ['canvas', 'sharp', 'node-fetch', 'abort-controller'],
                     output: {
                         exports: 'named',
                         codeSplitting: false,
                         globals: {
                             canvas: 'canvas',
+                            sharp: 'sharp',
                             'node-fetch': 'fetch',
                             'abort-controller': 'AbortController',
                         },

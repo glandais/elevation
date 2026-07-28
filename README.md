@@ -51,8 +51,11 @@ const ElevationProvider = require('@glandais/elevation').default;
 For Node.js environments, install with optional dependencies:
 
 ```bash
-npm install @glandais/elevation canvas node-fetch abort-controller
+npm install @glandais/elevation canvas sharp node-fetch abort-controller
 ```
+
+`sharp` decodes the terrain tiles. It is required for the default WebP tile source:
+`canvas` links no libwebp and cannot decode WebP at all.
 
 ```javascript
 // ES6 import
@@ -402,7 +405,8 @@ The library uses terrain data processed from multiple sources:
 ### Node.js Support
 
 - Node.js 18+ with optional dependencies:
-    - `canvas`: For image processing
+    - `sharp`: For tile decoding (WebP and PNG)
+    - `canvas`: For image data handling
     - `node-fetch`: For HTTP requests (Node.js < 18)
     - `abort-controller`: For request cancellation (Node.js < 15)
 
