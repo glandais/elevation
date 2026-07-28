@@ -1,3 +1,10 @@
+## [3.2.4](https://github.com/glandais/elevation/compare/v3.2.3...v3.2.4) (2026-07-28)
+
+
+### Bug Fixes
+
+* document running the standalone demo with node, deno and bun ([2731a1d](https://github.com/glandais/elevation/commit/2731a1d216d2f49c908ac4a827a43b161ed91bec))
+
 ## [3.2.3](https://github.com/glandais/elevation/compare/v3.2.2...v3.2.3) (2026-07-28)
 
 
