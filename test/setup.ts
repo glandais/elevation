@@ -72,10 +72,14 @@ global.ImageData = class ImageData {
 } as unknown as typeof ImageData;
 
 // Mock canvas for TileFetcher tests
-Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
-    value: vi.fn().mockReturnValue({
-        drawImage: vi.fn(),
-        getImageData: vi.fn().mockReturnValue(new ImageData(256, 256)),
-    }),
-    writable: true,
-});
+// Guarded: tests running with `@vitest-environment node` (e.g. NodeJsTileFetcher)
+// have no DOM, and need no canvas mock.
+if (typeof HTMLCanvasElement !== 'undefined') {
+    Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+        value: vi.fn().mockReturnValue({
+            drawImage: vi.fn(),
+            getImageData: vi.fn().mockReturnValue(new ImageData(256, 256)),
+        }),
+        writable: true,
+    });
+}
