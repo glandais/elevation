@@ -87,11 +87,11 @@ async function importRemoteBun(url) {
     Bun.plugin({
         name: 'https-loader',
         setup(build) {
-            build.onResolve({ filter: /.*/, namespace: 'https' }, (args) => ({
+            build.onResolve({ filter: /.*/, namespace: 'https' }, args => ({
                 path: args.path,
                 namespace: 'https',
             }));
-            build.onResolve({ filter: /.*/ }, (args) => {
+            build.onResolve({ filter: /.*/ }, args => {
                 // Imports du module distant uniquement ; le reste suit la résolution par défaut.
                 if (!args.importer.startsWith('//')) return undefined;
                 if (args.path.startsWith('.') || args.path.startsWith('/')) {
@@ -101,7 +101,7 @@ async function importRemoteBun(url) {
                 if (args.path.startsWith('node:')) return { path: args.path, external: true };
                 return { path: Bun.resolveSync(args.path, import.meta.dir) };
             });
-            build.onLoad({ filter: /.*/, namespace: 'https' }, async (args) => ({
+            build.onLoad({ filter: /.*/, namespace: 'https' }, async args => ({
                 contents: await fetchSource(`https:${args.path}`),
                 loader: 'js',
             }));
@@ -116,7 +116,7 @@ async function importRemoteDeno(url) {
     const patched = source.replace(
         /(\bfrom\s*|\bimport\s*\(?\s*)(["'])([^"'./][^"']*)\2/g,
         (match, keyword, quote, specifier) =>
-            specifier.startsWith('node:') ? match : `${keyword}${quote}npm:${specifier}${quote}`,
+            specifier.startsWith('node:') ? match : `${keyword}${quote}npm:${specifier}${quote}`
     );
     return import(`data:text/javascript,${encodeURIComponent(patched)}`);
 }
