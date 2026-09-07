@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Elevation Library Demo</title>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <link rel="stylesheet" href="demo.css" />
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    </head>
+    <body>
+        <div class="app-container">
+            <!-- Header -->
+            <div class="header">
+                <h1>@glandais/elevation Demo</h1>
+                <div class="info">
+                    Interactive elevation demo with path profiling and chart visualization
+                    <a href="https://github.com/glandais/elevation" target="_blank" rel="noopener"
+                        >🚀 View on GitHub</a
+                    >
+                </div>
+            </div>
+
+            <!-- Compact Controls -->
+            <div class="controls-panel">
+                <div class="controls-row">
+                    <div class="section">
+                        <strong>📊 Tools</strong>
+                        <div class="button-group">
+                            <button id="point-mode" class="primary">📍 Point</button>
+                            <button id="path-mode" class="secondary">🛤️ Path</button>
+                            <button id="clear-path" class="danger" disabled>🗑️ Clear</button>
+                        </div>
+                        <div class="button-group">
+                            <input
+                                type="file"
+                                id="gpx-file-input"
+                                accept=".gpx"
+                                style="display: none"
+                            />
+                            <button id="gpx-upload-btn" class="secondary">📁 Load GPX</button>
+                            <button id="load-sample-btn" class="secondary">📋 Example GPX</button>
+                        </div>
+                        <div id="gpx-status" class="gpx-status"></div>
+                    </div>
+
+                    <div class="section">
+                        <strong>🏔️ Relief</strong>
+                        <div class="button-group">
+                            <button id="relief-off" class="primary">Off</button>
+                            <button id="relief-hillshade" class="secondary">Hillshade</button>
+                            <button id="relief-slope" class="secondary">Slope</button>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <strong>📊 Smoothing</strong>
+                        <div class="control-line">
+                            <input type="checkbox" id="enable-smoothing" checked />
+                            <label for="enable-smoothing">Enable</label>
+                            <label for="smoothing-window-slider">Window:</label>
+                            <input
+                                type="range"
+                                id="smoothing-window-slider"
+                                min="10"
+                                max="200"
+                                value="150"
+                                step="10"
+                            />
+                            <input
+                                type="number"
+                                id="smoothing-window-input"
+                                min="10"
+                                max="200"
+                                value="150"
+                                step="10"
+                            />m
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <strong>🔧 Filtering</strong>
+                        <div class="control-line">
+                            <input type="checkbox" id="enable-filtering" checked />
+                            <label for="enable-filtering">Enable</label>
+                            <label for="tolerance-slider">Tolerance:</label>
+                            <input
+                                type="range"
+                                id="tolerance-slider"
+                                min="1"
+                                max="100"
+                                value="10"
+                                step="1"
+                            />
+                            <input
+                                type="number"
+                                id="tolerance-input"
+                                min="1"
+                                max="100"
+                                value="10"
+                                step="1"
+                            />m
+                        </div>
+                        <div class="control-line">
+                            <label for="z-exaggeration-slider">Z Exaggeration:</label>
+                            <input
+                                type="range"
+                                id="z-exaggeration-slider"
+                                min="1"
+                                max="10"
+                                value="3"
+                                step="0.5"
+                            />
+                            <input
+                                type="number"
+                                id="z-exaggeration-input"
+                                min="1"
+                                max="10"
+                                value="3"
+                                step="0.5"
+                            />x
+                        </div>
+                    </div>
+                </div>
+                <div class="mode-info" id="mode-info">Click anywhere to get elevation</div>
+            </div>
+
+            <!-- Map -->
+            <div class="map-container">
+                <div id="map"></div>
+                <div class="status-bar">
+                    <div id="elevation-display" class="elevation-display">
+                        Click on the map to get elevation data
+                    </div>
+                    <div id="coordinates" class="coordinates">Coordinates will appear here</div>
+                </div>
+            </div>
+
+            <!-- Chart -->
+            <div class="chart-panel">
+                <div id="chart-container">
+                    <h3>📈 Elevation Profile</h3>
+                    <canvas id="elevation-chart"></canvas>
+                    <div class="chart-info">
+                        <div class="stats" id="elevation-stats"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script src="https://unpkg.com/gpxparser@3.0.8/dist/gpxparser.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/leaflet-relief@latest/dist/leaflet-relief.min.js"></script>
+        <script src="dist/index.min.js"></script>
+        <script src="demo.js"></script>
+    </body>
+</html>
