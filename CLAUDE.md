@@ -53,6 +53,8 @@ The library follows a modular architecture with clear separation of concerns:
     - **NodeJsTileFetcher** (`src/tile/fetcher/nodejs/NodeJsTileFetcher.ts`): Node.js implementation using canvas package
 - **CoordinateConverter** (`src/converter/CoordinateConverter.ts`): Converts between WGS84 and Web Mercator tile coordinates
 - **ElevationCalculator** (`src/calculator/ElevationCalculator.ts`): Calculates elevations with RGB decoding integrated
+- **ElevationSmoother** (`src/utils/ElevationSmoother.ts`): Triangular-kernel smoothing; `smooth()` on points,
+  `smoothProfile()` on flat distance/elevation arrays (window `<= 0` means "no smoothing")
 
 ### Data Flow
 

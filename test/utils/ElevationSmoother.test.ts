@@ -1,4 +1,5 @@
 import { CoordinatesElevation } from '../../src/types';
+import { Distance } from '../../src/utils/Distance';
 import { ElevationSmoother } from '../../src/utils/ElevationSmoother';
 
 describe('ElevationSmoother', () => {
@@ -224,6 +225,97 @@ describe('ElevationSmoother', () => {
             }
             const avgVariation = variations.reduce((a, b) => a + b, 0) / variations.length;
             expect(avgVariation).toBeLessThan(10);
+        });
+    });
+
+    describe('smoothProfile', () => {
+        // Per-point window search, as `smooth` computed it before the two-cursor sweep
+        const reference = (d: number[], e: number[], w: number): number[] =>
+            e.map((_, i) => {
+                let tw = 0;
+                let ws = 0;
+                for (let j = 0; j < e.length; j++) {
+                    const dist = Math.abs(d[j] - d[i]);
+                    if (dist <= w) {
+                        const weight = 1 - dist / w;
+                        tw += weight;
+                        ws += e[j] * weight;
+                    }
+                }
+                return ws / tw;
+            });
+
+        it('should match the per-point reference on irregular spacing', () => {
+            const distances: number[] = [0];
+            const elevations: number[] = [100];
+            let seed = 42;
+            const rand = (): number => {
+                seed = (seed * 16807) % 2147483647;
+                return seed / 2147483647;
+            };
+            for (let i = 1; i < 300; i++) {
+                distances.push(distances[i - 1] + (i % 17 === 0 ? 0 : rand() * 40));
+                elevations.push(elevations[i - 1] + (rand() - 0.5) * 10);
+            }
+
+            for (const w of [5, 30, 150]) {
+                const result = ElevationSmoother.smoothProfile(distances, elevations, w);
+                const expected = reference(distances, elevations, w);
+                result.forEach((v, i) => expect(v).toBeCloseTo(expected[i], 9));
+            }
+        });
+
+        it('should agree with smooth on the same points', () => {
+            const points: CoordinatesElevation[] = [0, 1, 2, 3, 4, 5].map(i => ({
+                latitude: 45 + i * 0.0001,
+                longitude: 0,
+                elevation: [100, 200, 120, 180, 150, 90][i],
+            }));
+            const distances = Distance.cumulativeDistances(points);
+
+            const viaPoints = ElevationSmoother.smooth(points, 25).map(p => p.elevation);
+            const viaArrays = ElevationSmoother.smoothProfile(
+                distances,
+                points.map(p => p.elevation),
+                25
+            );
+            expect(viaArrays).toEqual(viaPoints);
+        });
+
+        it('should return an unsmoothed copy when window is not strictly positive', () => {
+            const distances = [0, 10, 20, 30];
+            const elevations = [100, 200, 100, 200];
+
+            for (const w of [0, -10, Number.NaN]) {
+                const result = ElevationSmoother.smoothProfile(distances, elevations, w);
+                expect(result).toEqual(elevations);
+                expect(result).not.toBe(elevations);
+            }
+        });
+
+        it('should return a copy for fewer than 3 points', () => {
+            const elevations = [100, 200];
+            const result = ElevationSmoother.smoothProfile([0, 10], elevations, 50);
+            expect(result).toEqual(elevations);
+            expect(result).not.toBe(elevations);
+            expect(ElevationSmoother.smoothProfile([], [], 50)).toEqual([]);
+        });
+
+        it('should accept typed arrays and not mutate its inputs', () => {
+            const distances = Float64Array.from([0, 10, 20, 30, 40]);
+            const elevations = Float64Array.from([100, 110, 90, 120, 100]);
+
+            const result = ElevationSmoother.smoothProfile(distances, elevations, 15);
+            expect(Array.isArray(result)).toBe(true);
+            expect(Array.from(elevations)).toEqual([100, 110, 90, 120, 100]);
+            // Middle point: neighbours at 10 m weigh 1/3 each
+            expect(result[2]).toBeCloseTo((90 + (110 + 120) / 3) / (1 + 2 / 3), 9);
+        });
+
+        it('should throw when arrays differ in length', () => {
+            expect(() => ElevationSmoother.smoothProfile([0, 10, 20], [1, 2], 10)).toThrow(
+                'distances (3) and elevations (2) must have the same length'
+            );
         });
     });
 });

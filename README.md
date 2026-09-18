@@ -320,6 +320,28 @@ console.log(attribution.text);
 //  Data processing by Mapzen/Tilezen."
 ```
 
+### ElevationSmoother
+
+Distance-based smoothing with a triangular kernel. `windowSize` is a **half-width** in meters: a
+window of 50 averages 50 m on each side, the extreme members carrying a weight of ~0.
+
+##### `ElevationSmoother.smooth(points: CoordinatesElevation[], windowSize = 50): CoordinatesElevation[]`
+
+Returns new points with smoothed elevations; distances are computed with Haversine. Throws if
+`windowSize` is not positive. This is what `smoothingOptions` applies in `getElevationsAlong`.
+
+##### `ElevationSmoother.smoothProfile(distances: ArrayLike<number>, elevations: ArrayLike<number>, windowSize: number): number[]`
+
+The same kernel on flat arrays, for callers that already hold a profile as cumulative distances
+and elevations (plain arrays or typed arrays). A `windowSize` that is not strictly positive means
+"do not smooth" and returns a copy instead of throwing.
+
+```typescript
+import { ElevationSmoother } from '@glandais/elevation';
+
+const smoothed = ElevationSmoother.smoothProfile([0, 10, 20, 30], [100, 104, 99, 103], 15);
+```
+
 ### Types
 
 #### Core Interfaces

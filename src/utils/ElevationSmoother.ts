@@ -32,72 +32,80 @@ export class ElevationSmoother {
         }
         logger.timeLevel(LogLevel.INFO, 'smooth');
 
-        // Calculate cumulative distances for efficient range queries
         const distances = Distance.cumulativeDistances(points);
-
-        // Apply smoothing to each point
-        const smoothedPoints: CoordinatesElevation[] = [];
-
-        for (let i = 0; i < points.length; i++) {
-            const smoothedElevation = this.computeSmoothedValue(i, points, distances, windowSize);
-
-            smoothedPoints.push({
-                ...points[i],
-                elevation: smoothedElevation,
-            });
-        }
+        const smoothed = ElevationSmoother.smoothProfile(
+            distances,
+            points.map(p => p.elevation),
+            windowSize
+        );
+        const smoothedPoints = points.map((point, i) => ({ ...point, elevation: smoothed[i] }));
         logger.timeEndLevel(LogLevel.INFO, 'smooth');
 
         return smoothedPoints;
     }
 
     /**
-     * Compute smoothed elevation value for a single point
-     * @param index - Index of point to smooth
-     * @param points - All points
-     * @param distances - Cumulative distances
-     * @param windowSize - Smoothing window in meters
-     * @returns Smoothed elevation value
+     * The kernel of {@link smooth}, on flat arrays.
+     *
+     * `distances` must be non-decreasing (cumulative meters along the path) and the same length as
+     * `elevations`. The window is a **half-width** applied on each side, so a `windowSize` of 150
+     * spans 300 m of path, the extreme members carrying a weight of ~0.
+     *
+     * Exists as its own entry point so callers that already hold a profile as arrays do not have
+     * to allocate one {@link CoordinatesElevation} per point.
+     *
+     * Unlike {@link smooth}, which throws, a `windowSize` that is not strictly positive means
+     * "do not smooth" and returns a copy of `elevations`. So do fewer than
+     * `ALGORITHM_CONSTANTS.MIN_SMOOTHING_POINTS` points.
+     *
+     * @param distances - Cumulative distance of each point in meters
+     * @param elevations - Elevation of each point in meters
+     * @param windowSize - Kernel half-width in meters
+     * @returns A new array of smoothed elevations
      */
-    private static computeSmoothedValue(
-        index: number,
-        points: CoordinatesElevation[],
-        distances: number[],
+    public static smoothProfile(
+        distances: ArrayLike<number>,
+        elevations: ArrayLike<number>,
         windowSize: number
-    ): number {
-        const currentDistance = distances[index];
-
-        // Find range of points within the window
-        let startIndex = index;
-        while (startIndex > 0 && currentDistance - distances[startIndex - 1] <= windowSize) {
-            startIndex--;
+    ): number[] {
+        if (distances.length !== elevations.length) {
+            throw new Error(
+                `distances (${distances.length}) and elevations (${elevations.length}) must have the same length`
+            );
+        }
+        const n = elevations.length;
+        if (n < ALGORITHM_CONSTANTS.MIN_SMOOTHING_POINTS || !(windowSize > 0)) {
+            return Array.from(elevations);
         }
 
-        let endIndex = index;
-        while (
-            endIndex < points.length - 1 &&
-            distances[endIndex + 1] - currentDistance <= windowSize
-        ) {
-            endIndex++;
+        const out = new Array<number>(n);
+        // The window bounds are monotone in `i`, so two cursors sweep the profile once between
+        // them instead of being re-searched from `i` for every point.
+        let startIndex = 0;
+        let endIndex = 0;
+        for (let i = 0; i < n; i++) {
+            const current = distances[i];
+            while (current - distances[startIndex] > windowSize) {
+                startIndex++;
+            }
+            if (endIndex < i) {
+                endIndex = i;
+            }
+            while (endIndex < n - 1 && distances[endIndex + 1] - current <= windowSize) {
+                endIndex++;
+            }
+
+            // Triangular kernel: weight = 1 - (distance / windowSize). The current point always
+            // has weight 1, so totalWeight > 0.
+            let totalWeight = 0;
+            let weightedSum = 0;
+            for (let j = startIndex; j <= endIndex; j++) {
+                const weight = 1 - Math.abs(distances[j] - current) / windowSize;
+                totalWeight += weight;
+                weightedSum += elevations[j] * weight;
+            }
+            out[i] = weightedSum / totalWeight;
         }
-
-        // Apply weighted averaging using triangular kernel
-        let totalWeight = 0;
-        let weightedSum = 0;
-
-        for (let j = startIndex; j <= endIndex; j++) {
-            const distanceFromCurrent = Math.abs(distances[j] - currentDistance);
-
-            // Triangular kernel: weight = 1 - (distance / windowSize)
-            const weight = 1 - distanceFromCurrent / windowSize;
-
-            totalWeight += weight;
-            weightedSum += points[j].elevation * weight;
-        }
-
-        // Return weighted average, or original value if no valid weights
-        // Note: totalWeight should always be > 0 since current point has weight = 1,
-        // but this check provides defensive programming against edge cases
-        return totalWeight > 0 ? weightedSum / totalWeight : points[index].elevation;
+        return out;
     }
 }
