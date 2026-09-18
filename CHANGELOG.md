@@ -1,3 +1,12 @@
+# [3.3.0](https://github.com/glandais/elevation/compare/v3.2.4...v3.3.0) (2026-09-18)
+
+
+### Features
+
+* **demo:** report ascent with ElevationGain at a selectable scale ([a3d4571](https://github.com/glandais/elevation/commit/a3d45713093703dc7563adbe7b00df87339d52b8))
+* **gain:** measure cumulative ascent at a stated scale ([c0dbfe1](https://github.com/glandais/elevation/commit/c0dbfe1ede126b84f1a4763c9007ce4910e20660))
+* **smoother:** expose the triangular kernel on flat arrays ([8bf2cd4](https://github.com/glandais/elevation/commit/8bf2cd44344b94ff6d69d59283ab65faac503d7e))
+
 ## [3.2.4](https://github.com/glandais/elevation/compare/v3.2.3...v3.2.4) (2026-07-28)
 
 
