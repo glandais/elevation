@@ -7,7 +7,8 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 // Initialize elevation provider
-const elevationProvider = new window.Elevation.ElevationProvider();
+const { ElevationProvider, ElevationGain } = window.Elevation;
+const elevationProvider = new ElevationProvider();
 
 // Elements
 const elevationDisplay = document.getElementById('elevation-display');
@@ -42,6 +43,8 @@ const toleranceSlider = document.getElementById('tolerance-slider');
 const toleranceInput = document.getElementById('tolerance-input');
 const zExaggerationSlider = document.getElementById('z-exaggeration-slider');
 const zExaggerationInput = document.getElementById('z-exaggeration-input');
+// Ascent controls
+const gainPresetSelect = document.getElementById('gain-preset');
 
 // State
 let currentReliefLayer = null;
@@ -69,6 +72,26 @@ function formatDistance(meters) {
         return `${Math.round(meters)} m`;
     }
     return `${(meters / 1000).toFixed(2)} km`;
+}
+
+// Great-circle distance in meters, the same Haversine the library uses
+function haversine(a, b) {
+    const R = 6371000;
+    const toRad = Math.PI / 180;
+    const dLat = (b.latitude - a.latitude) * toRad;
+    const dLng = (b.longitude - a.longitude) * toRad;
+    const h =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(a.latitude * toRad) * Math.cos(b.latitude * toRad) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+function cumulativeDistances(points) {
+    const distances = [0];
+    for (let i = 1; i < points.length; i++) {
+        distances.push(distances[i - 1] + haversine(points[i - 1], points[i]));
+    }
+    return distances;
 }
 
 // Filter control functions
@@ -314,18 +337,31 @@ async function updateElevationProfile() {
         const smoothingOptions = getSmoothingOptions();
         const filterOptions = getFilterOptions();
 
-        const elevationProfile = await elevationProvider.getElevationsAlong(pathPoints, {
+        // Ascent is measured on the unprocessed profile: a wide smoothing window or a
+        // simplification averages away real terrain and reads low. ElevationGain applies its own
+        // scale. The second call hits the tile cache.
+        const rawProfile = await elevationProvider.getElevationsAlong(pathPoints, {
             step: 25,
             interpolation: true,
-            smoothingOptions: smoothingOptions.enabled ? smoothingOptions : undefined,
-            filterOptions: filterOptions.enabled ? filterOptions : undefined,
         });
+        const elevationProfile =
+            smoothingOptions.enabled || filterOptions.enabled
+                ? await elevationProvider.getElevationsAlong(pathPoints, {
+                      step: 25,
+                      interpolation: true,
+                      smoothingOptions: smoothingOptions.enabled ? smoothingOptions : undefined,
+                      filterOptions: filterOptions.enabled ? filterOptions : undefined,
+                  })
+                : rawProfile;
+        const gain = ElevationGain.compute(rawProfile, { preset: gainPresetSelect.value });
+        // The naive sum of every delta, shown as the control
+        const plain = ElevationGain.compute(rawProfile, { preset: 'raw' });
 
         elevationDisplay.textContent = `Elevation profile: ${elevationProfile.length} points`;
         elevationDisplay.className = 'elevation-display success';
 
         // Create chart with processed data
-        createElevationChart(elevationProfile);
+        createElevationChart(elevationProfile, gain, plain);
     } catch (error) {
         console.error('Error updating elevation profile:', error);
         elevationDisplay.textContent = `Error: ${error.message}`;
@@ -337,46 +373,18 @@ async function updateElevationProfile() {
 const debouncedUpdateElevationProfile = debounce(updateElevationProfile, 300);
 
 // Calculate elevation profile statistics
-function calculateStats(elevationProfile) {
+function calculateStats(elevationProfile, distances) {
     const elevations = elevationProfile.map(p => p.elevation);
-    const minElevation = Math.min(...elevations);
-    const maxElevation = Math.max(...elevations);
-    const totalDistance = elevationProfile.reduce((total, point, index) => {
-        if (index === 0) {
-            return 0;
-        }
-        const prev = elevationProfile[index - 1];
-        const dlat = point.latitude - prev.latitude;
-        const dlng = point.longitude - prev.longitude;
-        const distance = Math.sqrt(dlat * dlat + dlng * dlng) * 111000; // Rough conversion
-        return total + distance;
-    }, 0);
-
-    // Calculate total ascent/descent
-    let totalAscent = 0;
-    let totalDescent = 0;
-    for (let i = 1; i < elevations.length; i++) {
-        const diff = elevations[i] - elevations[i - 1];
-        if (diff > 0) {
-            totalAscent += diff;
-        } else {
-            totalDescent += Math.abs(diff);
-        }
-    }
-
     return {
-        minElevation,
-        maxElevation,
-        elevationGain: maxElevation - minElevation,
-        totalDistance,
-        totalAscent,
-        totalDescent,
+        minElevation: Math.min(...elevations),
+        maxElevation: Math.max(...elevations),
+        totalDistance: distances[distances.length - 1],
         pointCount: elevations.length,
     };
 }
 
 // Create elevation chart
-function createElevationChart(elevationProfile) {
+function createElevationChart(elevationProfile, gain, plain) {
     const ctx = document.getElementById('elevation-chart').getContext('2d');
 
     // Destroy existing chart
@@ -384,21 +392,12 @@ function createElevationChart(elevationProfile) {
         elevationChart.destroy();
     }
 
-    // Calculate distances for x-axis
-    let cumulativeDistance = 0;
-    const chartData = elevationProfile.map((point, index) => {
-        if (index > 0) {
-            const prev = elevationProfile[index - 1];
-            const dlat = point.latitude - prev.latitude;
-            const dlng = point.longitude - prev.longitude;
-            const distance = Math.sqrt(dlat * dlat + dlng * dlng) * 111000; // Rough conversion
-            cumulativeDistance += distance;
-        }
-        return {
-            x: cumulativeDistance,
-            y: point.elevation,
-        };
-    });
+    // Distances for x-axis
+    const distances = cumulativeDistances(elevationProfile);
+    const chartData = elevationProfile.map((point, index) => ({
+        x: distances[index],
+        y: point.elevation,
+    }));
 
     elevationChart = new Chart(ctx, {
         type: 'line',
@@ -451,7 +450,7 @@ function createElevationChart(elevationProfile) {
     });
 
     // Calculate and display stats
-    const stats = calculateStats(elevationProfile);
+    const stats = calculateStats(elevationProfile, distances);
     elevationStats.innerHTML = `
         <div class="stat">
             <div class="stat-value">${formatDistance(stats.totalDistance)}</div>
@@ -470,12 +469,14 @@ function createElevationChart(elevationProfile) {
             <div class="stat-label">Max Elevation</div>
         </div>
         <div class="stat">
-            <div class="stat-value">${formatElevation(stats.totalAscent)}</div>
+            <div class="stat-value">${formatElevation(gain.gainM)}</div>
             <div class="stat-label">Total Ascent</div>
+            <div class="stat-detail">plain sum ${formatElevation(plain.gainM)}</div>
         </div>
         <div class="stat">
-            <div class="stat-value">${formatElevation(stats.totalDescent)}</div>
+            <div class="stat-value">${formatElevation(gain.lossM)}</div>
             <div class="stat-label">Total Descent</div>
+            <div class="stat-detail">plain sum ${formatElevation(plain.lossM)}</div>
         </div>
     `;
 
@@ -616,6 +617,7 @@ gpxFileInput.addEventListener('change', async function (e) {
 // Processing control event listeners (immediate updates for checkboxes)
 enableSmoothingCheckbox.addEventListener('change', updateElevationProfile);
 enableFilteringCheckbox.addEventListener('change', updateElevationProfile);
+gainPresetSelect.addEventListener('change', updateElevationProfile);
 
 // Smoothing control event listeners (debounced for sliders/inputs)
 smoothingWindowSlider.addEventListener('input', () => {

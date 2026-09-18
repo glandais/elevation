@@ -121,6 +121,22 @@
                             />x
                         </div>
                     </div>
+
+                    <div class="section">
+                        <strong>⛰️ Ascent</strong>
+                        <div class="control-line">
+                            <label for="gain-preset">Scale:</label>
+                            <select id="gain-preset">
+                                <option value="raw">Raw (0 m / 0 m)</option>
+                                <option value="barometric">Barometric (2 m / 15 m)</option>
+                                <option value="dem" selected>DEM (3 m / 30 m)</option>
+                                <option value="gps">GPS (10 m / 50 m)</option>
+                            </select>
+                        </div>
+                        <div class="control-hint">
+                            Dead band / smoothing, measured before smoothing and filtering
+                        </div>
+                    </div>
                 </div>
                 <div class="mode-info" id="mode-info">Click anywhere to get elevation</div>
             </div>

@@ -420,7 +420,7 @@ The project includes a comprehensive interactive demo consisting of three main f
 **Layout Components**:
 
 - Header with project branding and GitHub link
-- Compact controls panel with mode switching and processing options
+- Compact controls panel with mode switching, processing options and the ascent preset selector
 - Map container with status bar for real-time feedback
 - Chart panel for elevation profile visualization (hidden until path created)
 
@@ -441,12 +441,14 @@ The project includes a comprehensive interactive demo consisting of three main f
 1. **Raw Data Collection**: `getElevation()` for points, `getElevationsAlong()` for paths
 2. **Optional Smoothing**: Distance-based smoothing with configurable window size (10-200m)
 3. **Optional Filtering**: Douglas-Peucker 3D filtering with tolerance and Z-exaggeration controls
-4. **Visualization**: Real-time Chart.js elevation profile updates
+4. **Ascent Measurement**: `ElevationGain.compute()` on the unprocessed profile, with the preset
+   chosen in the "Ascent" panel; the `raw` preset is shown alongside as the plain-sum control
+5. **Visualization**: Real-time Chart.js elevation profile updates
 
 **Advanced Features**:
 
 - **Real-time Processing**: Live updates when smoothing/filtering parameters change
-- **Statistics Calculation**: Distance, elevation gain/loss, ascent/descent totals
+- **Statistics Calculation**: Haversine distance, min/max elevation, ascent/descent from `ElevationGain`
 - **Performance Metrics**: Variance reduction tracking for smoothing effectiveness
 - **Data Point Reduction**: Filtering efficiency statistics with before/after counts
 
@@ -470,6 +472,10 @@ const profile = await elevationProvider.getElevationsAlong(pathPoints, {
     smoothingOptions: { enabled: true, windowSize: 50 },
     filterOptions: { enabled: true, tolerance: 10, zExaggeration: 3 },
 });
+
+// Cumulative ascent/descent, measured on the profile before smoothing and filtering
+const rawProfile = await elevationProvider.getElevationsAlong(pathPoints, { step: 25 });
+const { gainM, lossM } = ElevationGain.compute(rawProfile, { preset: 'dem' });
 ```
 
 #### `demo.css` - Demo Styling and Layout

@@ -76,6 +76,24 @@ body {
     width: 80px;
 }
 
+.control-line select {
+    padding: 2px 4px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-size: 0.8rem;
+}
+
+.control-hint {
+    font-size: 0.75rem;
+    color: #666;
+}
+
+.stat-detail {
+    font-size: 11px;
+    color: #999;
+    margin-top: 2px;
+}
+
 .control-line input[type='number'] {
     width: 50px;
     padding: 2px 4px;
