@@ -190,3 +190,74 @@ export interface GetElevationsAlongOptions {
      */
     readonly filterOptions?: FilterOptions;
 }
+
+/**
+ * Named (threshold, smoothing) pairs for {@link ElevationGainOptions}.
+ *
+ * - `raw`: no dead band, no smoothing, the plain sum of positive deltas (0 m / 0 m)
+ * - `barometric`: Strava's threshold for a barometric altimeter (2 m / 15 m)
+ * - `dem`: for DEM-derived elevation such as this library's, and the default (3 m / 30 m)
+ * - `gps`: Strava's threshold for a GPS-only trace (10 m / 50 m)
+ */
+export type ElevationGainPreset = 'raw' | 'barometric' | 'dem' | 'gps';
+
+/**
+ * How to measure cumulative ascent and descent.
+ *
+ * Cumulative ascent is a property of a route *and* a measurement scale, so a preset pairs a dead
+ * band with a smoothing window. Setting `thresholdM` or `smoothWindowM` overrides that half of the
+ * preset.
+ */
+export interface ElevationGainOptions {
+    /**
+     * Named scale to measure at
+     * Default: 'dem'
+     */
+    readonly preset?: ElevationGainPreset;
+
+    /**
+     * Hysteresis dead band in meters: a climb or descent counts only once the profile has
+     * reversed by at least this much. 0 disables it.
+     * Default: the preset's threshold
+     */
+    readonly thresholdM?: number;
+
+    /**
+     * Triangular-kernel half-width in meters, applied to a private copy of the profile.
+     * 0 disables it.
+     * Default: the preset's window
+     */
+    readonly smoothWindowM?: number;
+}
+
+/**
+ * What {@link ElevationGainOptions} measured.
+ */
+export interface ElevationGainResult {
+    /** Cumulative ascent in meters, >= 0 */
+    readonly gainM: number;
+
+    /** Cumulative descent in meters, >= 0 */
+    readonly lossM: number;
+
+    /**
+     * Unfiltered sum of positive deltas on the same smoothed profile. Compared with `gainM`, it
+     * isolates what the dead band did from what the smoothing did.
+     */
+    readonly rawGainM: number;
+
+    /** Unfiltered sum of negative deltas on the same smoothed profile, as a positive number */
+    readonly rawLossM: number;
+
+    /** Dead band actually applied, in meters */
+    readonly thresholdM: number;
+
+    /** Smoothing half-width actually applied, in meters */
+    readonly smoothWindowM: number;
+
+    /**
+     * Number of legs banked, climbs plus descents. A diagnostic: a route with 3 real climbs that
+     * reports 400 legs has a threshold too small for its noise.
+     */
+    readonly legCount: number;
+}

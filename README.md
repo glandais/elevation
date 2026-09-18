@@ -25,6 +25,7 @@ A TypeScript library for retrieving elevation data from geographic coordinates u
 - 📈 **Elevation profiling** between coordinates and along multi-point paths
 - 🎛️ **Distance-based smoothing** with configurable window sizes
 - 🔬 **Douglas-Peucker filtering** for elevation profile simplification
+- ⛰️ **Cumulative ascent/descent** measured at a stated scale, stable under resampling
 
 ## Installation
 
@@ -213,14 +214,15 @@ const trailProfile = await elevationProvider.getElevationsAlong(hikingTrail, {
 const elevations = trailProfile.map(p => p.elevation);
 const minElevation = Math.min(...elevations);
 const maxElevation = Math.max(...elevations);
-const totalClimb = elevations.reduce((climb, elev, i) => {
-    return i > 0 && elev > elevations[i - 1] ? climb + (elev - elevations[i - 1]) : climb;
-}, 0);
+
+// Measure ascent on the unsmoothed, unfiltered profile: ElevationGain applies its own scale
+const rawProfile = await elevationProvider.getElevationsAlong(hikingTrail, { step: 10 });
+const { gainM, lossM } = ElevationGain.compute(rawProfile);
 
 console.log(`Trail analysis:`);
-console.log(`- Distance: ${trailProfile.length * 10}m`);
+console.log(`- Distance: ~${(rawProfile.length - 1) * 10}m`); // step = 10 m
 console.log(`- Elevation range: ${minElevation}m to ${maxElevation}m`);
-console.log(`- Total climb: ${totalClimb.toFixed(1)}m`);
+console.log(`- Total climb: ${gainM.toFixed(0)}m, total descent: ${lossM.toFixed(0)}m`);
 ```
 
 ## API Reference
@@ -342,6 +344,52 @@ import { ElevationSmoother } from '@glandais/elevation';
 const smoothed = ElevationSmoother.smoothProfile([0, 10, 20, 30], [100, 104, 99, 103], 15);
 ```
 
+### ElevationGain
+
+Cumulative ascent and descent (D+ / D-) measured at a stated scale.
+
+The plain sum of positive deltas counts every wiggle, so it grows as the sampling gets finer:
+halve `step` and the "total climb" goes up. `ElevationGain` instead smooths a private copy of the
+profile at a narrow scale, then runs a **turning-point accumulator** with a hysteresis dead band:
+a climb is banked once, in full, when the profile has reversed by at least the threshold. The
+result depends only on local extrema, so it is stable under resampling, and a finely sampled
+smooth climb is counted in full (a per-delta `if (dEle > threshold)` filter would report 0).
+
+Measure on the profile **before** any wide `smoothingOptions` or `filterOptions`: a wide kernel
+averages away real terrain and reads systematically low.
+
+##### `ElevationGain.compute(points: CoordinatesElevation[], options?: ElevationGainOptions): ElevationGainResult`
+
+Distances are computed with Haversine.
+
+##### `ElevationGain.computeProfile(distances: ArrayLike<number>, elevations: ArrayLike<number>, options?: ElevationGainOptions): ElevationGainResult`
+
+The same measurement on cumulative distances and elevations.
+
+```typescript
+import { ElevationGain } from '@glandais/elevation';
+
+const profile = await elevationProvider.getElevationsAlong(path, { step: 10 });
+
+const { gainM, lossM } = ElevationGain.compute(profile); // default preset: 'dem'
+const strava = ElevationGain.compute(profile, { preset: 'gps' });
+const custom = ElevationGain.compute(profile, { preset: 'dem', thresholdM: 5 });
+```
+
+**Presets** (`ELEVATION_GAIN_PRESETS`) pair a dead band with a smoothing half-width, because
+cumulative ascent is a property of a route _and_ a measurement scale:
+
+| Preset       | Threshold | Smoothing | Use                                                     |
+| ------------ | --------- | --------- | ------------------------------------------------------- |
+| `raw`        | 0 m       | 0 m       | Plain sum of deltas, the control                        |
+| `barometric` | 2 m       | 15 m      | Strava's threshold for a barometric altimeter           |
+| `dem`        | 3 m       | 30 m      | Default. DEM-derived elevation, as this library returns |
+| `gps`        | 10 m      | 50 m      | Strava's threshold for a GPS-only trace                 |
+
+`dem` is the default because DEM error is spatially correlated rather than white noise: there is
+little point-to-point jitter for a large band to remove, and the 10 m `gps` band reports 0 m on
+gentle terrain with a few meters of genuine undulation.
+
 ### Types
 
 #### Core Interfaces
@@ -395,6 +443,24 @@ interface FilterOptions {
     readonly enabled?: boolean; // Default: false
     readonly tolerance?: number; // Max distance from simplified line in meters (default: 10)
     readonly zExaggeration?: number; // Elevation exaggeration factor (default: 3)
+}
+
+type ElevationGainPreset = 'raw' | 'barometric' | 'dem' | 'gps';
+
+interface ElevationGainOptions {
+    readonly preset?: ElevationGainPreset; // Default: 'dem'
+    readonly thresholdM?: number; // Dead band in meters, 0 disables (default: preset's)
+    readonly smoothWindowM?: number; // Smoothing half-width in meters, 0 disables (default: preset's)
+}
+
+interface ElevationGainResult {
+    readonly gainM: number; // Cumulative ascent in meters, >= 0
+    readonly lossM: number; // Cumulative descent in meters, >= 0
+    readonly rawGainM: number; // Plain sum of positive deltas on the same smoothed profile
+    readonly rawLossM: number; // Plain sum of negative deltas on the same smoothed profile, >= 0
+    readonly thresholdM: number; // Dead band applied
+    readonly smoothWindowM: number; // Smoothing half-width applied
+    readonly legCount: number; // Climbs plus descents banked (diagnostic)
 }
 ```
 

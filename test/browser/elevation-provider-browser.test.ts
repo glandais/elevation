@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { ElevationProvider } from '../../src';
 import type { DouglasPeucker } from '../../src/utils/DouglasPeucker';
 import type { EcefConverter } from '../../src/utils/EcefConverter';
+import type { ElevationGain } from '../../src/utils/ElevationGain';
 import type { ElevationSmoother } from '../../src/utils/ElevationSmoother';
 import type { Vector3D } from '../../src/utils/Vector3D';
 
@@ -14,6 +15,7 @@ declare global {
             EcefConverter: typeof EcefConverter;
             Vector3D: typeof Vector3D;
             ElevationSmoother: typeof ElevationSmoother;
+            ElevationGain: typeof ElevationGain;
         };
     }
 }
@@ -46,6 +48,18 @@ test.describe('ElevationProvider Browser Tests', () => {
         });
 
         expect(canCreateInstance).toBe(true);
+    });
+
+    test('should measure elevation gain with the global ElevationGain', async ({ page }) => {
+        const result = await page.evaluate(() => {
+            const e = [0, 50, 10, 90, 30, 0];
+            const d = e.map((_, i) => i * 400);
+            return window.Elevation.ElevationGain.computeProfile(d, e, { smoothWindowM: 0 });
+        });
+
+        expect(result.gainM).toBeCloseTo(130, 9);
+        expect(result.lossM).toBeCloseTo(130, 9);
+        expect(result.thresholdM).toBe(3);
     });
 
     test('should verify browser environment compatibility', async ({ page }) => {

@@ -55,6 +55,11 @@ The library follows a modular architecture with clear separation of concerns:
 - **ElevationCalculator** (`src/calculator/ElevationCalculator.ts`): Calculates elevations with RGB decoding integrated
 - **ElevationSmoother** (`src/utils/ElevationSmoother.ts`): Triangular-kernel smoothing; `smooth()` on points,
   `smoothProfile()` on flat distance/elevation arrays (window `<= 0` means "no smoothing")
+- **ElevationGain** (`src/utils/ElevationGain.ts`): Cumulative ascent/descent at a stated scale. Smooths a
+  private copy (`smoothWindowM`), then a turning-point accumulator with a dead band (`thresholdM`).
+  Presets in `ELEVATION_GAIN_PRESETS` (`raw`, `barometric`, `dem` default, `gps`). Loss is reported
+  positive. Port of vcyclist's `ElevationGain`; not a per-delta filter, and must read the profile
+  before any wide smoothing
 
 ### Data Flow
 
@@ -68,6 +73,7 @@ The library follows a modular architecture with clear separation of concerns:
 8. For elevation profiling: BatchCalculator generates coordinate sequences
 9. Optional distance-based smoothing using ElevationSmoother
 10. Optional Douglas-Peucker filtering for profile simplification
+11. Optional D+ / D- measurement with ElevationGain, on the profile before steps 9-10
 
 ### Key Technical Details
 
@@ -366,6 +372,7 @@ test/
 │   └── ElevationCalculator.test.ts
 ├── utils/                            # Utility class tests
 │   ├── Distance.test.ts
+│   ├── ElevationGain.test.ts
 │   ├── ElevationSmoother.test.ts
 │   └── Constants.test.ts
 ├── tile/                             # Tile management tests

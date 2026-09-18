@@ -43,3 +43,12 @@ describe('index exports', () => {
         expect(typeof filterOptions.zExaggeration).toBe('number');
     });
 });
+
+describe('elevation gain exports', () => {
+    it('should export ElevationGain and its presets', async () => {
+        const index = await import('../src/index');
+        expect(typeof index.ElevationGain.compute).toBe('function');
+        expect(typeof index.ElevationGain.computeProfile).toBe('function');
+        expect(index.ELEVATION_GAIN_PRESETS.dem).toEqual({ thresholdM: 3, smoothWindowM: 30 });
+    });
+});
